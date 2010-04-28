@@ -1,0 +1,23 @@
+Source: ants
+Section: unknown
+Priority: extra
+Maintainer: Yaroslav Halchenko <debian@onerussian.com>
+Build-Depends: debhelper (>= 7.0.50~), cmake, libgdcm2-dev, libopenjpeg-dev, libinsighttoolkit3-dev
+Standards-Version: 3.8.4
+Homepage: http://www.picsl.upenn.edu/ANTS/
+Vcs-Git: git://git.debian.org/pkg-exppsy/ants.git
+Vcs-Browser: http://git.debian.org/?p=pkg-exppsy/ants.git;a=summary
+
+Package: ants
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: advanced normalization tools for brain and image mapping
+ The ANTS package is designed to enable researchers with advanced
+ tools for brain and image mapping. Many of the ANTS registration
+ tools are diffeomorphic, but deformation (elastic and BSpline)
+ transformations are available. Unique components of ANTS include
+ multivariate similarity metrics, landmark guidance, the ability to
+ use label images to guide the mapping and both greedy and space-time
+ optimal implementations of diffeomorphisms. The symmetric
+ normalization (SyN) strategy is a part of the ANTS toolkit as is
+ directly manipulated free form deformation (DMFFD).
