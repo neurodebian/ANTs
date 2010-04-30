@@ -1,5 +1,5 @@
 Source: ants
-Section: unknown
+Section: science
 Priority: extra
 Maintainer: Yaroslav Halchenko <debian@onerussian.com>
 Build-Depends: debhelper (>= 7.0.50~), help2man, cmake, libgdcm2-dev, libopenjpeg-dev, libinsighttoolkit3-dev

@@ -27,7 +27,7 @@ export DH_VERBOSE=1
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		-DCOPY_SCRIPT_FILES_TO_BIN_DIR:BOOL=OFF \
-		-DSKIP_BUILD_RPATH:BOOL=ON \
+		-DCMAKE_SKIP_RPATH:BOOL=ON \
 		-DEXECUTABLE_OUTPUT_PATH:PATH=$(DESTBINDIR)
 
 override_dh_auto_build:
