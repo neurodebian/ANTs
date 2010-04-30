@@ -1,14 +1,10 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
-# Sample debian/rules that uses debhelper.
-# This file was originally written by Joey Hess and Craig Small.
-# As a special exception, when this file is copied by dh-make into a
-# dh-make output file, you may use that output file without restriction.
-# This special exception was added by Craig Small in version 0.37 of dh-make.
 
-# Target directory to build binaries in, to don't dig them out later
-# on from the bulk
-DESTBINDIR=$(CURDIR)/bin
+# Build directory, to don't dig them out later
+# on from the bulk since there is no install target in upstream build system
+BUILDDIR=$(CURDIR)/build
+DESTBINDIR=$(BUILDDIR)/bin
 
 export CFLAGS = -Wall -g
 export LDFLAGS = -Wl,--as-needed
@@ -23,10 +19,24 @@ export CXXFLAGS = $(CFLAGS)
 # Uncomment this to turn on verbose mode.
 export DH_VERBOSE=1
 
+# Default mega-rule
+%:
+	dh -DExamples $@
+
+
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		-DCOPY_SCRIPT_FILES_TO_BIN_DIR:BOOL=OFF \
 		-DEXECUTABLE_OUTPUT_PATH:PATH=$(DESTBINDIR)
+
+override_dh_auto_build:
+	dh_auto_build
+	: build manpages
+	cd $(DESTBINDIR) && mkdir ../man && \
+    for f in *; do \
+	 help2man --name="part of ANTS registration suite" --version-string 1.9 \
+	          --no-info --no-discard-stderr ./$$f >| ../man/$$f.1; \
+     done
 
 # For now perform only some small subselection of tests since some
 # tests are very CPU intensive and some fail and there is no clean way
@@ -37,14 +47,14 @@ override_dh_auto_test:
 	# thus lets do it manually
 	cd obj-*; PATH=$$PATH:$(DESTBINDIR) ctest --force-new-ctest-process -R "ANTS_(CC_1|...$$)"
 
-
 override_dh_auto_install:
 	dh_auto_install
 	install -t debian/ants/usr/bin $(DESTBINDIR)/*
 
+override_dh_auto_installman:
+	dh_installman $(BUILDDIR)/man/*
+
 override_dh_auto_clean:
 	dh_auto_clean
-	rm -rf $(DESTBINDIR)
+	rm -rf $(BUILDDIR)
 
-%:
-	dh -DExamples $@
