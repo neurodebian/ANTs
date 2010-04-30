@@ -1,8 +1,11 @@
-ants for Debian
+ANTS for Debian
 ---------------
 
-<this file describes information about the source package, see Debian policy
-manual section 4.14. You WILL either need to modify or delete this file>
+Source package is built out of SVN source tree (cloned via git-svn) to
+facilitate easier adoption of upstream patches and release of
+snapshots if necessary.
+
+ -- Yaroslav Halchenko <debian@onerussian.com>, Thu, 29 Apr 2010 23:34:55 -0400
 
 
 

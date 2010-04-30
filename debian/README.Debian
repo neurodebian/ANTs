@@ -1,6 +1,8 @@
-ants for Debian
+ANTS for Debian
 ---------------
 
-<possible notes regarding this package - if none, delete this file>
+ANTS binaries are distributed under /usr/bin while shell and perl
+scripts under /usr/share/ants/bin, so you might adjust your PATH if
+you intend to use those.
 
- -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 28 Apr 2010 13:29:29 -0400
+ -- Yaroslav Halchenko <debian@onerussian.com>, Thu, 29 Apr 2010 23:34:41 -0400

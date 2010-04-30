@@ -27,11 +27,12 @@ export DH_VERBOSE=1
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		-DCOPY_SCRIPT_FILES_TO_BIN_DIR:BOOL=OFF \
+		-DSKIP_BUILD_RPATH:BOOL=ON \
 		-DEXECUTABLE_OUTPUT_PATH:PATH=$(DESTBINDIR)
 
 override_dh_auto_build:
 	dh_auto_build
-	: build manpages
+	: Build manpages
 	cd $(DESTBINDIR) && mkdir ../man && \
     for f in *; do \
 	 help2man --name="part of ANTS registration suite" --version-string 1.9 \
@@ -49,9 +50,11 @@ override_dh_auto_test:
 
 override_dh_auto_install:
 	dh_auto_install
+	: Install binaries
 	install -t debian/ants/usr/bin $(DESTBINDIR)/*
-
-override_dh_auto_installman:
+	: Install shell scripts
+	install -t debian/ants/usr/share/ants/bin Scripts/*
+	: Install manpages
 	dh_installman $(BUILDDIR)/man/*
 
 override_dh_auto_clean:
