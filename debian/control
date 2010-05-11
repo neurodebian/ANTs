@@ -11,9 +11,10 @@ Vcs-Browser: http://git.debian.org/?p=pkg-exppsy/ants.git;a=summary
 Package: ants
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: advanced normalization tools for brain and image mapping
- The ANTS package is designed to enable researchers with advanced
- tools for brain and image mapping. Many of the ANTS registration
+Description: advanced normalization tools for brain and image analysis
+ Advanced Normalization Tools (ANTS) is an ITK-based suite of
+ normalization, segmentation and template-building tools for
+ quantitative morphometric analysis. Many of the ANTS registration
  tools are diffeomorphic, but deformation (elastic and BSpline)
  transformations are available. Unique components of ANTS include
  multivariate similarity metrics, landmark guidance, the ability to
