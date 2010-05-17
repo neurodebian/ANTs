@@ -1,0 +1,15 @@
+ANTS for Debian
+---------------
+
+Source package is built out of SVN source tree (cloned via git-svn) to
+facilitate easier adoption of upstream patches and release of
+snapshots if necessary.
+
+Unfortunately components/copyright information of the Documentation/ is
+not cleared up, so they are excluded from Debian release of ANTs.
+
+ -- Yaroslav Halchenko <debian@onerussian.com>, Mon, 17 May 2010 18:00:28 -0400
+
+
+
+

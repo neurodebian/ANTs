@@ -1,0 +1,5 @@
+ants (1.9+svn532-1) unstable; urgency=low
+
+  * Initial release (Closes: #579569)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 28 Apr 2010 13:29:29 -0400

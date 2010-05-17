@@ -1,0 +1,63 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Build directory, to don't dig them out later
+# on from the bulk since there is no install target in upstream build system
+BUILDDIR=$(CURDIR)/build
+DESTBINDIR=$(BUILDDIR)/bin
+
+export CFLAGS = -Wall -g
+export LDFLAGS = -Wl,--as-needed
+
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+    export CFLAGS += -O0
+else
+    export CFLAGS += -O2
+endif
+export CXXFLAGS = $(CFLAGS)
+
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+
+# Default mega-rule
+%:
+	dh -DExamples $@
+
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DCOPY_SCRIPT_FILES_TO_BIN_DIR:BOOL=OFF \
+		-DCMAKE_SKIP_RPATH:BOOL=ON \
+		-DEXECUTABLE_OUTPUT_PATH:PATH=$(DESTBINDIR)
+
+override_dh_auto_build:
+	dh_auto_build
+	: Build manpages
+	cd $(DESTBINDIR) && mkdir ../man && \
+    for f in *; do \
+	 help2man --name="part of ANTS registration suite" --version-string 1.9 \
+	          --no-info --no-discard-stderr ./$$f >| ../man/$$f.1; \
+     done
+
+# For now perform only some small subselection of tests since some
+# tests are very CPU intensive and some fail and there is no clean way
+# to select "good" and quick ones
+override_dh_auto_test:
+	# debhelper just calls make test so no -R could be passed
+	# PATH=$$PATH:$(DESTBINDIR) dh_auto_test -- -R "ANTS_(CC_1|...$$)"
+	# thus lets do it manually
+	cd obj-*; PATH=$$PATH:$(DESTBINDIR) ctest --force-new-ctest-process -R "ANTS_(CC_1|...$$)"
+
+override_dh_auto_install:
+	dh_auto_install
+	: Install binaries
+	install -t debian/ants/usr/bin $(DESTBINDIR)/*
+	: Install shell scripts
+	install -t debian/ants/usr/share/ants/bin Scripts/*
+	: Install manpages
+	dh_installman $(BUILDDIR)/man/*
+
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -rf $(BUILDDIR)
+
