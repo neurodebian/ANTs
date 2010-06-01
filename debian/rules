@@ -4,7 +4,7 @@
 # Build directory, to don't dig them out later
 # on from the bulk since there is no install target in upstream build system
 BUILDDIR=$(CURDIR)/build
-DESTBINDIR=$(BUILDDIR)/bin
+DESTBINDIR=$(BUILDDIR)/usr/lib/ants
 
 export CFLAGS = -Wall -g
 export LDFLAGS = -Wl,--as-needed
@@ -51,9 +51,11 @@ override_dh_auto_test:
 override_dh_auto_install:
 	dh_auto_install
 	: Install binaries
-	install -t debian/ants/usr/bin $(DESTBINDIR)/*
+	install -t debian/ants/usr/lib/ants $(DESTBINDIR)/*
+	: Symlink ANTS into /usr/bin
+	dh_link usr/lib/ANTS usr/bin/ANTS
 	: Install shell scripts
-	install -t debian/ants/usr/share/ants/bin Scripts/*
+	install -t debian/ants/usr/lib/ants Scripts/*
 	: Install manpages
 	dh_installman $(BUILDDIR)/man/*
 

@@ -1,8 +1,11 @@
 ANTS for Debian
 ---------------
 
-ANTS binaries are distributed under /usr/bin while shell and perl
-scripts under /usr/share/ants/bin, so you might adjust your PATH if
-you intend to use those.
+ANTS binaries, shell and perl scripts under are distributed all under
+/usr/lib/ants, so you might adjust your PATH if you intend to use
+those directly.  Only ANTS binary itself is symlinked into /usr/bin.
 
- -- Yaroslav Halchenko <debian@onerussian.com>, Thu, 29 Apr 2010 23:34:41 -0400
+Moreover many scripts rely on ANTSPATH variable, point it to the same
+/usr/lib/ants.
+
+ -- Yaroslav Halchenko <debian@onerussian.com>, Tue,  1 Jun 2010 13:09:19 -0400
