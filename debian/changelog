@@ -4,11 +4,13 @@ ants (1.9+svn532-2) unstable; urgency=low
     scripts rely on binaries to be in the same directory, and ftp-master
     raised concern about some names for the binaries.  ANTS binary only gets
     symlinked under /usr/bin
+  * Initial Debian release (Closes: #579569)
+  * Added fsl and gridengine-client into suggests
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 01 Jun 2010 13:11:44 -0400
 
-ants (1.9+svn532-1) unstable; urgency=low
+ants (1.9+svn532-1) UNRELEASED; urgency=low
 
-  * Initial release (Closes: #579569)
+  * Initial packaging
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 28 Apr 2010 13:29:29 -0400
