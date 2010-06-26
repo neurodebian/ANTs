@@ -1,3 +1,13 @@
+ants (1.9+svn532-3) unstable; urgency=low
+
+  * Moving under NeuroDebian umbrella
+  * Absorbed commits from upstream:
+    - avoid division by 0 in progress meter (Closes: #586915)
+    - initializer warper ones (prior to the loop) in 
+      WarpTimeSeriesImageMultiTransform
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 23 Jun 2010 11:25:16 -0400
+
 ants (1.9+svn532-2) unstable; urgency=low
 
   * Placing all binaries and scripts under /usr/lib/ants, since many

@@ -52,8 +52,10 @@ override_dh_auto_install:
 	dh_auto_install
 	: Install binaries
 	install -t debian/ants/usr/lib/ants $(DESTBINDIR)/*
-	: Symlink ANTS into /usr/bin
-	dh_link usr/lib/ants/ANTS usr/bin/ANTS
+	: Symlink binaries of primary importance into /usr/bin
+	for f in ANTS WarpImageMultiTransform; do \
+		dh_link usr/lib/ants/$$f usr/bin/$$f; \
+	done
 	: Install shell scripts
 	install -t debian/ants/usr/lib/ants Scripts/*
 	: Install manpages

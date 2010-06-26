@@ -1,7 +1,8 @@
 Source: ants
 Section: science
 Priority: extra
-Maintainer: Yaroslav Halchenko <debian@onerussian.com>
+Maintainer: NeuroDebian Team <team@neuro.debian.net>
+Uploaders: Yaroslav Halchenko <debian@onerussian.com>, Michael Hanke <michael.hanke@gmail.com>
 Build-Depends: debhelper (>= 7.0.50~), help2man, cmake, libgdcm2-dev, libopenjpeg-dev, libinsighttoolkit3-dev, libvtk5-dev, uuid-dev
 Standards-Version: 3.8.4
 Homepage: http://www.picsl.upenn.edu/ANTS/
