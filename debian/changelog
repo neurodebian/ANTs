@@ -1,3 +1,10 @@
+ants (1.9+svn532-4) unstable; urgency=low
+
+  * Cherry picking rev 581,589-590 from upstream to assure correct application
+    of transformation while operating on 4D timeseries (Closes: #588195)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 06 Jul 2010 12:34:52 -0400
+
 ants (1.9+svn532-3) unstable; urgency=low
 
   * Moving under NeuroDebian umbrella
