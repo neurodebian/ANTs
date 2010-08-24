@@ -46,7 +46,7 @@ override_dh_auto_test:
 	# debhelper just calls make test so no -R could be passed
 	# PATH=$$PATH:$(DESTBINDIR) dh_auto_test -- -R "ANTS_(CC_1|...$$)"
 	# thus lets do it manually
-	cd obj-*; PATH=$$PATH:$(DESTBINDIR) ctest --force-new-ctest-process -R "ANTS_(CC_1|...$$)"
+	cd obj-*; PATH=$$PATH:$(DESTBINDIR) ctest --force-new-ctest-process -R "ANTS_(CC_1|SYN_|EXP|...$$)" -E "ANTS_SYN$$"
 
 override_dh_auto_install:
 	dh_auto_install
