@@ -1,3 +1,9 @@
+ants (1.9.2+svn680-1) experimental; urgency=low
+
+  * New upstream release
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 14 Nov 2010 21:24:18 -0500
+
 ants (1.9+svn532-5) unstable; urgency=low
 
   * Disable lengthy _SYN unittest to allow pass on slow archs (like sparc)
