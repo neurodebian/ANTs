@@ -1,0 +1,13 @@
+diff --git a/debian/control b/debian/control
+index f43d388..38b47c6 100644
+--- a/debian/control
++++ b/debian/control
+@@ -3,7 +3,7 @@ Section: science
+ Priority: extra
+ Maintainer: NeuroDebian Team <team@neuro.debian.net>
+ Uploaders: Yaroslav Halchenko <debian@onerussian.com>, Michael Hanke <michael.hanke@gmail.com>
+-Build-Depends: debhelper (>= 7.0.50~), help2man, cmake, libgdcm2-dev, libopenjpeg-dev, libinsighttoolkit3-dev, libvtk5-dev, uuid-dev
++Build-Depends: debhelper (>= 7.0.50~), help2man, cmake, libopenjpeg-dev, libinsighttoolkit3-dev, libvtk5-dev, uuid-dev
+ Standards-Version: 3.9.1
+ Homepage: http://www.picsl.upenn.edu/ANTS/
+ Vcs-Git: git://git.debian.org/pkg-exppsy/ants.git
