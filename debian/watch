@@ -1,2 +1,2 @@
 version=3
-opts="uversionmangle=s/pt/./g" http://sf.net/advants/ants(.*)code\.zip
+opts="uversionmangle=s/pt/./g,dversionmangle=s/.dfsg$//" http://sf.net/advants/ants(.*)code\.zip
