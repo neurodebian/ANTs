@@ -1,6 +1,8 @@
-ants (1.9.2+svn680-1) experimental; urgency=low
+ants (1.9.2+svn680.dfsg-1) experimental; urgency=low
 
   * New upstream release
+  * Adding .dfsg since Documentation/ is pruned from source trees
+    due to incomplete set of building materials to reproduce PDFs
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 14 Nov 2010 21:24:18 -0500
 
