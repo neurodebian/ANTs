@@ -7,7 +7,7 @@
   Version:   $Revision: 1.22 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
-  See accompanying COPYING.txt or 
+  See accompanying COPYING.txt or
  http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
@@ -67,15 +67,44 @@ PICSLAdvancedNormalizationToolKit<TDimension, TReal>
 {
 
     this->m_Parser->Parse( argc, argv );
-    std::string printhelp=this->m_Parser->GetOption( "help" )->GetValue();
-    std::cout << "printhelp " << printhelp << std::endl;
-    unsigned int b = this->m_Parser->template Convert<unsigned int>( printhelp ) ;
-    std::cout << " printhelp " << printhelp << " true? " << b << " end " << std::endl;
-    if ( b == 1 )
-    {
-        this->m_Parser->PrintMenu( std::cout, 7 );
-        exit( 0 );
-    }
+
+    typename ParserType::OptionListType unknownOptions =
+      this->m_Parser->GetUnknownOptions();
+    if( unknownOptions.size() )
+      {
+      std::cout << std::endl << "WARNING:  Unknown options" << std::endl;
+      typename ParserType::OptionListType::const_iterator its;
+      for( its = unknownOptions.begin(); its != unknownOptions.end(); its++ )
+        {
+        if( (*its)->GetShortName() != '\0' )
+          {
+          std::cout << "   " << '-' << (*its)->GetShortName() << std::endl;
+          }
+        else
+          {
+          std::cout << "   " << "--" << (*its)->GetLongName() << std::endl;
+          }
+        }
+      std::cout << std::endl;
+      }
+
+    std::string printhelp_long = this->m_Parser->GetOption( "help" )->GetValue();
+    unsigned int help_long =
+      this->m_Parser->template Convert<unsigned int>( printhelp_long );
+    if ( help_long )
+      {
+      this->m_Parser->PrintMenu( std::cout, 7, false );
+      exit( 0 );
+      }
+
+    std::string printhelp_short = this->m_Parser->GetOption( 'h' )->GetValue();
+    unsigned int help_short =
+      this->m_Parser->template Convert<unsigned int>( printhelp_short );
+    if ( help_short )
+      {
+      this->m_Parser->PrintMenu( std::cout, 7, true );
+      exit( 0 );
+      }
 
 }
 
@@ -158,7 +187,7 @@ PICSLAdvancedNormalizationToolKit<TDimension, TReal>
     bool useNN = this->m_Parser->template Convert<bool>( this->m_Parser->GetOption( "use-NN" )->GetValue() );
     if ( useNN)   this->m_RegistrationOptimizer->SetUseNearestNeighborInterpolation(true);
     else this->m_RegistrationOptimizer->SetUseNearestNeighborInterpolation(false);
-    
+
     typename OptionType::ValueType continue_affine = this->m_Parser->GetOption( "continue-affine" )->GetValue();
     if  ( fixed_initial_affine_filename != "" ) continue_affine=std::string("false");
     if ( continue_affine == "true" ){
@@ -183,7 +212,9 @@ PICSLAdvancedNormalizationToolKit<TDimension, TReal>
             affine_opt.MI_samples = mi_option[1];
             temp=this->m_Parser->GetOption( "rigid-affine" )->GetValue();
 	    std::string temp2=this->m_Parser->GetOption( "do-rigid" )->GetValue();
-            affine_opt.is_rigid = ( (temp=="true")  || (temp2=="true")  );
+            affine_opt.is_rigid = (
+              ( temp=="true" )  || ( temp2=="true" ) ||
+              ( temp == "1" ) || ( temp2 == "1" ) );
             temp=this->m_Parser->GetOption( "affine-gradient-descent-option" )->GetValue();
             std::vector<double> gradient_option = this->m_Parser->template ConvertVector<double>(temp);
             affine_opt.maximum_step_length = gradient_option[0];
@@ -609,8 +640,26 @@ PICSLAdvancedNormalizationToolKit<TDimension, TReal>
               radius.Fill( 0 );
               if ( option->GetNumberOfParameters( i ) > parameterCount )
                 {
-                radius.Fill( this->m_Parser->template
-                  Convert<unsigned int>( option->GetParameter( i, parameterCount ) ) );
+                std::vector<unsigned int> rad = this->m_Parser->template
+                  ConvertVector<unsigned int>( option->GetParameter( i,
+                  parameterCount ) );
+
+                if( rad.size() == 1 )
+                  {
+                  radius.Fill( rad[0] );
+                  }
+                else if( rad.size() == TDimension )
+                  {
+                  for( unsigned int n = 0; n < TDimension; n++ )
+                    {
+                    radius[n] = rad[n];
+                    }
+                  }
+                else
+                  {
+                  std::cerr << "Badly formed radius specification" << std::endl;
+                  exit( 0 );
+                  }
                 parameterCount++;
                 }
               std::cout << "  Radius: " << radius << std::endl;
@@ -643,7 +692,7 @@ PICSLAdvancedNormalizationToolKit<TDimension, TReal>
 //  filter->ThresholdAtMeanIntensityOff();
   if (useHistMatch){
   filter->Update();   std::cout <<  " use Histogram Matching " << std::endl;
-  movingImage=filter->GetOutput(); 
+  movingImage=filter->GetOutput();
   movingImage = this->PreprocessImage(movingImage);
   similarityMetric->SetMovingImage( movingImage );}
                   typedef SyNDemonsRegistrationFunction
@@ -715,7 +764,7 @@ PICSLAdvancedNormalizationToolKit<TDimension, TReal>
 //  filter->ThresholdAtMeanIntensityOff();
   if (useHistMatch){
   filter->Update();   std::cout <<  " use Histogram Matching " << std::endl;
-  movingImage=filter->GetOutput(); 
+  movingImage=filter->GetOutput();
   movingImage = this->PreprocessImage(movingImage);
   similarityMetric->SetMovingImage( movingImage );}
 
@@ -743,7 +792,7 @@ PICSLAdvancedNormalizationToolKit<TDimension, TReal>
 //  filter->ThresholdAtMeanIntensityOff();
   if (useHistMatch){
   filter->Update();   std::cout <<  " use Histogram Matching " << std::endl;
-  movingImage=filter->GetOutput(); 
+  movingImage=filter->GetOutput();
   movingImage = this->PreprocessImage(movingImage);
   similarityMetric->SetMovingImage( movingImage );}
                   typedef itk::ProbabilisticRegistrationFunction
@@ -793,10 +842,19 @@ PICSLAdvancedNormalizationToolKit<TDimension, TReal>
 
     if (true)
     {
+      std::string description =
+      std::string( "this mask -- defined in the 'fixed' image space defines " ) +
+      std::string( "the region of interest over which the registration is " ) +
+      std::string( "computed ==> above 0.1 means inside mask ==> continuous " ) +
+      std::string( "values in range [0.1,1.0] effect optimization like a " ) +
+      std::string( "probability.  ==> values > 1 are treated as = 1.0 " );
+
         OptionType::Pointer option = OptionType::New();
         option->SetLongName( "mask-image" );
         option->SetShortName( 'x' );
-        option->SetDescription( "this mask -- defined in the 'fixed' image space defines the region of interest over which the registration is computed \n\t\t==> above 0.1 means inside mask \n\t\t==> continuous values in range [0.1 , 1.0] effect optimization like a probability.  \n\t\t==> values > 1 are treated as = 1.0 " );
+//         option->SetDescription( "this mask -- defined in the 'fixed' image space defines the region of interest over which the registration is computed ==> above 0.1 means inside mask \n\t\t==> continuous values in range [0.1 , 1.0] effect optimization like a probability.  \n\t\t==> values > 1 are treated as = 1.0 " );
+        option->SetDescription( description );
+        option->SetUsageOption( 0, "maskFileName" );
         this->m_Parser->AddOption( option );
     }
 
@@ -983,16 +1041,30 @@ PICSLAdvancedNormalizationToolKit<TDimension, TReal>
         this->m_Parser->AddOption( option );
     }
 
-    if (true)
-    {
-        OptionType::Pointer option = OptionType::New();
-        option->SetLongName( "help" );
-        option->SetShortName( 'h' );
-        option->SetDescription( "blah-blah" );
-	std::string zero=std::string("0");
-        option->AddValue(zero);
-        this->m_Parser->AddOption( option );
-    }
+    if( true )
+      {
+      std::string description = std::string( "Print the help menu (short version)." );
+
+      OptionType::Pointer option = OptionType::New();
+      option->SetShortName( 'h' );
+      option->SetDescription( description );
+      std::string zero = std::string( "0" );
+      option->AddValue( zero );
+      this->m_Parser->AddOption( option );
+      }
+
+    if( true )
+      {
+      std::string description = std::string( "Print the help menu." );
+
+      OptionType::Pointer option = OptionType::New();
+      option->SetLongName( "help" );
+      option->SetDescription( description );
+      std::string zero = std::string( "0" );
+      option->AddValue( zero );
+      this->m_Parser->AddOption( option );
+      }
+
 
     if (true)
     {

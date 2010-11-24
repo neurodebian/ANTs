@@ -1,4 +1,9 @@
 cmake_minimum_required(VERSION 2.4)
+
+if(COMMAND cmake_policy)
+       cmake_policy(SET CMP0003 NEW)
+endif(COMMAND cmake_policy)
+
 #Change PROJECT_NAME to the name of your project
 PROJECT(ANTS)
 
@@ -41,6 +46,7 @@ IF (USE_ITK_FILE)
   INCLUDE(${USE_ITK_FILE}) 
 ENDIF(USE_ITK_FILE) 
 
+SET(DART_TESTING_TIMEOUT 1500)
 
 SET(PICSL_INCLUDE_DIRS
 ../Utilities
@@ -56,49 +62,49 @@ INCLUDE_DIRECTORIES(${PICSL_INCLUDE_DIRS})
 LINK_DIRECTORIES( ${ITK_LIBRARY_PATH} )
 
 # non-templated class -- this should be stored in a library and linked in...
-SET(SOURCES "../Utilities/itkCommandLineParser" "../Utilities/itkCommandLineOption" )
+SET(UI_SOURCES "../Utilities/antsCommandLineParser" "../Utilities/antsCommandLineOption" )
 
-ADD_EXECUTABLE(ANTS ANTS.cxx ${SOURCES})
+ADD_EXECUTABLE(ANTS ANTS.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(ANTS ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(ANTSJacobian ANTSJacobian.cxx ${SOURCES})
+ADD_EXECUTABLE(ANTSJacobian ANTSJacobian.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(ANTSJacobian ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(PrintHeader PrintHeader.cxx ${SOURCES})
+ADD_EXECUTABLE(PrintHeader PrintHeader.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(PrintHeader ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(ResetDirection ResetDirection.cxx ${SOURCES})
+ADD_EXECUTABLE(ResetDirection ResetDirection.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(ResetDirection ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-#ADD_EXECUTABLE(ResetDirection2 ResetDirection2.cxx ${SOURCES})
+#ADD_EXECUTABLE(ResetDirection2 ResetDirection2.cxx ${UI_SOURCES})
 #TARGET_LINK_LIBRARIES(ResetDirection2 ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-#ADD_EXECUTABLE(BoykovGraphCutFilter BoykovGraphCutFilter.cxx ${SOURCES})
+#ADD_EXECUTABLE(BoykovGraphCutFilter BoykovGraphCutFilter.cxx ${UI_SOURCES})
 #TARGET_LINK_LIBRARIES(BoykovGraphCutFilter ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-#ADD_EXECUTABLE(GeneralLinearModel GeneralLinearModel.cxx ${SOURCES})
+#ADD_EXECUTABLE(GeneralLinearModel GeneralLinearModel.cxx ${UI_SOURCES})
 #TARGET_LINK_LIBRARIES(GeneralLinearModel ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
 
-ADD_EXECUTABLE(ANTSUseLandmarkImagesToGetAffineTransform ANTSUseLandmarkImagesToGetAffineTransform.cxx ${SOURCES})
+ADD_EXECUTABLE(ANTSUseLandmarkImagesToGetAffineTransform ANTSUseLandmarkImagesToGetAffineTransform.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(ANTSUseLandmarkImagesToGetAffineTransform ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
 
-ADD_EXECUTABLE(ANTSUseDeformationFieldToGetAffineTransform ANTSUseDeformationFieldToGetAffineTransform ${SOURCES})
+ADD_EXECUTABLE(ANTSUseDeformationFieldToGetAffineTransform ANTSUseDeformationFieldToGetAffineTransform ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(ANTSUseDeformationFieldToGetAffineTransform ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
 
-#ADD_EXECUTABLE(FDR FDR.cxx ${SOURCES})
+#ADD_EXECUTABLE(FDR FDR.cxx ${UI_SOURCES})
 #TARGET_LINK_LIBRARIES(FDR ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(ImageMath ImageMath.cxx ${SOURCES})
+ADD_EXECUTABLE(ImageMath ImageMath.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(ImageMath ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
 
-ADD_EXECUTABLE(SurfaceCurvature SurfaceCurvature.cxx ${SOURCES})
+ADD_EXECUTABLE(SurfaceCurvature SurfaceCurvature.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(SurfaceCurvature ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(SurfaceBasedSmoothing SurfaceBasedSmoothing.cxx ${SOURCES})
+ADD_EXECUTABLE(SurfaceBasedSmoothing SurfaceBasedSmoothing.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(SurfaceBasedSmoothing ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
 
@@ -106,23 +112,23 @@ TARGET_LINK_LIBRARIES(SurfaceBasedSmoothing ITKCommon  ITKBasicFilters ITKIO   I
 # ADD_EXECUTABLE(test test.cxx)
 #TARGET_LINK_LIBRARIES(test)
 
-#ADD_EXECUTABLE(WarpImage WarpImage.cxx ${SOURCES})
+#ADD_EXECUTABLE(WarpImage WarpImage.cxx ${UI_SOURCES})
 #TARGET_LINK_LIBRARIES(WarpImage ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(LaplacianThickness LaplacianThickness.cxx ${SOURCES})
+ADD_EXECUTABLE(LaplacianThickness LaplacianThickness.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(LaplacianThickness ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(SetOrigin SetOrigin.cxx ${SOURCES})
+ADD_EXECUTABLE(SetOrigin SetOrigin.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(SetOrigin ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(SetSpacing SetSpacing.cxx ${SOURCES})
+ADD_EXECUTABLE(SetSpacing SetSpacing.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(SetSpacing ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(SetDirectionByMatrix SetDirectionByMatrix.cxx ${SOURCES})
+ADD_EXECUTABLE(SetDirectionByMatrix SetDirectionByMatrix.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(SetDirectionByMatrix ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
 
-#ADD_EXECUTABLE(WarpFunctionalImage WarpFunctionalImage.cxx ${SOURCES})
+#ADD_EXECUTABLE(WarpFunctionalImage WarpFunctionalImage.cxx ${UI_SOURCES})
 #TARGET_LINK_LIBRARIES(WarpFunctionalImage ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
 ADD_EXECUTABLE(ConvertScalarImageToRGB ConvertScalarImageToRGB.cxx)
@@ -137,65 +143,63 @@ TARGET_LINK_LIBRARIES(CreateWarpedGridImage ITKCommon  ITKBasicFilters ITKIO)
 ADD_EXECUTABLE(MeasureImageSimilarity MeasureImageSimilarity.cxx)
 TARGET_LINK_LIBRARIES(MeasureImageSimilarity ITKCommon  ITKBasicFilters ITKIO)
 
-ADD_EXECUTABLE(ConvertToJpg ConvertToJpg.cxx ${SOURCES})
+ADD_EXECUTABLE(ConvertToJpg ConvertToJpg.cxx)
 TARGET_LINK_LIBRARIES(ConvertToJpg ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(ConvertImagePixelType ConvertImagePixelType.cxx ${SOURCES})
+ADD_EXECUTABLE(ConvertImagePixelType ConvertImagePixelType.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(ConvertImagePixelType ITKCommon  ITKBasicFilters ITKIO    )
 
 
-ADD_EXECUTABLE(AverageImages AverageImages.cxx ${SOURCES})
+ADD_EXECUTABLE(AverageImages AverageImages.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(AverageImages ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(AverageTensorImages AverageTensorImages.cxx ${SOURCES})
+ADD_EXECUTABLE(AverageTensorImages AverageTensorImages.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(AverageTensorImages ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(ImageSetStatistics ImageSetStatistics.cxx ${SOURCES})
+ADD_EXECUTABLE(ImageSetStatistics ImageSetStatistics.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(ImageSetStatistics ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(ThresholdImage ThresholdImage.cxx ${SOURCES})
+ADD_EXECUTABLE(ThresholdImage ThresholdImage.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(ThresholdImage ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(MultiplyImages MultiplyImages.cxx ${SOURCES})
+ADD_EXECUTABLE(MultiplyImages MultiplyImages.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(MultiplyImages ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(SmoothImage SmoothImage.cxx ${SOURCES})
+ADD_EXECUTABLE(SmoothImage SmoothImage.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(SmoothImage ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(ClusterImageStatistics ClusterImageStatistics.cxx ${SOURCES})
+ADD_EXECUTABLE(ClusterImageStatistics ClusterImageStatistics.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(ClusterImageStatistics ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(LabelClustersUniquely LabelClustersUniquely.cxx ${SOURCES})
+ADD_EXECUTABLE(LabelClustersUniquely LabelClustersUniquely.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(LabelClustersUniquely ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-#ADD_EXECUTABLE(StudentsTestOnImages StudentsTestOnImages.cxx ${SOURCES})
+#ADD_EXECUTABLE(StudentsTestOnImages StudentsTestOnImages.cxx ${UI_SOURCES})
 #TARGET_LINK_LIBRARIES(StudentsTestOnImages ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
 ADD_EXECUTABLE(LabelOverlapMeasures LabelOverlapMeasures.cxx )
 TARGET_LINK_LIBRARIES(LabelOverlapMeasures ITKIO)
 
-ADD_EXECUTABLE(MeasureMinMaxMean MeasureMinMaxMean.cxx ${SOURCES})
+ADD_EXECUTABLE(MeasureMinMaxMean MeasureMinMaxMean.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(MeasureMinMaxMean ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(WarpImageMultiTransform WarpImageMultiTransform ${SOURCES})
+ADD_EXECUTABLE(WarpImageMultiTransform WarpImageMultiTransform ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(WarpImageMultiTransform ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(ComposeMultiTransform ComposeMultiTransform ${SOURCES})
+ADD_EXECUTABLE(ComposeMultiTransform ComposeMultiTransform ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(ComposeMultiTransform ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(WarpVTKPolyDataMultiTransform WarpVTKPolyDataMultiTransform)
-TARGET_LINK_LIBRARIES(WarpVTKPolyDataMultiTransform ITKIO )
 
-ADD_EXECUTABLE(StackSlices StackSlices.cxx ${SOURCES})
+ADD_EXECUTABLE(StackSlices StackSlices.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(StackSlices ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(MemoryTest MemoryTest.cxx ${SOURCES})
+ADD_EXECUTABLE(MemoryTest MemoryTest.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(MemoryTest ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-#ADD_EXECUTABLE(ANTSOrientImage ANTSOrientImage.cxx ${SOURCES})
+#ADD_EXECUTABLE(ANTSOrientImage ANTSOrientImage.cxx ${UI_SOURCES})
 #TARGET_LINK_LIBRARIES(ANTSOrientImage ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
-ADD_EXECUTABLE(PermuteFlipImageOrientationAxes PermuteFlipImageOrientationAxes.cxx ${SOURCES})
+ADD_EXECUTABLE(PermuteFlipImageOrientationAxes PermuteFlipImageOrientationAxes.cxx ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(PermuteFlipImageOrientationAxes ITKCommon  ITKBasicFilters ITKIO   ITKNumerics  ITKStatistics  ITKFEM )
 
 ADD_EXECUTABLE(ImageCompare ImageCompare.cxx)
@@ -213,6 +217,15 @@ TARGET_LINK_LIBRARIES(CopyImageHeaderInformation ITKIO)
 ADD_EXECUTABLE(WarpTimeSeriesImageMultiTransform WarpTimeSeriesImageMultiTransform.cxx)
 TARGET_LINK_LIBRARIES(WarpTimeSeriesImageMultiTransform ITKCommon ITKBasicFilters ITKIO ITKNumerics  ITKStatistics)
 
+ADD_EXECUTABLE(ResampleImage ResampleImage.cxx )
+TARGET_LINK_LIBRARIES(ResampleImage ITKNumerics ITKIO ITKCommon)
+
+ADD_EXECUTABLE(ExtractSliceFromImage ExtractSliceFromImage.cxx )
+TARGET_LINK_LIBRARIES(ExtractSliceFromImage ITKNumerics ITKIO ITKCommon)
+
+ADD_EXECUTABLE(TileImages TileImages.cxx )
+TARGET_LINK_LIBRARIES(TileImages ITKNumerics ITKIO ITKCommon)
+
 
 ADD_EXECUTABLE(WarpTensorImageMultiTransform WarpTensorImageMultiTransform.cxx)
 TARGET_LINK_LIBRARIES(WarpTensorImageMultiTransform ITKCommon ITKBasicFilters ITKIO ITKNumerics  ITKStatistics)
@@ -223,7 +236,7 @@ TARGET_LINK_LIBRARIES(ReorientTensorImage ITKCommon ITKBasicFilters ITKIO)
 ADD_EXECUTABLE(N3BiasFieldCorrection N3BiasFieldCorrection.cxx)
 TARGET_LINK_LIBRARIES(N3BiasFieldCorrection ITKIO ITKStatistics ITKNumerics)
 
-ADD_EXECUTABLE(N4BiasFieldCorrection N4BiasFieldCorrection.cxx  ${SOURCES})
+ADD_EXECUTABLE(N4BiasFieldCorrection N4BiasFieldCorrection.cxx  ${UI_SOURCES})
 TARGET_LINK_LIBRARIES(N4BiasFieldCorrection ITKIO ITKStatistics)
 
 ADD_EXECUTABLE(KellySlater KellySlater.cxx)
@@ -239,6 +252,13 @@ IF (USE_VTK_FILE)
   ADD_EXECUTABLE(GetMeshAndTopology GetMeshAndTopology.cxx)
   TARGET_LINK_LIBRARIES(GetMeshAndTopology ITKCommon ITKNumerics ITKFEM  ITKIO ITKMetaIO  vtkRendering vtksys vtkIO)
 
+  ADD_EXECUTABLE(CheckTopology CheckTopology.cxx)
+  TARGET_LINK_LIBRARIES(CheckTopology ITKCommon ITKNumerics ITKFEM  ITKIO ITKMetaIO  vtkRendering vtksys vtkIO)
+
+ADD_EXECUTABLE(WarpVTKPolyDataMultiTransform WarpVTKPolyDataMultiTransform)
+TARGET_LINK_LIBRARIES(WarpVTKPolyDataMultiTransform ITKIO vtksys vtkIO )
+
+
   SET(FLAT_SRC
     ../Temporary/itkFEMElement3DC0LinearTriangular.cxx
     ../Temporary/itkFEMElement3DC0LinearTriangularLaplaceBeltrami.cxx
@@ -251,13 +271,10 @@ IF (USE_VTK_FILE)
 
   ADD_EXECUTABLE(ConformalMapping ConformalMapping.cxx)
   TARGET_LINK_LIBRARIES(ConformalMapping ITKCommon ITKNumerics ITKFEM FLATFEM ITKIO ITKMetaIO  vtkRendering vtkIO)
-  #vtkPatented vtkIO)
-
-  # SRD replace vtkPatented by vtksys
-#   ADD_EXECUTABLE(ConformalMappingSphere  ConformalMappingSphere.cxx )
-#  TARGET_LINK_LIBRARIES(ConformalMappingSphere ITKCommon ITKNumerics ITKFEM FLATFEM ITKIO ITKMetaIO  vtkRendering vtksys vtkIO)
-
-
+ 
+ ADD_EXECUTABLE(ANTSConformalMapping ANTSConformalMapping.cxx ${UI_SOURCES})
+  TARGET_LINK_LIBRARIES(ANTSConformalMapping ITKCommon ITKNumerics ITKFEM FLATFEM ITKIO ITKMetaIO  vtkRendering vtkIO)
+ 
 ENDIF (USE_VTK_FILE)
 ENDIF(USE_VTK)
 
@@ -266,10 +283,10 @@ ENDIF(USE_VTK)
 ADD_EXECUTABLE(ANTSIntegrateVectorField ANTSIntegrateVectorField.cxx)
 TARGET_LINK_LIBRARIES(ANTSIntegrateVectorField ITKIO ITKStatistics)
 
-SET(SOURCES "../Utilities/itkCommandLineParser" "../Utilities/itkCommandLineOption" )
-ADD_EXECUTABLE(Atropos Atropos.cxx ${SOURCES})
-TARGET_LINK_LIBRARIES(Atropos ITKCommon  ITKBasicFilters ITKIO ITKStatistics   )
-
+IF( ITK_USE_REVIEW_STATISTICS )
+  ADD_EXECUTABLE(Atropos Atropos.cxx ${UI_SOURCES})
+  TARGET_LINK_LIBRARIES(Atropos ITKCommon  ITKBasicFilters ITKIO ITKStatistics   )
+ENDIF( ITK_USE_REVIEW_STATISTICS )
 
 
 #Set any libraries that your project depends on.
@@ -441,26 +458,6 @@ ADD_TEST(ANTS_SYN_INVERSEWARP_METRIC_1 MeasureImageSimilarity 2 1 ${R64_IMAGE} $
 ADD_TEST(ANTS_SYN_INVERSEWARP_METRIC_2 MeasureImageSimilarity 2 2 ${R64_IMAGE} ${INVERSEWARP_IMAGE} ${OUTPUT_PREFIX}log.txt ${OUTPUT_PREFIX}metric.nii.gz -0.000444279 0.05)  
 
 ###
-#  ANTS labeled data testing
-### 
-
-ADD_TEST(ANTS_PSE_MSQ_IMG ANTS 2 -i 191x170x90x90x10  -r Gauss[6,0.25] -t SyN[1,2,0.1] 
-                             -m PSE[${DEVIL_IMAGE},${ANGEL_IMAGE},${DEVIL_IMAGE},${ANGEL_IMAGE},0.25,0.1,100,0,10]
-                             -m MSQ[${DEVIL_IMAGE},${ANGEL_IMAGE},1,0.1]
-                              --continue-affine 0 --number-of-affine-iterations 0 --geodesic 2 
-                             -o ${OUTPUT_PREFIX}.nii.gz)
-ADD_TEST(ANTS_PSE_MSQ_IMG_WARP WarpImageMultiTransform 2 ${ANGEL_IMAGE} ${WARP_IMAGE} ${WARP} -R  ${DEVIL_IMAGE} )
-ADD_TEST(ANTS_PSE_JPG  ConvertToJpg ${WARP_IMAGE} ANTSPSE.jpg)
-ADD_TEST(ANTS_PSE_MSQ_IMG_WARP_METRIC_0 MeasureImageSimilarity 2 0 ${DEVIL_IMAGE} ${WARP_IMAGE} ${OUTPUT_PREFIX}log.txt ${OUTPUT_PREFIX}metric.nii.gz 0.0116083 0.05)  
-ADD_TEST(ANTS_PSE_MSQ_IMG_WARP_METRIC_1 MeasureImageSimilarity 2 1 ${DEVIL_IMAGE} ${WARP_IMAGE} ${OUTPUT_PREFIX}log.txt ${OUTPUT_PREFIX}metric.nii.gz -0.884041 0.05)  
-ADD_TEST(ANTS_PSE_MSQ_IMG_WARP_METRIC_2 MeasureImageSimilarity 2 2 ${DEVIL_IMAGE} ${WARP_IMAGE} ${OUTPUT_PREFIX}log.txt ${OUTPUT_PREFIX}metric.nii.gz -0.000710551 0.05)  
-ADD_TEST(ANTS_PSE_MSQ_IMG_INVERSEWARP WarpImageMultiTransform 2 ${DEVIL_IMAGE} ${INVERSEWARP_IMAGE} ${INVERSEWARP} -R  ${ANGEL_IMAGE}  )
-ADD_TEST(ANTS_PSE_JPGINV  ConvertToJpg ${INVERSEWARP_IMAGE} ANTSPSEINV.jpg)
-ADD_TEST(ANTS_PSE_MSQ_IMG_INVERSEWARP_METRIC_0 MeasureImageSimilarity 2 0 ${ANGEL_IMAGE} ${INVERSEWARP_IMAGE} ${OUTPUT_PREFIX}log.txt ${OUTPUT_PREFIX}metric.nii.gz 0.0109054 0.05)  
-ADD_TEST(ANTS_PSE_MSQ_IMG_INVERSEWARP_METRIC_1 MeasureImageSimilarity 2 1 ${ANGEL_IMAGE} ${INVERSEWARP_IMAGE} ${OUTPUT_PREFIX}log.txt ${OUTPUT_PREFIX}metric.nii.gz -0.901632 0.05)  
-ADD_TEST(ANTS_PSE_MSQ_IMG_INVERSEWARP_METRIC_2 MeasureImageSimilarity 2 2 ${ANGEL_IMAGE} ${INVERSEWARP_IMAGE} ${OUTPUT_PREFIX}log.txt ${OUTPUT_PREFIX}metric.nii.gz -0.000704717 0.05)  
-
-###
 # PSE sub-tests:  Check to see if .txt files and .vtk files also run correctly
 ###
 
@@ -479,6 +476,29 @@ ADD_TEST(ANTS_PSE_MSQ_VTK ANTS 2 -i 91x70x55x40x30  -r Gauss[3,0.,32] -t SyN[0.2
                                  -m PSE[${DEVIL_IMAGE},${ANGEL_IMAGE},${DEVIL_IMAGE_VTK},${ANGEL_IMAGE_VTK},1,0.33,11,1,25]
                                  --continue-affine 0 --number-of-affine-iterations 0
                                  -o ${OUTPUT_PREFIX}.nii.gz)
+
+###
+#  ANTS labeled data testing
+### 
+OPTION(RUN_LONG_TESTS "Run the time consuming tests." OFF )
+IF(RUN_LONG_TESTS)
+
+ADD_TEST(ANTS_PSE_MSQ_IMG ANTS 2 -i 191x170x90x90x10  -r Gauss[6,0.25] -t SyN[1,2,0.1] 
+                             -m PSE[${DEVIL_IMAGE},${ANGEL_IMAGE},${DEVIL_IMAGE},${ANGEL_IMAGE},0.25,0.1,100,0,10]
+                             -m MSQ[${DEVIL_IMAGE},${ANGEL_IMAGE},1,0.1]
+                              --continue-affine 0 --number-of-affine-iterations 0 --geodesic 2 
+                             -o ${OUTPUT_PREFIX}.nii.gz)
+ADD_TEST(ANTS_PSE_MSQ_IMG_WARP WarpImageMultiTransform 2 ${ANGEL_IMAGE} ${WARP_IMAGE} ${WARP} -R  ${DEVIL_IMAGE} )
+ADD_TEST(ANTS_PSE_JPG  ConvertToJpg ${WARP_IMAGE} ANTSPSE.jpg)
+ADD_TEST(ANTS_PSE_MSQ_IMG_WARP_METRIC_0 MeasureImageSimilarity 2 0 ${DEVIL_IMAGE} ${WARP_IMAGE} ${OUTPUT_PREFIX}log.txt ${OUTPUT_PREFIX}metric.nii.gz 0.0116083 0.05)  
+ADD_TEST(ANTS_PSE_MSQ_IMG_WARP_METRIC_1 MeasureImageSimilarity 2 1 ${DEVIL_IMAGE} ${WARP_IMAGE} ${OUTPUT_PREFIX}log.txt ${OUTPUT_PREFIX}metric.nii.gz -0.884041 0.05)  
+ADD_TEST(ANTS_PSE_MSQ_IMG_WARP_METRIC_2 MeasureImageSimilarity 2 2 ${DEVIL_IMAGE} ${WARP_IMAGE} ${OUTPUT_PREFIX}log.txt ${OUTPUT_PREFIX}metric.nii.gz -0.000710551 0.05)  
+ADD_TEST(ANTS_PSE_MSQ_IMG_INVERSEWARP WarpImageMultiTransform 2 ${DEVIL_IMAGE} ${INVERSEWARP_IMAGE} ${INVERSEWARP} -R  ${ANGEL_IMAGE}  )
+ADD_TEST(ANTS_PSE_JPGINV  ConvertToJpg ${INVERSEWARP_IMAGE} ANTSPSEINV.jpg)
+ADD_TEST(ANTS_PSE_MSQ_IMG_INVERSEWARP_METRIC_0 MeasureImageSimilarity 2 0 ${ANGEL_IMAGE} ${INVERSEWARP_IMAGE} ${OUTPUT_PREFIX}log.txt ${OUTPUT_PREFIX}metric.nii.gz 0.0109054 0.05)  
+ADD_TEST(ANTS_PSE_MSQ_IMG_INVERSEWARP_METRIC_1 MeasureImageSimilarity 2 1 ${ANGEL_IMAGE} ${INVERSEWARP_IMAGE} ${OUTPUT_PREFIX}log.txt ${OUTPUT_PREFIX}metric.nii.gz -0.901632 0.05)  
+ADD_TEST(ANTS_PSE_MSQ_IMG_INVERSEWARP_METRIC_2 MeasureImageSimilarity 2 2 ${ANGEL_IMAGE} ${INVERSEWARP_IMAGE} ${OUTPUT_PREFIX}log.txt ${OUTPUT_PREFIX}metric.nii.gz -0.000704717 0.05)  
+
 
 ###
 #  ANTS images with non-trival rotation header test
@@ -542,4 +562,5 @@ SET(R16_PRIORS ${DATA_DIR}/r16priors.nii.gz)
 #ADD_TEST(APOC_KMEANS_INIT Apocrita 2 -i kmeans[${R16_IMAGE},3] -x ${R16_MASK} -n 10 -m [0.3,1x1,0.2,0.1] -o [${OUTPUT_PREFIX}.nii.gz,${OUTPUT_PREFIX}_posteriors%d.nii.gz])
 #ADD_TEST(APOC_PRIORLABELIMAGE_INIT Apocrita 2 -i priorlabelimage[${R16_IMAGE},5,${R16_PRIORS},0.5] -x ${R16_MASK} -n 10 -m [0.3,1x1,0.2,0.1] -o [${OUTPUT_PREFIX}.nii.gz,${OUTPUT_PREFIX}_posteriors%d.nii.gz] -l 1[1,0.75] -l 2[1,1.0] -l 3[0.5,0.5] -l 4[1,1])
 
+ENDIF(RUN_LONG_TESTS)
 

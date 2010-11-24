@@ -1,6 +1,6 @@
-Release 1.9 --- svn release 437
+Release 1.9.2 --- svn release 674++
  
-Homepage: http://www.picsl.upenn.edu/ANTS/ 
+Homepage:  http://www.picsl.upenn.edu/ANTS/ 
 
 Introduction -- ANTS is a tool for computational neuroanatomy based on
 medical images.  ANTS reads any image type that can be read by ITK
@@ -29,6 +29,19 @@ tool, including three tissue segmentation, structure-specific
 segmentation and brain extracton.
 
 The ants.pdf file has more details and examples. 
+
+New Stuff 1.9.2 :
+
+New atropos interface + ROIStatistics in ImageMath 
+
+New Stuff 1.9.1 : 
+
+Atropos refactored , vtk dependencies allowed , additional tools for surface-based mapping (not much tested), augmented warping for vtk files
+
+Must compile ITK with USE_REVIEW_STATISTICS ON if you want Atropos functionality 
+Should compile ITK with USE_REVIEW ON 
+Should compile ITK with USE_OPTIMIZED_REGISTRATION ON
+Should have ITK v 3.20 or greater.
 
 New Stuff 1.9 : 
 

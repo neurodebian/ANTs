@@ -77,6 +77,7 @@ public:
 
 // FUNCTIONS
   // estimate the metric tensor of the surface and also the (conjugate harmonic) function dstarU
+  void GetSearchBoundary();
   float dstarUestimate(SearchNodePointer G);
   void InitializeGraph3();
   void InitializeGraph();  /** initializes all graph values appropriately */
@@ -200,6 +201,7 @@ public:
     return P->GetValue(2);
   }
 
+  bool ParameterizeBoundary( SearchNodePointer);
 
   bool TerminationCondition();  /** decides when the algorithm stops */
 
@@ -207,7 +209,7 @@ public:
   
   void CheckNodeStatus();  /** checks if the node has been explored already, its cost, etc. */
 
-  virtual PixelType LocalCost();      /* computes the local cost */
+  virtual PixelType MyLocalCost();      /* computes the local cost */
    /* alternatively, we could pass the function as a template parameter 
       or set a function pointer.  the latter method is used in dijkstrasegment. */
 
@@ -216,6 +218,11 @@ public:
   inline unsigned int GetPathSize()
   {
 	return m_QS->m_Path.size();
+  }
+
+  inline void EmptyPath()
+  {
+	m_QS->m_Path.clear();
   }
 
   inline typename TGraphSearchNode::Pointer GetPathAtIndex(unsigned int i)
@@ -232,24 +239,35 @@ public:
     return m_CurrentNode;
   }
 
-  PixelType GetMaxCost(){ return m_MaxCost; }
-  void SetMaxCost(PixelType m){ m_MaxCost=m;}
-  void ResetMaxCost(){ m_MaxCost=vnl_huge_val(m_MaxCost);}
 
+  PixelType GetMaxCost(){ return this->m_MaxCost; }
+  void SetMaxCost(PixelType m) { this->m_MaxCost=m; }
+  void ResetMaxCost() { this->m_MaxCost=vnl_huge_val(this->m_MaxCost);}
+  inline void SetDistanceCostWeight(float d) { this->m_DistanceCostWeight=d; }
+  inline void SetLabelCostWeight(float d) { this->m_LabelCostWeight=d;  }
+  inline void SetWeights(float a, float b, float c) { 
+    this->m_MaxCost=a;
+    this->m_DistanceCostWeight=b;
+    this->m_LabelCostWeight=c;
+  }
+  inline void PrintWeights()  { 
+   std::cout << this->m_MaxCost << " " << this->m_DistanceCostWeight << " " << this->m_LabelCostWeight << std::endl; 
+  }
   void SetSearchFinished(bool m){ m_SearchFinished=m;} 
   /** sets the boolean that indicates if the algorithm is done */
 
   void SetSurfaceMesh( TriangulationTypePointer mesh) { m_SurfaceMesh=mesh;}
   TriangulationTypePointer  GetSurfaceMesh( ) { return m_SurfaceMesh;}
 
-  SearchNodePointer GetGraphNode(int i) { return m_Graph[i]; }
-  int GetGraphSize() { return m_Graph.size(); }
+  SearchNodePointer GetGraphNode(int i) { return m_GraphX[i]; }
+  int GetGraphSize() { return m_GraphX.size(); }
 
   // sanity check to see if mesh to graph conversion is ok
   // see if genus is the same
   void ConvertGraphBackToMesh();
-  
-  bool                      m_PureDist;
+  void SetParamWhileSearching( bool b ) { this->m_ParamWhileSearching=b; }
+
+  std::vector<SearchNodePointer>    m_BoundaryList; 
 
 protected:
   QType m_QS;
@@ -259,16 +277,19 @@ protected:
   typename TGraphSearchNode::Pointer       m_CurrentNode;  /** holds the current node */
   typename TGraphSearchNode::Pointer       m_NeighborNode; /** holds the current neighbor node */
 
+  bool m_PureDist;
   bool                      m_SearchFinished;
   PixelType                 m_NewCost;
   PixelType                 m_CurrentCost;
-  PixelType                 m_MaxCost;  // This creates an insurmountable barrier unless all costs are max
-
-  GraphType                 m_Graph;
+  float                     m_MaxCost;  // This creates an insurmountable barrier unless all costs are max
+  float                     m_DistanceCostWeight;
+  float                     m_LabelCostWeight;
+  GraphType                 m_GraphX;
 
   unsigned long             m_NumberSearched;
 
   TriangulationTypePointer  m_SurfaceMesh;
+  bool m_ParamWhileSearching;
 
   ManifoldIntegrationAlgorithm(); 
   ~ManifoldIntegrationAlgorithm(){};
