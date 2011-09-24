@@ -4,7 +4,7 @@ Priority: extra
 Maintainer: NeuroDebian Team <team@neuro.debian.net>
 Uploaders: Yaroslav Halchenko <debian@onerussian.com>, Michael Hanke <michael.hanke@gmail.com>
 Build-Depends: debhelper (>= 7.0.50~), help2man, cmake, libgdcm2-dev, libopenjpeg-dev, libinsighttoolkit3-dev, libvtk5-dev, uuid-dev
-Standards-Version: 3.9.1
+Standards-Version: 3.9.2
 Homepage: http://www.picsl.upenn.edu/ANTS/
 Vcs-Git: git://git.debian.org/pkg-exppsy/ants.git
 Vcs-Browser: http://git.debian.org/?p=pkg-exppsy/ants.git;a=summary
