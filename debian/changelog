@@ -5,6 +5,7 @@ ants (1.9.2+svn680.dfsg-2) unstable; urgency=low
   * New patch deb_antspath -- use default path on Debian systems
     (/usr/lib/ants) and do not override with hardcode custom upstream paths
     (Closes: #636529)
+  * Boosting policy to 3.9.2 (no changes)
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 23 Sep 2011 21:34:43 -0400
 
