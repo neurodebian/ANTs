@@ -1,3 +1,13 @@
+ants (1.9.2+svn680.dfsg-2) unstable; urgency=low
+
+  * Upload to unstable version from experimental (forgotten there).
+    Builds fine with ITK 3.20 (Closes: #614483)
+  * New patch deb_antspath -- use default path on Debian systems
+    (/usr/lib/ants) and do not override with hardcode custom upstream paths
+    (Closes: #636529)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 23 Sep 2011 21:34:43 -0400
+
 ants (1.9.2+svn680.dfsg-1) experimental; urgency=low
 
   * New upstream release
