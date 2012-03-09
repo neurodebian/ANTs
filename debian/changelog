@@ -2,6 +2,8 @@ ants (1.9.2+svn680.dfsg-3) unstable; urgency=low
 
   * Boosting policy to 3.9.3 (no changes)
   * Version ITK build-depends >= 3.16~
+  * Placed build PATH ahead of system wide during tests so proper version
+    of ants gets tested on systems with ants installed
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 09 Mar 2012 13:08:26 -0500
 
