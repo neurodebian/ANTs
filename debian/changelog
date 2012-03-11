@@ -5,6 +5,8 @@ ants (1.9.2+svn680.dfsg-3) unstable; urgency=low
   * Version ITK build-depends >= 3.16~
   * Placed build PATH ahead of system wide during tests so proper version
     of ants gets tested on systems with ants installed
+  * (Temporarily) added a bulk of build-depends for wrapper bindings for
+    vtk >= 5.8 to overcome #584300
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 09 Mar 2012 13:08:26 -0500
 

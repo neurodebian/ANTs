@@ -3,7 +3,11 @@ Section: science
 Priority: extra
 Maintainer: NeuroDebian Team <team@neuro.debian.net>
 Uploaders: Yaroslav Halchenko <debian@onerussian.com>, Michael Hanke <michael.hanke@gmail.com>
-Build-Depends: debhelper (>= 7.0.50~), help2man, cmake, libgdcm2-dev, libopenjpeg-dev, libinsighttoolkit3-dev (>= 3.16~), libvtk5-dev, uuid-dev
+Build-Depends: debhelper (>= 7.0.50~), help2man, cmake, libgdcm2-dev, libopenjpeg-dev, libinsighttoolkit3-dev (>= 3.16~), libvtk5-dev, uuid-dev,
+               tcl-vtk | libvtk5-dev (<< 5.8),
+               python-vtk | libvtk5-dev (<< 5.8),
+               libvtk-java | libvtk5-dev (<< 5.8),
+               libvtk5.8-qt4 | libvtk5-dev (<< 5.8)
 Standards-Version: 3.9.3
 Homepage: http://www.picsl.upenn.edu/ANTS/
 Vcs-Git: git://git.debian.org/pkg-exppsy/ants.git
