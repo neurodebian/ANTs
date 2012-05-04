@@ -14,7 +14,7 @@ ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 else
     export CFLAGS += -O2
 endif
-export CXXFLAGS = $(CFLAGS)
+export CXXFLAGS = $(CFLAGS) -fpermissive
 
 # Uncomment this to turn on verbose mode.
 export DH_VERBOSE=1
