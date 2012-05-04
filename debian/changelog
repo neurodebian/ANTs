@@ -1,3 +1,10 @@
+ants (1.9.2+svn680.dfsg-4) unstable; urgency=low
+
+  [ Matthias Klose ]
+  * Fix build using GCC 4.7. Closes: #667099.
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 04 May 2012 10:27:15 -0400
+
 ants (1.9.2+svn680.dfsg-3) unstable; urgency=low
 
   * Seems to build fine now against available ITK 3.20 (Closes: #655306)
