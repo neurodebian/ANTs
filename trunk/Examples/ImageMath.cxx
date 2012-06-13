@@ -2418,9 +2418,8 @@ int MTR(int argc, char *argv[])
   MTR->FillBuffer( 0 ); 
 
   typename ImageType::Pointer mask = ImageType::New();
-  if ( argc > 3 ) 
+  if ( argc > 6 ) 
     {
-    std::cout << "Mask = " << argv[6] << std::endl;
     ReadImage<ImageType>(mask, argv[6]);
     }
   else
@@ -2441,7 +2440,7 @@ int MTR(int argc, char *argv[])
       float m0 = M0->GetPixel( it.GetIndex() );
       float m1 = M1->GetPixel( it.GetIndex() );
       float mtr = ( m0 - m1 ) / m0;
-
+      
       if ( mtr < 0 )
         {
         mtr = 0;
