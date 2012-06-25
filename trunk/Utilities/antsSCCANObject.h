@@ -289,7 +289,7 @@ public:
   RealType SparseConjGrad( VectorType &, VectorType, RealType, unsigned int );
   RealType ConjGrad( MatrixType& A, VectorType& x_k, VectorType  b_in, RealType convcrit, unsigned int  );
 
-  RealType SparseNLConjGrad( MatrixType & A,  VectorType & x_k, VectorType  b, RealType, unsigned int, bool keeppos , bool makeprojsparse = false , unsigned int loorth =  0, unsigned int hiorth = 0 );
+RealType SparseNLConjGrad( MatrixType & A,  VectorType & x_k, VectorType  b, RealType, unsigned int, bool keeppos , bool makeprojsparse = false , unsigned int loorth =  0, unsigned int hiorth = 0 );
   void ReSoftThreshold( VectorType& v_in, RealType fractional_goal, bool allow_negative_weights );
 
   void ConstantProbabilityThreshold( VectorType& v_in, RealType probability_goal, bool allow_negative_weights );
@@ -505,8 +505,7 @@ public:
   RealType ComputeSPCAEigenvalues(unsigned int, RealType, bool );
   RealType BasicSVD();
 
-  RealType CGSPCA(unsigned int nvecs);
-
+  RealType CGSPCA( unsigned int );
   RealType NetworkDecomposition(unsigned int nvecs);
 
   RealType LASSO_Cross( );
@@ -713,10 +712,12 @@ protected:
       mat_to_add_to = outmat;
     }
 
+  void CurvatureSparseness( VectorType& v1 , RealType sparsenessgoal = 1 );
+
 private:
 
   ImagePointer ConvertVariateToSpatialImage( VectorType variate, ImagePointer mask, bool threshold_at_zero = false );
-
+  VectorType ConvertImageToVariate(  ImagePointer image, ImagePointer mask );
   VectorType ClusterThresholdVariate( VectorType &, ImagePointer mask, unsigned int);
 
   bool       m_Debug;
