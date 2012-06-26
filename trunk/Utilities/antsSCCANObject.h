@@ -289,7 +289,8 @@ public:
   RealType SparseConjGrad( VectorType &, VectorType, RealType, unsigned int );
   RealType ConjGrad( MatrixType& A, VectorType& x_k, VectorType  b_in, RealType convcrit, unsigned int  );
 
-RealType SparseNLConjGrad( MatrixType & A,  VectorType & x_k, VectorType  b, RealType, unsigned int, bool keeppos , bool makeprojsparse = false , unsigned int loorth =  0, unsigned int hiorth = 0 );
+  RealType SparseNLConjGrad( MatrixType & A,  VectorType & x_k, VectorType  b, RealType, unsigned int, bool keeppos , bool makeprojsparse = false , unsigned int loorth =  0, unsigned int hiorth = 0 );
+  RealType SparseNLPreConjGrad( MatrixType & A,  VectorType & x_k, VectorType  b, RealType, unsigned int, unsigned int loorth =  0, unsigned int hiorth = 0 );
   void ReSoftThreshold( VectorType& v_in, RealType fractional_goal, bool allow_negative_weights );
 
   void ConstantProbabilityThreshold( VectorType& v_in, RealType probability_goal, bool allow_negative_weights );
@@ -781,6 +782,7 @@ private:
   unsigned int              m_GoldenSectionCounter;
   VectorType                m_ClusterSizes;
   vnl_diag_matrix<RealType> m_Indicator;
+  vnl_diag_matrix<TRealType> m_PreC; // preconditioning
 
 };
 
