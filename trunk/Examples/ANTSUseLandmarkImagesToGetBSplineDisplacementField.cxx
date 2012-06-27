@@ -342,6 +342,7 @@ int LandmarkBasedDisplacementFieldTransformInitializer( int argc, char *argv[] )
 
   std::vector<unsigned int> meshSize = ConvertVector<unsigned int>( std::string( argv[4] ) );
   typename BSplineFilterType::ArrayType ncps;
+  ncps.Fill( 0 );
 
   if( meshSize.size() == 1 )
     {
@@ -372,7 +373,7 @@ int LandmarkBasedDisplacementFieldTransformInitializer( int argc, char *argv[] )
   bspliner->SetInput( fieldPoints );
   bspliner->SetPointWeights( weights );
   bspliner->Update();
-    
+
   typedef itk::VectorLinearInterpolateImageFunction<DisplacementFieldType, RealType> InterpolatorType;
   typename InterpolatorType::Pointer interpolator = InterpolatorType::New();
   interpolator->SetInputImage( bspliner->GetOutput() );
