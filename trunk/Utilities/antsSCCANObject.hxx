@@ -1021,7 +1021,7 @@ void antsSCCANObject<TInputImage, TRealType>
   std::vector<TRealType> evals(n_vecs, 0);
   std::vector<TRealType> oevals(n_vecs, 0);
   // ::ants::antscout<<"sort-a"<<std::endl;
-  for( long j = 0; j < n_vecs; ++j )
+  for( unsigned long j = 0; j < n_vecs; ++j )
     {
     RealType val = fabs(this->m_CanonicalCorrelations[j]);
     evals[j] = val;
