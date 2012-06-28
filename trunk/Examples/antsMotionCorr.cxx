@@ -1309,7 +1309,7 @@ int ants_motion( itk::ants::CommandLineParser *parser )
       }
     }
   totalTimer.Stop();
-  antscout << std::endl << "Total elapsed time: " << totalTimer.GetMeanTime() << " averagemetric " << metricmean << std::endl;
+  antscout << std::endl << "Total elapsed time: " << totalTimer.GetMean() << " averagemetric " << metricmean << std::endl;
     {
     std::vector<std::string> ColumnHeaders;
     std::string              colname;
