@@ -374,6 +374,17 @@ public:
 
 template <class TImageIn, class TImageOut>
 void
+CastImage( typename TImageIn::Pointer Rimage,  typename TImageOut::Pointer target )
+{
+  typedef itk::CastImageFilter<TImageIn, TImageOut> CastFilterType;
+  typename CastFilterType::Pointer caster = CastFilterType::New();
+  caster->SetInput( Rimage );
+  caster->UpdateLargestPossibleRegion();
+  target = caster->GetOutput();
+}
+
+template <class TImageIn, class TImageOut>
+void
 AverageTimeImages( typename TImageIn::Pointer image_in,  typename TImageOut::Pointer image_avg,
                    std::vector<unsigned int> timelist )
 {
@@ -421,11 +432,12 @@ int ants_motion( itk::ants::CommandLineParser *parser )
   // specified by the user which should match the number of metrics.
   unsigned numberOfStages = 0;
 
-  typedef double                                    PixelType;
+  typedef float                                     PixelType;
   typedef double                                    RealType;
   typedef itk::Image<PixelType, ImageDimension>     FixedImageType;
+  typedef itk::Image<RealType , ImageDimension>     FixedRealImageType;
   typedef itk::Image<PixelType, ImageDimension + 1> MovingImageType;
-  typedef vnl_matrix<double>                        vMatrix;
+  typedef vnl_matrix<RealType>                      vMatrix;
   vMatrix param_values;
   typedef itk::CompositeTransform<RealType, ImageDimension> CompositeTransformType;
   std::vector<typename CompositeTransformType::Pointer> CompositeTransformVector;
@@ -550,7 +562,7 @@ int ants_motion( itk::ants::CommandLineParser *parser )
   double metricmean = 0;
 
   typedef itk::AffineTransform<RealType, ImageDimension>                                      AffineTransformType;
-  typedef itk::ImageRegistrationMethodv4<FixedImageType, FixedImageType, AffineTransformType> AffineRegistrationType;
+  typedef itk::ImageRegistrationMethodv4<FixedRealImageType, FixedRealImageType, AffineTransformType> AffineRegistrationType;
   // We iterate backwards because the command line options are stored as a stack (first in last out)
   for( int currentStage = numberOfStages - 1; currentStage >= 0; currentStage-- )
     {
@@ -564,12 +576,14 @@ int ants_motion( itk::ants::CommandLineParser *parser )
     std::string movingImageFileName = metricOption->GetFunction( currentStage )->GetParameter(  1 );
     antscout << "  fixed image: " << fixedImageFileName << std::endl;
     antscout << "  moving image: " << movingImageFileName << std::endl;
-    typename FixedImageType::Pointer fixed_time_slice = NULL;
-    typename FixedImageType::Pointer moving_time_slice = NULL;
-    typename FixedImageType::Pointer fixedImage;
-    ReadImage<FixedImageType>( fixedImage, fixedImageFileName.c_str() );
-    fixedImage->Update();
-    fixedImage->DisconnectPipeline();
+    typename FixedRealImageType::Pointer fixed_time_slice = NULL;
+    typename FixedRealImageType::Pointer moving_time_slice = NULL;
+    typename FixedImageType::Pointer fixedInImage;
+    ReadImage<FixedImageType>( fixedInImage, fixedImageFileName.c_str() );
+    fixedInImage->Update();
+    fixedInImage->DisconnectPipeline();
+    typename FixedRealImageType::Pointer fixedImage;
+    CastImage< FixedImageType, FixedRealImageType >( fixedInImage, fixedImage );
 
     typename MovingImageType::Pointer movingImage;
     ReadImage<MovingImageType>( movingImage, movingImageFileName.c_str() );
@@ -658,7 +672,7 @@ int ants_motion( itk::ants::CommandLineParser *parser )
       typedef itk::IdentityTransform<RealType, ImageDimension> IdentityTransformType;
       typename IdentityTransformType::Pointer identityTransform = IdentityTransformType::New();
       //
-      typedef itk::ExtractImageFilter<MovingImageType, FixedImageType> ExtractFilterType;
+      typedef itk::ExtractImageFilter<MovingImageType, FixedRealImageType> ExtractFilterType;
       typename MovingImageType::RegionType extractRegion = movingImage->GetLargestPossibleRegion();
       extractRegion.SetSize(ImageDimension, 0);
       bool maptoneighbor = true;
@@ -732,18 +746,18 @@ int ants_motion( itk::ants::CommandLineParser *parser )
         moving_time_slice->SetDirection(  fixed_time_slice->GetDirection()  );
         }
 
-      typename FixedImageType::Pointer preprocessFixedImage =
-        PreprocessImage<FixedImageType>( fixed_time_slice, 0,
+      typename FixedRealImageType::Pointer preprocessFixedImage =
+        PreprocessImage<FixedRealImageType>( fixed_time_slice, 0,
                                          1, 0.001, 0.999,
                                          NULL );
 
-      typename FixedImageType::Pointer preprocessMovingImage =
-        PreprocessImage<FixedImageType>( moving_time_slice,
+      typename FixedRealImageType::Pointer preprocessMovingImage =
+        PreprocessImage<FixedRealImageType>( moving_time_slice,
                                          0, 1,
                                          0.001, 0.999,
                                          preprocessFixedImage );
 
-      typedef itk::ImageToImageMetricv4<FixedImageType, FixedImageType> MetricType;
+      typedef itk::ImageToImageMetricv4<FixedRealImageType, FixedRealImageType> MetricType;
       typename MetricType::Pointer metric;
 
       std::string whichMetric = metricOption->GetFunction( currentStage )->GetName();
