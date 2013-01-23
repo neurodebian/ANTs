@@ -27,6 +27,18 @@
 
 namespace ants
 {
+
+template <class TImageIn, class TImageOut>
+void
+arCastImage( typename TImageIn::Pointer Rimage,  typename TImageOut::Pointer target )
+{
+  typedef itk::CastImageFilter<TImageIn, TImageOut> CastFilterType;
+  typename CastFilterType::Pointer caster = CastFilterType::New();
+  caster->SetInput( Rimage );
+  caster->UpdateLargestPossibleRegion();
+  target = caster->GetOutput();
+}
+
 void InitializeCommandLineOptions( itk::ants::CommandLineParser *parser )
 {
   typedef itk::ants::CommandLineParser::OptionType OptionType;
@@ -461,6 +473,7 @@ DoRegistration(typename ParserType::Pointer & parser)
 {
   typedef typename ants::RegistrationHelper<VImageDimension>      RegistrationHelperType;
   typedef typename RegistrationHelperType::ImageType              ImageType;
+  typedef itk::Image<float, VImageDimension>     ImageIOType;
   typedef typename RegistrationHelperType::CompositeTransformType CompositeTransformType;
 
   typename RegistrationHelperType::Pointer regHelper =
@@ -1048,10 +1061,14 @@ DoRegistration(typename ParserType::Pointer & parser)
 
     typename ImageType::Pointer fixedImage;
     typename ImageType::Pointer movingImage;
-    ReadImage<ImageType>( fixedImage,  fixedImageFileName.c_str() );
-    ReadImage<ImageType>( movingImage, movingImageFileName.c_str() );
-    fixedImage->DisconnectPipeline();
-    movingImage->DisconnectPipeline();
+    typename ImageIOType::Pointer fixedIOImage;
+    typename ImageIOType::Pointer movingIOImage;
+    ReadImage<ImageIOType>( fixedIOImage , fixedImageFileName.c_str() );
+    ReadImage<ImageIOType>( movingIOImage, movingImageFileName.c_str() );
+    fixedIOImage->DisconnectPipeline();
+    movingIOImage->DisconnectPipeline();
+    arCastImage<ImageIOType,ImageType>( fixedIOImage, fixedImage );
+    arCastImage<ImageIOType,ImageType>( movingIOImage,movingImage );
 
     // Get the stage ID
     unsigned int stageID = metricOption->GetFunction( currentMetricNumber )->GetStageID();
@@ -1376,7 +1393,9 @@ DoRegistration(typename ParserType::Pointer & parser)
   typedef itk::ImageFileWriter<ImageType> WarpedImageWriterType;
   if( !outputWarpedImageName.empty() )
     {
-    WriteImage<ImageType>( warpedImage, outputWarpedImageName.c_str()  );
+    typename ImageIOType::Pointer w;
+    arCastImage<ImageType,ImageIOType>(warpedImage, w);
+    WriteImage<ImageIOType>( w , outputWarpedImageName.c_str()  );
     }
 
   if( !outputInverseWarpedImageName.empty() )
@@ -1384,7 +1403,9 @@ DoRegistration(typename ParserType::Pointer & parser)
     typename ImageType::Pointer inverseWarpedImage = regHelper->GetInverseWarpedImage();
     if( inverseWarpedImage.IsNotNull() )
       {
-      WriteImage<ImageType>( inverseWarpedImage, outputInverseWarpedImageName.c_str()  );
+      typename ImageIOType::Pointer iw;
+      arCastImage<ImageType,ImageIOType>(inverseWarpedImage,iw);
+      WriteImage<ImageIOType>( iw , outputInverseWarpedImageName.c_str()  );
       }
     }
 
