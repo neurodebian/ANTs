@@ -28,17 +28,6 @@
 namespace ants
 {
 
-template <class TImageIn, class TImageOut>
-void
-arCastImage( typename TImageIn::Pointer Rimage,  typename TImageOut::Pointer target )
-{
-  typedef itk::CastImageFilter<TImageIn, TImageOut> CastFilterType;
-  typename CastFilterType::Pointer caster = CastFilterType::New();
-  caster->SetInput( Rimage );
-  caster->UpdateLargestPossibleRegion();
-  target = caster->GetOutput();
-}
-
 void InitializeCommandLineOptions( itk::ants::CommandLineParser *parser )
 {
   typedef itk::ants::CommandLineParser::OptionType OptionType;
@@ -1065,10 +1054,8 @@ DoRegistration(typename ParserType::Pointer & parser)
     typename ImageIOType::Pointer movingIOImage;
     ReadImage<ImageIOType>( fixedIOImage , fixedImageFileName.c_str() );
     ReadImage<ImageIOType>( movingIOImage, movingImageFileName.c_str() );
-    fixedIOImage->DisconnectPipeline();
-    movingIOImage->DisconnectPipeline();
-    arCastImage<ImageIOType,ImageType>( fixedIOImage, fixedImage );
-    arCastImage<ImageIOType,ImageType>( movingIOImage,movingImage );
+    fixedImage  = arCastImage<ImageIOType,ImageType>( fixedIOImage );
+    movingImage = arCastImage<ImageIOType,ImageType>( movingIOImage );
 
     // Get the stage ID
     unsigned int stageID = metricOption->GetFunction( currentMetricNumber )->GetStageID();
@@ -1394,7 +1381,7 @@ DoRegistration(typename ParserType::Pointer & parser)
   if( !outputWarpedImageName.empty() )
     {
     typename ImageIOType::Pointer w;
-    arCastImage<ImageType,ImageIOType>(warpedImage, w);
+    w = arCastImage<ImageType,ImageIOType>( warpedImage );
     WriteImage<ImageIOType>( w , outputWarpedImageName.c_str()  );
     }
 
@@ -1404,7 +1391,7 @@ DoRegistration(typename ParserType::Pointer & parser)
     if( inverseWarpedImage.IsNotNull() )
       {
       typename ImageIOType::Pointer iw;
-      arCastImage<ImageType,ImageIOType>(inverseWarpedImage,iw);
+      iw = arCastImage<ImageType,ImageIOType>( inverseWarpedImage );
       WriteImage<ImageIOType>( iw , outputInverseWarpedImageName.c_str()  );
       }
     }

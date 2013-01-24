@@ -374,17 +374,6 @@ public:
 
 template <class TImageIn, class TImageOut>
 void
-mcCastImage( typename TImageIn::Pointer Rimage,  typename TImageOut::Pointer target )
-{
-  typedef itk::CastImageFilter<TImageIn, TImageOut> CastFilterType;
-  typename CastFilterType::Pointer caster = CastFilterType::New();
-  caster->SetInput( Rimage );
-  caster->UpdateLargestPossibleRegion();
-  target = caster->GetOutput();
-}
-
-template <class TImageIn, class TImageOut>
-void
 AverageTimeImages( typename TImageIn::Pointer image_in,  typename TImageOut::Pointer image_avg,
                    std::vector<unsigned int> timelist )
 {
@@ -461,15 +450,11 @@ int ants_motion( itk::ants::CommandLineParser *parser )
       outputPrefix = outputOption->GetFunction( 0 )->GetName();
       }
     std::string fn = averageOption->GetFunction( 0 )->GetName();
-    typename MovingIOImageType::Pointer movingInImage;
-    typename MovingImageType::Pointer movingImage;
-    ReadImage<MovingIOImageType>( movingInImage, fn.c_str()  );
-    movingInImage->Update();
-    movingInImage->DisconnectPipeline();
-    mcCastImage<MovingIOImageType,MovingImageType>( movingInImage, movingImage );
-    typename FixedImageType::Pointer avgImage;
-    typedef itk::ExtractImageFilter<MovingImageType, FixedImageType> ExtractFilterType;
-    typename MovingImageType::RegionType extractRegion = movingImage->GetLargestPossibleRegion();
+    typename MovingIOImageType::Pointer movingImage;
+    ReadImage<MovingIOImageType>( movingImage, fn.c_str()  );
+    typename FixedIOImageType::Pointer avgImage;
+    typedef itk::ExtractImageFilter<MovingIOImageType, FixedIOImageType> ExtractFilterType;
+    typename MovingIOImageType::RegionType extractRegion = movingImage->GetLargestPossibleRegion();
     extractRegion.SetSize(ImageDimension, 0);
     typename ExtractFilterType::Pointer extractFilter = ExtractFilterType::New();
     extractFilter->SetInput( movingImage );
@@ -480,9 +465,9 @@ int ants_motion( itk::ants::CommandLineParser *parser )
     extractFilter->Update();
     avgImage = extractFilter->GetOutput();
     std::vector<unsigned int> timelist;
-    AverageTimeImages<MovingImageType, FixedImageType>( movingImage, avgImage, timelist );
+    AverageTimeImages<MovingIOImageType, FixedIOImageType>( movingImage, avgImage, timelist );
     antscout << "average out " << outputPrefix <<  std::endl;
-    WriteImage<FixedImageType>( avgImage, outputPrefix.c_str() );
+    WriteImage<FixedIOImageType>( avgImage, outputPrefix.c_str() );
     return EXIT_SUCCESS;
     }
 
@@ -586,14 +571,14 @@ int ants_motion( itk::ants::CommandLineParser *parser )
     fixedInImage->Update();
     fixedInImage->DisconnectPipeline();
     typename FixedImageType::Pointer fixedImage;
-    mcCastImage< FixedIOImageType, FixedImageType >( fixedInImage, fixedImage );
+    fixedImage = arCastImage< FixedIOImageType, FixedImageType >( fixedInImage );
 
     typename MovingIOImageType::Pointer movingInImage;
     typename MovingImageType::Pointer movingImage;
     ReadImage<MovingIOImageType>( movingInImage, movingImageFileName.c_str()  );
     movingInImage->Update();
     movingInImage->DisconnectPipeline();
-    mcCastImage<MovingIOImageType,MovingImageType>( movingInImage, movingImage );
+    movingImage = arCastImage<MovingIOImageType,MovingImageType>( movingInImage );
 
     typename MovingIOImageType::Pointer outputImage;
     ReadImage<MovingIOImageType>( outputImage, movingImageFileName.c_str() );
@@ -1343,8 +1328,8 @@ int ants_motion( itk::ants::CommandLineParser *parser )
         0 )
       {
       std::string fileName = outputOption->GetFunction( 0 )->GetParameter( 2 );
-      typename FixedImageType::Pointer avgImage;
-      typedef itk::ExtractImageFilter<MovingImageType, FixedImageType> ExtractFilterType;
+      typename FixedIOImageType::Pointer avgImage;
+      typedef itk::ExtractImageFilter<MovingImageType, FixedIOImageType> ExtractFilterType;
       typename MovingImageType::RegionType extractRegion = movingImage->GetLargestPossibleRegion();
       extractRegion.SetSize(ImageDimension, 0);
       typename ExtractFilterType::Pointer extractFilter = ExtractFilterType::New();
@@ -1366,9 +1351,9 @@ int ants_motion( itk::ants::CommandLineParser *parser )
         timelistsort.push_back(timelist[i]);
         antscout << " i^th value " << i << "  is " << metriclist[timelist[i]] << std::endl;
         }
-      AverageTimeImages<MovingIOImageType, FixedImageType>( outputImage, avgImage, timelistsort );
+      AverageTimeImages<MovingIOImageType, FixedIOImageType>( outputImage, avgImage, timelistsort );
       antscout << " write average post " << fileName << std::endl;
-      WriteImage<FixedImageType>( avgImage, fileName.c_str() );
+      WriteImage<FixedIOImageType>( avgImage, fileName.c_str() );
       }
     }
   totalTimer.Stop();
