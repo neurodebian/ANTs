@@ -2,16 +2,17 @@ ants (1.9.2+svn680+git1417-g48ff309-1) unstable; urgency=low
 
   * Fresh upstream snapshot
   * debian/control
-    - switching to ITK4
-    - boosting policy compliance to 3.9.4
+    - switch to ITK4
+    - boost policy compliance to 3.9.4
   * debian/copyright
-    - updated for Dep5
+    - update for Dep5
   * debian/patches
-    - dropping patch in favor of in-installation sed-adjustment of default ANTSPATHs
+    - drop patch in favor of in-installation sed-adjustment of default ANTSPATHs
   * debian/rules
-    - adding sinking http_proxy to avoid online acquisition
+    - add sinking http_proxy to avoid online acquisition
+    - adjust cmake options to run short tests, build shared libs, use system ITK
 
- -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 13 Aug 2013 14:12:02 -0400
+ -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 13 Aug 2013 14:31:26 -0400
 
 ants (1.9.2+svn680.dfsg-4) unstable; urgency=low
 
