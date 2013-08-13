@@ -1,14 +1,40 @@
-Format-Specification: http://svn.debian.org/wsvn/dep/web/deps/dep5.mdwn?op=file&rev=135
-Name: ANTs (AKA Advants)
-Maintainer: Brian Avants <stnava@gmail.com>
-Source: https://advants.svn.sourceforge.net/svnroot/advants
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: ANTs (AKA Advants)
+Upstream-Contact: Brian Avants <stnava@gmail.com>
+Source: git://github.com/stnava/ANTs.git
 
 Files: *
-Copyright: Copyright (C) 2009, 2010 ConsortiumOfANTS
+Copyright: 2009-2013 ConsortiumOfANTS
 Authors:
     Brian Avants,    Sandhitsu Das,
     Jeff Duda,       John Pluta,
     Gang Song,       Nick Tustison
+License: BSD-3
+
+Files:
+  Examples/ConformalMapping.cxx
+  ImageRegistration/itkSpatialMutualInformationRegistrationFunction.h
+  ImageRegistration/itkSpatialMutualInformationRegistrationFunction.cxx
+  Temporary/itkFEMElement3DC0LinearTriangularLaplaceBeltrami.cxx
+  Temporary/itkFEMElement3DC0LinearTriangular.cxx
+  Temporary/itkFEMConformalMap.cxx
+  Temporary/itkFEMElement3DC0LinearTriangularMembrane.h
+  Temporary/itkFEMDiscConformalMap.h
+  Temporary/itkFEMElement3DC0LinearTriangularLaplaceBeltrami.h
+  Temporary/itkFEMConformalMap.h
+  Temporary/itkFEMElement3DMembrane1DOF.h
+  Temporary/itkFEMElement3DC0LinearTriangular.h
+  Temporary/itkFEMElement3DC0LinearTriangularMembrane.cxx
+  Temporary/itkDijkstrasAlgorithm.h
+  Temporary/itkFEMDiscConformalMap.cxx
+  Temporary/itkManifoldIntegrationAlgorithm.h
+Copyright: 2001, 2002 Insight Consortium
+License: BSD-3
+
+Files: debian/*
+Copyright: 2010-2013 Yaroslav Halchenko <debian@onerussian.com>
+License: BSD-3
+
 License: BSD-3
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -31,28 +57,3 @@ License: BSD-3
   LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
   OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
   SUCH DAMAGE.
-
-Files:
-  Examples/ConformalMapping.cxx
-  ImageRegistration/itkSpatialMutualInformationRegistrationFunction.h
-  ImageRegistration/itkSpatialMutualInformationRegistrationFunction.cxx
-  Temporary/itkFEMElement3DC0LinearTriangularLaplaceBeltrami.cxx
-  Temporary/itkFEMElement3DC0LinearTriangular.cxx
-  Temporary/itkFEMConformalMap.cxx
-  Temporary/itkFEMElement3DC0LinearTriangularMembrane.h
-  Temporary/itkFEMDiscConformalMap.h
-  Temporary/itkFEMElement3DC0LinearTriangularLaplaceBeltrami.h
-  Temporary/itkFEMConformalMap.h
-  Temporary/itkFEMElement3DMembrane1DOF.h
-  Temporary/itkFEMElement3DC0LinearTriangular.h
-  Temporary/itkFEMElement3DC0LinearTriangularMembrane.cxx
-  Temporary/itkDijkstrasAlgorithm.h
-  Temporary/itkFEMDiscConformalMap.cxx
-  Temporary/itkManifoldIntegrationAlgorithm.h
-Copyright: 2001, 2002 (C) Insight Consortium
-License: mix of BSD-2 and BSD-3
-
-Files: debian/*
-Copyright: Copyright (C) 2010,
-    Yaroslav Halchenko <debian@onerussian.com>
-License: BSD-3
