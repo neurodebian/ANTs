@@ -6,6 +6,8 @@
 BUILDDIR=$(CURDIR)/build
 DESTBINDIR=$(BUILDDIR)/bin
 
+export  http_proxy=http://127.0.0.1:9/
+
 export CFLAGS = -Wall -g
 export LDFLAGS = -Wl,--as-needed
 
