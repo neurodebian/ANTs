@@ -2,7 +2,7 @@ ants (1.9.2+svn680+git1418-g1c9ff5e-1) unstable; urgency=low
 
   * Fresh upstream snapshot
   * debian/control
-    - switch to ITK4
+    - build-depends: switch to ITK4, add libboost1.49-dev
     - boost policy compliance to 3.9.4
   * debian/copyright
     - update for Dep5
