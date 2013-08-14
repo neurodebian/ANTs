@@ -23,12 +23,13 @@ export DH_VERBOSE=1
 
 # Default mega-rule
 %:
-	dh -DExamples $@
+	dh $@
 
 
 override_dh_auto_configure:
 	dh_auto_configure -- \
-		-DSuperBuild_ANTS_USE_GIT_PROTOC:BOOL=OFF \
+		-DANTS_SUPERBUILD:BOOL=OFF \
+		-DANTS_USE_GIT_PROTOC:BOOL=OFF \
 		-DCOPY_SCRIPT_FILES_TO_BIN_DIR:BOOL=OFF \
 		-DCMAKE_SKIP_RPATH:BOOL=ON \
 		-DUSE_SYSTEM_ITK:BOOL=ON \
@@ -36,7 +37,8 @@ override_dh_auto_configure:
 		-DBUILD_SHARED_LIBS:BOOL=ON \
 		-DRUN_SHORT_TESTS:BOOL=ON \
 		-DRUN_LONG_TESTS:BOOL=OFF \
-		-DEXECUTABLE_OUTPUT_PATH:PATH=$(DESTBINDIR)
+		-DEXECUTABLE_OUTPUT_PATH:PATH=$(DESTBINDIR) \
+		--debug-output
 
 override_dh_auto_build:
 	dh_auto_build
