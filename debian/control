@@ -11,6 +11,7 @@ Build-Depends: debhelper (>= 7.0.50~),
                libvtk-java | libvtk5-dev (<< 5.8),
                libvtk5.8-qt4 | libvtk5-dev (<< 5.8),
                libboost1.49-dev,
+               libtiff5-dev,
 Standards-Version: 3.9.4
 Homepage: http://www.picsl.upenn.edu/ANTS/
 Vcs-Git: git://git.debian.org/pkg-exppsy/ants.git
