@@ -69,6 +69,8 @@ override_dh_auto_install:
 	done
 	: Install shell scripts
 	install -t debian/ants/usr/lib/ants Scripts/*
+	: Adjust ANTSPATH
+	cd debian/ants/usr/lib/ants && sed -ie 's,\([^"=]*\(/bin/ants\|ANTS/release/bin\)\),/usr/lib/ants,g' *.sh *.pl
 	: Install manpages
 	dh_installman $(BUILDDIR)/man/*
 
