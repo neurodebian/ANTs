@@ -1,0 +1,96 @@
+--- a/Scripts/antsaffine.sh
++++ b/Scripts/antsaffine.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ if [ ${#ANTSPATH} -le 3 ] ; then
+   echo we guess at your ants path
+   export ANTSPATH=${ANTSPATH:="$HOME/bin/ants/"} # EDIT THIS
+--- a/Scripts/ANTSAverage2DAffine.sh
++++ b/Scripts/ANTSAverage2DAffine.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ NUMPARAM=$#
+ if [ $NUMPARAM -lt 2 ] ; then
+ echo " Usage "
+--- a/Scripts/ANTSAverage3DAffine.sh
++++ b/Scripts/ANTSAverage3DAffine.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ NUMPARAM=$#
+ if [ $NUMPARAM -lt 2 ] ; then
+ echo " Usage "
+--- a/Scripts/guidedregistration.sh
++++ b/Scripts/guidedregistration.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ if [ $# -lt 7  ]
+ then
+ echo " USAGE \n  sh command.sh  fixed.nii fixedhipp.nii  moving.nii movinghipp.nii outputname  iterations DIM "
+--- a/Scripts/landmarkmatch.sh
++++ b/Scripts/landmarkmatch.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ if [ $# -lt 6  ]
+ then
+ echo " USAGE \n  sh $0  fixed.nii fixedhipp.nii  moving.nii movinghipp.nii  ITERATIONS LandmarkWeight "
+--- a/Scripts/lohmann.sh
++++ b/Scripts/lohmann.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ 
+ NUMPARAMS=$#
+ MAXITERATIONS=30x90x20
+--- a/Scripts/optimalsmooth.sh
++++ b/Scripts/optimalsmooth.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ 
+ echo  " sh $0 outputprefix "
+ if [ $# -lt 1 ] ; then
+--- a/Scripts/phantomstudy.sh
++++ b/Scripts/phantomstudy.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ 
+ ANTSPATH="/Users/stnava/Code/bin/ants/"
+ 
+--- a/Scripts/submitexperimentalbuild.sh
++++ b/Scripts/submitexperimentalbuild.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ # request Bourne shell as shell for job
+ 
+ ctest -D ExperimentalStart
+--- a/Scripts/sygnccavg.sh
++++ b/Scripts/sygnccavg.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ 
+ TNAME=$1
+ GRADSTEP=$2
+--- a/Scripts/thickstudy.sh
++++ b/Scripts/thickstudy.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ 
+ count=0
+ for x in  phantomA phantomB phantomC phantomD phantomE phantomF phantomG phantomH
+--- a/Scripts/weightedaverage.sh
++++ b/Scripts/weightedaverage.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ 
+ echo "Usage: \n sh  weightedaverage.sh  \"Faces*tiff\" \n "
+ 
