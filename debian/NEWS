@@ -1,0 +1,7 @@
+ants (2.0.0-1) unstable; urgency=low
+
+    Incompatible change: instead of multifile Warp{x,y,z}vec.nii.gz
+    representation of deformations ANTs now composes a single file.  You
+    will need to adjust your scripts to use this new version.
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 11 Dec 2013 13:17:27 -0500
