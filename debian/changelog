@@ -1,6 +1,6 @@
-ants (1.9.2+svn680+git1418-g1c9ff5e-1) unstable; urgency=low
+ants (2.0.0-1) unstable; urgency=low
 
-  * Fresh upstream snapshot
+  * Fresh upstream release
   * debian/control
     - build-depends: switch to ITK4, add libboost1.49-dev
     - boost policy compliance to 3.9.4
@@ -9,10 +9,10 @@ ants (1.9.2+svn680+git1418-g1c9ff5e-1) unstable; urgency=low
   * debian/patches
     - drop patch in favor of in-installation sed-adjustment of default ANTSPATHs
   * debian/rules
-    - add sinking http_proxy to avoid online acquisition
+    - add sinking http{,s}_proxy to avoid online acquisition
     - adjust cmake options to run short tests, build shared libs, use system ITK
 
- -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 13 Aug 2013 14:31:26 -0400
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 11 Dec 2013 13:02:20 -0500
 
 ants (1.9.2+svn680.dfsg-4) unstable; urgency=low
 
