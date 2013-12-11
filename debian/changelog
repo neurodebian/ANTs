@@ -2,7 +2,8 @@ ants (2.0.0-1) unstable; urgency=low
 
   * Fresh upstream release
   * debian/control
-    - build-depends: switch to ITK4, add libboost1.49-dev
+    - build-depends: switch to ITK4, add libboost1.49-dev, remove libgdcm2-dev
+      (Closes: #731923)
     - boost policy compliance to 3.9.4
   * debian/copyright
     - update for Dep5

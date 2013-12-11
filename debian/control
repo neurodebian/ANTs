@@ -5,7 +5,7 @@ Maintainer: NeuroDebian Team <team@neuro.debian.net>
 Uploaders: Yaroslav Halchenko <debian@onerussian.com>, Michael Hanke <michael.hanke@gmail.com>
 Build-Depends: debhelper (>= 7.0.50~),
                help2man, cmake,
-               libgdcm2-dev, libopenjpeg-dev, libinsighttoolkit4-dev, libvtk5-dev, uuid-dev,
+               libopenjpeg-dev, libinsighttoolkit4-dev, libvtk5-dev, uuid-dev,
                tcl-vtk | libvtk5-dev (<< 5.8),
                python-vtk | libvtk5-dev (<< 5.8),
                libvtk-java | libvtk5-dev (<< 5.8),
