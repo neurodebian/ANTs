@@ -1,0 +1,20 @@
+#%Module1.0#####################################################################
+##
+## ants modulefile
+##
+proc ModulesHelp { } {
+        global version
+
+        puts stderr "\tLoads the ANTs (advanced normalization tools) environment.\n"
+        puts stderr "\tIt will adjust PATH and set ANTSPATH so that all ANTs "
+        puts stderr "\tbecome available in your environment.\n"
+        puts stderr "\tVersion $version\n"
+}
+
+module-whatis   "enable ANTs binaries"
+
+# for Tcl script use only
+set     version      "$UVERSION"
+
+setenv  ANTSPATH   "/usr/lib/ants/"
+prepend-path PATH   /usr/lib/ants
