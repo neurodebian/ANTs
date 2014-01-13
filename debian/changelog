@@ -8,12 +8,16 @@ ants (2.0.0-1) unstable; urgency=low
   * debian/copyright
     - update for Dep5
   * debian/patches
-    - drop patch in favor of in-installation sed-adjustment of default ANTSPATHs
+    - drop patch in favor of in-installation sed-adjustment of default
+      ANTSPATHs
     - up_use_bash -- use bash not just sh in scripts (Closes: #690622)
   * debian/rules
     - add sinking http{,s}_proxy to avoid online acquisition
-    - adjust cmake options to run short tests, build shared libs, use system ITK
+    - adjust cmake options to run short tests, build shared libs, use system
+      ITK
     - various tune ups (rpath, do not run tests on slow boxes, etc)
+  * debian/{rules,control}
+    - install a versioned Modulesfile for ants, and recommend environment-modules
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 11 Dec 2013 13:02:20 -0500
 

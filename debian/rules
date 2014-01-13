@@ -5,6 +5,8 @@ srcpkg = $(shell LC_ALL=C dpkg-parsechangelog | grep '^Source:' | cut -d ' ' -f 
 debver = $(shell LC_ALL=C dpkg-parsechangelog | grep '^Version:' | cut -d ' ' -f 2,2 )
 uver = $(shell echo $(debver) | cut -d '-' -f 1,1 )
 
+modulesfile = debian/ants.environment-modules
+
 export  http_proxy=http://127.0.0.1:9/
 export  https_proxy=http://127.0.0.1:9/
 
@@ -44,7 +46,10 @@ override_dh_auto_configure:
 		-DEXECUTABLE_OUTPUT_PATH:PATH=$(DESTBINDIR) \
 		--debug-output
 
-override_dh_auto_build:
+%modules: %modules.in
+	sed -e 's,$$UVERSION,$(uver),g' $< >| $@
+
+override_dh_auto_build: $(modulesfile)
 	dh_auto_build
 	: Build manpages
 	cd `/bin/ls -d obj-*/bin` && mkdir -p ../man && \
@@ -71,6 +76,8 @@ override_dh_auto_install:
 	done
 	: Install shell scripts
 	install -t debian/ants/usr/lib/ants Scripts/*
+	: Install modules file
+	install -t debian/ants/usr/share/modules/modulefiles/ants $(modulesfile)
 	: Adjust ANTSPATH
 	cd debian/ants/usr/lib/ants && sed -ie 's,\([^"=]*\(/bin/ants\|ANTS/release/bin\)\),/usr/lib/ants,g' *.sh *.pl
 	: Install manpages
@@ -78,7 +85,7 @@ override_dh_auto_install:
 
 override_dh_auto_clean:
 	dh_auto_clean
-	rm -rf $(BUILDDIR)
+	rm -rf $(BUILDDIR) debian/ants.environment-modules
 
 # upstream tests use some tiny dataset for tests, which
 # they deposited online instead of keeping under the GIT

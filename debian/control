@@ -20,6 +20,7 @@ Vcs-Browser: http://git.debian.org/?p=pkg-exppsy/ants.git;a=summary
 Package: ants
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: environment-modules
 Suggests: fsl, gridengine-client
 Description: advanced normalization tools for brain and image analysis
  Advanced Normalization Tools (ANTS) is an ITK-based suite of
