@@ -1,10 +1,9 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-# Build directory, to don't dig them out later
-# on from the bulk since there is no install target in upstream build system
-BUILDDIR=$(CURDIR)/build
-DESTBINDIR=$(BUILDDIR)/bin
+srcpkg = $(shell LC_ALL=C dpkg-parsechangelog | grep '^Source:' | cut -d ' ' -f 2,2)
+debver = $(shell LC_ALL=C dpkg-parsechangelog | grep '^Version:' | cut -d ' ' -f 2,2 )
+uver = $(shell echo $(debver) | cut -d '-' -f 1,1 )
 
 export  http_proxy=http://127.0.0.1:9/
 export  https_proxy=http://127.0.0.1:9/
@@ -22,6 +21,10 @@ export CXXFLAGS = $(CFLAGS) -fpermissive
 # Uncomment this to turn on verbose mode.
 export DH_VERBOSE=1
 
+# Exclude all heavy tests while building on slowish build
+# bots/platforms
+CTEST_EXCLUDE = $(shell [ `grep -i bogomips /proc/cpuinfo | head -n 1 | sed -e 's,.*:\s*\([0-9]*\)\(\..*\)*$,\1,g'` -gt 2000 ] || echo "-E '^ANTS(_|PSE)'")
+
 # Default mega-rule
 %:
 	dh $@
@@ -32,7 +35,7 @@ override_dh_auto_configure:
 		-DANTS_SUPERBUILD:BOOL=OFF \
 		-DANTS_USE_GIT_PROTOC:BOOL=OFF \
 		-DCOPY_SCRIPT_FILES_TO_BIN_DIR:BOOL=OFF \
-		-DCMAKE_SKIP_RPATH:BOOL=ON \
+		-DCMAKE_SKIP_RPATH:BOOL=OFF \
 		-DUSE_SYSTEM_ITK:BOOL=ON \
 		-DUSE_VTK:BOOL=ON \
 		-DBUILD_SHARED_LIBS:BOOL=ON \
@@ -44,25 +47,24 @@ override_dh_auto_configure:
 override_dh_auto_build:
 	dh_auto_build
 	: Build manpages
-	cd $(DESTBINDIR) && mkdir ../man && \
+	cd `/bin/ls -d obj-*/bin` && mkdir -p ../man && \
     for f in *; do \
-	 help2man --name="part of ANTS registration suite" --version-string 1.9 \
+	 help2man --name="part of ANTS registration suite" --version-string $(uver) \
 	          --no-info --no-discard-stderr ./$$f >| ../man/$$f.1; \
      done
 
-# For now perform only some small subselection of tests since some
-# tests are very CPU intensive and some fail and there is no clean way
-# to select "good" and quick ones
+
 override_dh_auto_test:
-	# debhelper just calls make test so no -R could be passed
-	# PATH=$$PATH:$(DESTBINDIR) dh_auto_test -- -R "ANTS_(CC_1|...$$)"
-	# thus lets do it manually
-	cd obj-*; PATH=$(DESTBINDIR):$$PATH ctest --force-new-ctest-process -R "ANTS_(CC_1|SYN_|EXP|...$$)" -E "(ANTS_SYN|ANTS_SYN_WITH_TIME)$$"
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	cd obj-*; ctest --force-new-ctest-process $(CTEST_EXCLUDE)
+else
+	: # Skip unittests due to nocheck
+endif
 
 override_dh_auto_install:
 	dh_auto_install
-	: Install binaries
-	install -t debian/ants/usr/lib/ants $(DESTBINDIR)/*
+	: Move binaries under usr/lib/ants
+	mv debian/ants/usr/bin/* debian/ants/usr/lib/ants
 	: Symlink binaries of primary importance into /usr/bin
 	for f in ANTS WarpImageMultiTransform; do \
 		dh_link usr/lib/ants/$$f usr/bin/$$f; \
@@ -72,9 +74,16 @@ override_dh_auto_install:
 	: Adjust ANTSPATH
 	cd debian/ants/usr/lib/ants && sed -ie 's,\([^"=]*\(/bin/ants\|ANTS/release/bin\)\),/usr/lib/ants,g' *.sh *.pl
 	: Install manpages
-	dh_installman $(BUILDDIR)/man/*
+	dh_installman obj-*/man/*
 
 override_dh_auto_clean:
 	dh_auto_clean
 	rm -rf $(BUILDDIR)
 
+# upstream tests use some tiny dataset for tests, which
+# they deposited online instead of keeping under the GIT
+# Since the data size is small, we just package it along,
+# but that would require first building ANTs
+get_upstream_external_data:
+	mkdir -p .ExternalData/MD5
+	# TODO

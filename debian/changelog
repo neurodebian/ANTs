@@ -13,6 +13,7 @@ ants (2.0.0-1) unstable; urgency=low
   * debian/rules
     - add sinking http{,s}_proxy to avoid online acquisition
     - adjust cmake options to run short tests, build shared libs, use system ITK
+    - various tune ups (rpath, do not run tests on slow boxes, etc)
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 11 Dec 2013 13:02:20 -0500
 
