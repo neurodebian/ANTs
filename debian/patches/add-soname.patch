@@ -1,0 +1,33 @@
+Author: Gert Wollny <gw.fossdev@gmail.com>
+Date:   Tue Feb 25 15:46:09 2014 +0100
+
+    Add a SONAME to the libraries
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b194063..c73c33d 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,6 +1,8 @@
+ cmake_minimum_required(VERSION 2.8.5)
+ cmake_policy(VERSION 2.8.5)
+ 
++set(LIBRARY_SOVERSION_INFO 2.0.0)
++
+ set(LOCAL_PROJECT_NAME ANTS)
+ INCLUDE(InstallRequiredSystemLibraries)
+ ## NOTE THERE SHOULD BE NO PROJECT STATEMENT HERE!
+diff --git a/Examples/CMakeLists.txt b/Examples/CMakeLists.txt
+index 28bda84..8c45694 100644
+--- a/Examples/CMakeLists.txt
++++ b/Examples/CMakeLists.txt
+@@ -27,6 +27,10 @@ macro(STANDARD_ANTS_BUILD ANTS_FUNCTION_NAME EXTRA_LIBS)
+   set( ANTS_FUNCTION_NAME ${ANTS_FUNCTION_NAME} )
+ 
+   add_library(l_${ANTS_FUNCTION_NAME} ${ANTS_FUNCTION_NAME}.cxx ${UI_SOURCES})
++  SET_TARGET_PROPERTIES(l_${ANTS_FUNCTION_NAME} PROPERTIES 
++    SOVERSION ${LIBRARY_SOVERSION_INFO})
++
++
+   message(STATUS "${ANTS_FUNCTION_NAME} ${EXTRA_LIBS}")
+   target_link_libraries(l_${ANTS_FUNCTION_NAME} antsUtilities ${ITK_LIBRARIES} ${EXTRA_LIBS} )
+   configure_file( template_for_executables.cxx.in cli_${ANTS_FUNCTION_NAME}.cxx )
