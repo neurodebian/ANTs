@@ -10,8 +10,7 @@ modulesfile = debian/ants.environment-modules
 #export  http_proxy=http://127.0.0.1:9/
 #export  https_proxy=http://127.0.0.1:9/
 
-export CFLAGS = -Wall -g
-export LDFLAGS = -Wl,--as-needed
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
     export CFLAGS += -O0
@@ -61,7 +60,9 @@ override_dh_auto_build: $(modulesfile)
 
 override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-	cd obj-*; ctest --force-new-ctest-process $(CTEST_EXCLUDE)
+	cd obj-*
+	ln -s debian/testdata ExternalData
+	ctest --force-new-ctest-process $(CTEST_EXCLUDE)
 else
 	: # Skip unittests due to nocheck
 endif
