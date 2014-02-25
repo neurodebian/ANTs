@@ -1,93 +1,117 @@
---- a/Scripts/antsaffine.sh
-+++ b/Scripts/antsaffine.sh
+Index: ANTs/Scripts/antsaffine.sh
+===================================================================
+--- ANTs.orig/Scripts/antsaffine.sh	2014-02-25 11:52:09.564545592 +0100
++++ ANTs/Scripts/antsaffine.sh	2014-02-25 12:01:04.000000000 +0100
 @@ -1,4 +1,4 @@
 -#!/bin/sh
 +#!/bin/bash
  if [ ${#ANTSPATH} -le 3 ] ; then
    echo we guess at your ants path
    export ANTSPATH=${ANTSPATH:="$HOME/bin/ants/"} # EDIT THIS
---- a/Scripts/ANTSAverage2DAffine.sh
-+++ b/Scripts/ANTSAverage2DAffine.sh
+Index: ANTs/Scripts/ANTSAverage2DAffine.sh
+===================================================================
+--- ANTs.orig/Scripts/ANTSAverage2DAffine.sh	2014-02-25 11:52:09.560545617 +0100
++++ ANTs/Scripts/ANTSAverage2DAffine.sh	2014-02-25 12:01:04.000000000 +0100
 @@ -1,4 +1,4 @@
 -#!/bin/sh
 +#!/bin/bash
  NUMPARAM=$#
  if [ $NUMPARAM -lt 2 ] ; then
  echo " Usage "
---- a/Scripts/ANTSAverage3DAffine.sh
-+++ b/Scripts/ANTSAverage3DAffine.sh
+Index: ANTs/Scripts/ANTSAverage3DAffine.sh
+===================================================================
+--- ANTs.orig/Scripts/ANTSAverage3DAffine.sh	2014-02-25 11:52:09.560545617 +0100
++++ ANTs/Scripts/ANTSAverage3DAffine.sh	2014-02-25 12:01:04.000000000 +0100
 @@ -1,4 +1,4 @@
 -#!/bin/sh
 +#!/bin/bash
  NUMPARAM=$#
  if [ $NUMPARAM -lt 2 ] ; then
  echo " Usage "
---- a/Scripts/guidedregistration.sh
-+++ b/Scripts/guidedregistration.sh
+Index: ANTs/Scripts/guidedregistration.sh
+===================================================================
+--- ANTs.orig/Scripts/guidedregistration.sh	2014-02-25 11:52:09.564545592 +0100
++++ ANTs/Scripts/guidedregistration.sh	2014-02-25 12:01:04.000000000 +0100
 @@ -1,4 +1,4 @@
 -#!/bin/sh
 +#!/bin/bash
  if [ $# -lt 7  ]
  then
  echo " USAGE \n  sh command.sh  fixed.nii fixedhipp.nii  moving.nii movinghipp.nii outputname  iterations DIM "
---- a/Scripts/landmarkmatch.sh
-+++ b/Scripts/landmarkmatch.sh
+Index: ANTs/Scripts/landmarkmatch.sh
+===================================================================
+--- ANTs.orig/Scripts/landmarkmatch.sh	2014-02-25 11:52:09.564545592 +0100
++++ ANTs/Scripts/landmarkmatch.sh	2014-02-25 12:01:04.000000000 +0100
 @@ -1,4 +1,4 @@
 -#!/bin/sh
 +#!/bin/bash
  if [ $# -lt 6  ]
  then
  echo " USAGE \n  sh $0  fixed.nii fixedhipp.nii  moving.nii movinghipp.nii  ITERATIONS LandmarkWeight "
---- a/Scripts/lohmann.sh
-+++ b/Scripts/lohmann.sh
+Index: ANTs/Scripts/lohmann.sh
+===================================================================
+--- ANTs.orig/Scripts/lohmann.sh	2014-02-25 11:52:09.564545592 +0100
++++ ANTs/Scripts/lohmann.sh	2014-02-25 12:01:04.000000000 +0100
 @@ -1,4 +1,4 @@
 -#!/bin/sh
 +#!/bin/bash
  
  NUMPARAMS=$#
  MAXITERATIONS=30x90x20
---- a/Scripts/optimalsmooth.sh
-+++ b/Scripts/optimalsmooth.sh
+Index: ANTs/Scripts/optimalsmooth.sh
+===================================================================
+--- ANTs.orig/Scripts/optimalsmooth.sh	2014-02-25 11:52:09.564545592 +0100
++++ ANTs/Scripts/optimalsmooth.sh	2014-02-25 12:01:04.000000000 +0100
 @@ -1,4 +1,4 @@
 -#!/bin/sh
 +#!/bin/bash
  
  echo  " sh $0 outputprefix "
  if [ $# -lt 1 ] ; then
---- a/Scripts/phantomstudy.sh
-+++ b/Scripts/phantomstudy.sh
+Index: ANTs/Scripts/phantomstudy.sh
+===================================================================
+--- ANTs.orig/Scripts/phantomstudy.sh	2014-02-25 11:52:09.564545592 +0100
++++ ANTs/Scripts/phantomstudy.sh	2014-02-25 12:01:04.000000000 +0100
 @@ -1,4 +1,4 @@
 -#!/bin/sh
 +#!/bin/bash
  
  ANTSPATH="/Users/stnava/Code/bin/ants/"
  
---- a/Scripts/submitexperimentalbuild.sh
-+++ b/Scripts/submitexperimentalbuild.sh
+Index: ANTs/Scripts/submitexperimentalbuild.sh
+===================================================================
+--- ANTs.orig/Scripts/submitexperimentalbuild.sh	2014-02-25 11:52:09.564545592 +0100
++++ ANTs/Scripts/submitexperimentalbuild.sh	2014-02-25 12:01:04.000000000 +0100
 @@ -1,4 +1,4 @@
 -#!/bin/sh
 +#!/bin/bash
  # request Bourne shell as shell for job
  
  ctest -D ExperimentalStart
---- a/Scripts/sygnccavg.sh
-+++ b/Scripts/sygnccavg.sh
+Index: ANTs/Scripts/sygnccavg.sh
+===================================================================
+--- ANTs.orig/Scripts/sygnccavg.sh	2014-02-25 11:52:09.564545592 +0100
++++ ANTs/Scripts/sygnccavg.sh	2014-02-25 12:01:04.000000000 +0100
 @@ -1,4 +1,4 @@
 -#!/bin/sh
 +#!/bin/bash
  
  TNAME=$1
  GRADSTEP=$2
---- a/Scripts/thickstudy.sh
-+++ b/Scripts/thickstudy.sh
+Index: ANTs/Scripts/thickstudy.sh
+===================================================================
+--- ANTs.orig/Scripts/thickstudy.sh	2014-02-25 11:52:09.564545592 +0100
++++ ANTs/Scripts/thickstudy.sh	2014-02-25 12:01:04.000000000 +0100
 @@ -1,4 +1,4 @@
 -#!/bin/sh
 +#!/bin/bash
  
  count=0
  for x in  phantomA phantomB phantomC phantomD phantomE phantomF phantomG phantomH
---- a/Scripts/weightedaverage.sh
-+++ b/Scripts/weightedaverage.sh
+Index: ANTs/Scripts/weightedaverage.sh
+===================================================================
+--- ANTs.orig/Scripts/weightedaverage.sh	2014-02-25 11:52:09.564545592 +0100
++++ ANTs/Scripts/weightedaverage.sh	2014-02-25 12:01:04.000000000 +0100
 @@ -1,4 +1,4 @@
 -#!/bin/sh
 +#!/bin/bash
