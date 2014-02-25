@@ -7,8 +7,8 @@ uver = $(shell echo $(debver) | cut -d '-' -f 1,1 )
 
 modulesfile = debian/ants.environment-modules
 
-export  http_proxy=http://127.0.0.1:9/
-export  https_proxy=http://127.0.0.1:9/
+#export  http_proxy=http://127.0.0.1:9/
+#export  https_proxy=http://127.0.0.1:9/
 
 export CFLAGS = -Wall -g
 export LDFLAGS = -Wl,--as-needed

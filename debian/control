@@ -10,7 +10,7 @@ Build-Depends: debhelper (>= 7.0.50~),
                python-vtk | libvtk5-dev (<< 5.8),
                libvtk-java | libvtk5-dev (<< 5.8),
                libvtk5.8-qt4 | libvtk5-dev (<< 5.8),
-               libboost1.49-dev,
+               libboost-dev,
                libtiff5-dev,
                libdcmtk2-dev,
 Standards-Version: 3.9.4
