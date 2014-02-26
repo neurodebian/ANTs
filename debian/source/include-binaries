@@ -1,6 +1,4 @@
-debian/testdata/Objects/MD5/8a629ee7ea32013c76af5b05f880b5c6
-debian/testdata/Objects/MD5/37aaa33029410941bf4affff0479fa18
-debian/testdata/Objects/MD5/11ea9f4d17e24ab90d8bc0b4b087d235
-debian/testdata/Objects/MD5/67a066125ba4132655c1ad91c34e06a4
-debian/testdata/TestData/Data/Frown.nii
-debian/testdata/TestData/Data/Smile.nii
+debian/testdata/MD5/8a629ee7ea32013c76af5b05f880b5c6
+debian/testdata/MD5/37aaa33029410941bf4affff0479fa18
+debian/testdata/MD5/11ea9f4d17e24ab90d8bc0b4b087d235
+debian/testdata/MD5/67a066125ba4132655c1ad91c34e06a4
