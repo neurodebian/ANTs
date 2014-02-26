@@ -7,8 +7,8 @@ uver = $(shell echo $(debver) | cut -d '-' -f 1,1 )
 
 modulesfile = debian/ants.environment-modules
 
-#export  http_proxy=http://127.0.0.1:9/
-#export  https_proxy=http://127.0.0.1:9/
+export  http_proxy=http://127.0.0.1:9/
+export  https_proxy=http://127.0.0.1:9/
 
 export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
@@ -17,7 +17,6 @@ ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 else
     export CFLAGS += -O2
 endif
-export CXXFLAGS = $(CFLAGS) -fpermissive
 
 # Uncomment this to turn on verbose mode.
 export DH_VERBOSE=1
