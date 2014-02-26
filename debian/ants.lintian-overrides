@@ -12,5 +12,5 @@ ants binary: manpage-has-errors-from-man usr/share/man/man1/sccan.1.gz 88: warni
 # This package is not intended to provide shared libraries to third parties.
 ants binary: package-name-doesnt-match-sonames
 
-# it is either this lintian warning, or "dynamic link library without version information" 
+# it is either this lintian warning, or sharedobject-in-library-directory-missing-soname
 ants binary: non-dev-pkg-with-shlib-symlink
