@@ -3,7 +3,8 @@ ants (2.0.0-1) unstable; urgency=low
   [Gert Wollny]
   * Move to debhelper 9
   * Add the test data to the debian subdir
-
+  * add soversion and version to the shared libraries 
+  
   [Yaroslav Halchenko]
   * Fresh upstream release
   * debian/control
