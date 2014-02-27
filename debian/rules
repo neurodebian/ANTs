@@ -27,7 +27,7 @@ CTEST_EXCLUDE = $(shell [ `grep -i bogomips /proc/cpuinfo | head -n 1 | sed -e '
 
 # Default mega-rule
 %:
-	dh $@
+	dh $@ --parallel
 
 
 override_dh_auto_configure:
