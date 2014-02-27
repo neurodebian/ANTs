@@ -31,7 +31,14 @@ file:///var/bigharddrive/%(algo)/%(hash)")
 mark_as_advanced(ExternalData_URL_TEMPLATES)
 list(APPEND ExternalData_URL_TEMPLATES
   # Local data store populated by the ITK pre-commit hook
-  "file:///${${PROJECT_NAME}_SOURCE_DIR}/debian/testdata/%(algo)/%(hash)"
+  "file:///${${PROJECT_NAME}_SOURCE_DIR}/.ExternalData/%(algo)/%(hash)"
+  # Data published by Iowa Psychiatry web interface
+  ## The primary home for data
+  "http://slicer.kitware.com/midas3/api/rest?method=midas.bitstream.download&checksum=%(hash)"
+  # Data published by MIDAS
+  "http://midas3.kitware.com/midas/api/rest?method=midas.bitstream.download&checksum=%(hash)&algorithm=%(algo)"
+  # Data published by developers using git-gerrit-push.
+  "http://www.itk.org/files/ExternalData/%(algo)/%(hash)"
   )
 
 # Tell ExternalData commands to transform raw files to content links.

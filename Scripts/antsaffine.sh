@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 if [ ${#ANTSPATH} -le 3 ] ; then
   echo we guess at your ants path
   export ANTSPATH=${ANTSPATH:="$HOME/bin/ants/"} # EDIT THIS

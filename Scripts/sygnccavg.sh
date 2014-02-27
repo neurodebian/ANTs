@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 TNAME=$1
 GRADSTEP=$2

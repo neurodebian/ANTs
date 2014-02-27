@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 NUMPARAM=$#
 if [ $NUMPARAM -lt 2 ] ; then
 echo " Usage "
