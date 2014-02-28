@@ -1,7 +1,6 @@
 # Manpages are generated from --help using help2man.
 # Some formatting issues are yet to be addressed,
 # upstream was informed and working toward it
-ants binary: manpage-has-errors-from-man usr/share/man/man1/Atropos.1.gz 26: warning [p 1, 4.7i]: cannot adjust line
 ants binary: manpage-has-errors-from-man usr/share/man/man1/ANTS.1.gz 24: warning [p 1, 4.5i]: cannot adjust line
 ants binary: manpage-has-errors-from-man usr/share/man/man1/Atropos.1.gz 86: warning [p 2, 6.3i]: cannot adjust line
 ants binary: manpage-has-errors-from-man usr/share/man/man1/CheckTopology.1.gz 12: warning [p 1, 2.2i]: cannot adjust line
