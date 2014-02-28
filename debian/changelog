@@ -9,7 +9,7 @@ ants (2.0.0-1) unstable; urgency=low
   * Fresh upstream release
   * debian/control
     - build-depends: switch to ITK4, add libboost-dev, remove libgdcm2-dev
-      (Closes: #731923), add libtiff5-dev, libdcmtk2-dev
+      (Closes: #731923), add libtiff-dev, libdcmtk2-dev
     - boost policy compliance to 3.9.5
   * debian/copyright
     - update for Dep5
