@@ -10,15 +10,13 @@ modulesfile = debian/ants.environment-modules
 export  http_proxy=http://127.0.0.1:9/
 export  https_proxy=http://127.0.0.1:9/
 
-export CFLAGS = -Wall -g
-export LDFLAGS = -Wl,--as-needed
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
     export CFLAGS += -O0
 else
     export CFLAGS += -O2
 endif
-export CXXFLAGS = $(CFLAGS) -fpermissive
 
 # Uncomment this to turn on verbose mode.
 export DH_VERBOSE=1
@@ -29,7 +27,7 @@ CTEST_EXCLUDE = $(shell [ `grep -i bogomips /proc/cpuinfo | head -n 1 | sed -e '
 
 # Default mega-rule
 %:
-	dh $@
+	dh $@ --parallel
 
 
 override_dh_auto_configure:
@@ -61,13 +59,17 @@ override_dh_auto_build: $(modulesfile)
 
 override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-	cd obj-*; ctest --force-new-ctest-process $(CTEST_EXCLUDE)
+	cd obj-*
+	ln -s debian/testdata ExternalData
+	ctest --force-new-ctest-process $(CTEST_EXCLUDE)
 else
 	: # Skip unittests due to nocheck
 endif
 
 override_dh_auto_install:
 	dh_auto_install
+	: remove .so files 
+	rm debian/ants/usr/lib/*.so
 	: Move binaries under usr/lib/ants
 	mv debian/ants/usr/bin/* debian/ants/usr/lib/ants
 	: Symlink binaries of primary importance into /usr/bin
@@ -77,9 +79,9 @@ override_dh_auto_install:
 	: Install shell scripts
 	install -t debian/ants/usr/lib/ants Scripts/*
 	: Install modules file
-	install -t debian/ants/usr/share/modules/modulefiles/ants $(modulesfile)
+	install -m 664 -t debian/ants/usr/share/modules/modulefiles/ants $(modulesfile)
 	: Adjust ANTSPATH
-	cd debian/ants/usr/lib/ants && sed -ie 's,\([^"=]*\(/bin/ants\|ANTS/release/bin\)\),/usr/lib/ants,g' *.sh *.pl
+	cd debian/ants/usr/lib/ants && sed -ie 's,\([^"=]*\(/bin/ants\|ANTS/release/bin\)\),/usr/lib/ants,g' *.sh *.pl && rm *.she *.ple
 	: Install manpages
 	dh_installman obj-*/man/*
 

@@ -1,0 +1,51 @@
+Description: Add so-version and external data source 
+ Add so-version 2 and version 2.0.0 to the dynamic libraries 
+ Let the ExternalData download point to the debian/testdata directory 
+
+---
+
+Forwarded: no
+Last-Update: 2014-02-27
+
+--- ants-2.0.0.orig/CMake/ANTSExternalData.cmake
++++ ants-2.0.0/CMake/ANTSExternalData.cmake
+@@ -31,14 +31,7 @@ file:///var/bigharddrive/%(algo)/%(hash)
+ mark_as_advanced(ExternalData_URL_TEMPLATES)
+ list(APPEND ExternalData_URL_TEMPLATES
+   # Local data store populated by the ITK pre-commit hook
+-  "file:///${${PROJECT_NAME}_SOURCE_DIR}/.ExternalData/%(algo)/%(hash)"
+-  # Data published by Iowa Psychiatry web interface
+-  ## The primary home for data
+-  "http://slicer.kitware.com/midas3/api/rest?method=midas.bitstream.download&checksum=%(hash)"
+-  # Data published by MIDAS
+-  "http://midas3.kitware.com/midas/api/rest?method=midas.bitstream.download&checksum=%(hash)&algorithm=%(algo)"
+-  # Data published by developers using git-gerrit-push.
+-  "http://www.itk.org/files/ExternalData/%(algo)/%(hash)"
++  "file:///${${PROJECT_NAME}_SOURCE_DIR}/debian/testdata/%(algo)/%(hash)"
+   )
+ 
+ # Tell ExternalData commands to transform raw files to content links.
+--- ants-2.0.0.orig/CMakeLists.txt
++++ ants-2.0.0/CMakeLists.txt
+@@ -1,6 +1,8 @@
+ cmake_minimum_required(VERSION 2.8.5)
+ cmake_policy(VERSION 2.8.5)
+ 
++set(LIBRARY_SOVERSION_INFO 2)
++set(LIBRARY_VERSION_INFO 2.0.0)
+ set(LOCAL_PROJECT_NAME ANTS)
+ INCLUDE(InstallRequiredSystemLibraries)
+ ## NOTE THERE SHOULD BE NO PROJECT STATEMENT HERE!
+--- ants-2.0.0.orig/Examples/CMakeLists.txt
++++ ants-2.0.0/Examples/CMakeLists.txt
+@@ -27,6 +27,10 @@ macro(STANDARD_ANTS_BUILD ANTS_FUNCTION_
+   set( ANTS_FUNCTION_NAME ${ANTS_FUNCTION_NAME} )
+ 
+   add_library(l_${ANTS_FUNCTION_NAME} ${ANTS_FUNCTION_NAME}.cxx ${UI_SOURCES})
++  SET_TARGET_PROPERTIES(l_${ANTS_FUNCTION_NAME} PROPERTIES 
++    SOVERSION ${LIBRARY_SOVERSION_INFO}  VERSION ${LIBRARY_VERSION_INFO})
++
++
+   message(STATUS "${ANTS_FUNCTION_NAME} ${EXTRA_LIBS}")
+   target_link_libraries(l_${ANTS_FUNCTION_NAME} antsUtilities ${ITK_LIBRARIES} ${EXTRA_LIBS} )
+   configure_file( template_for_executables.cxx.in cli_${ANTS_FUNCTION_NAME}.cxx )

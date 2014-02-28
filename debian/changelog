@@ -1,10 +1,16 @@
 ants (2.0.0-1) unstable; urgency=low
 
+  [Gert Wollny]
+  * Move to debhelper 9
+  * Add the test data to the debian subdir
+  * add soversion and version to the shared libraries 
+  
+  [Yaroslav Halchenko]
   * Fresh upstream release
   * debian/control
-    - build-depends: switch to ITK4, add libboost1.49-dev, remove libgdcm2-dev
-      (Closes: #731923), add libtiff5-dev, libdcmtk2-dev
-    - boost policy compliance to 3.9.4
+    - build-depends: switch to ITK4, add libboost-dev, remove libgdcm2-dev
+      (Closes: #731923), add libtiff-dev, libdcmtk2-dev
+    - boost policy compliance to 3.9.5
   * debian/copyright
     - update for Dep5
   * debian/patches
@@ -17,7 +23,8 @@ ants (2.0.0-1) unstable; urgency=low
       ITK
     - various tune ups (rpath, do not run tests on slow boxes, etc)
   * debian/{rules,control}
-    - install a versioned Modulesfile for ants, and recommend environment-modules
+    - install a versioned Modulesfile for ants, and recommend
+      environment-modules
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 11 Dec 2013 13:02:20 -0500
 
