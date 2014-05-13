@@ -1,3 +1,10 @@
+ants (2.0.0-2) unstable; urgency=medium
+
+  * debian/control
+    - added libfftw3-dev to build-depends explicitly (Closes: #747954)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 13 May 2014 09:02:43 -0400
+
 ants (2.0.0-1) unstable; urgency=low
 
   [Gert Wollny]
