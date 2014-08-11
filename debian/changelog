@@ -1,3 +1,9 @@
+ants (2.0.3-1) UNRELEASED; urgency=medium
+
+  * Newer upstream bugfix release
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Mon, 11 Aug 2014 10:59:40 -0400
+
 ants (2.0.0-2) unstable; urgency=medium
 
   * debian/control
