@@ -3,6 +3,8 @@ ants (2.0.3-1) UNRELEASED; urgency=medium
   * Newer upstream bugfix release
   * debian/patches
     - removed debian/patches/up_use_bash (upstreamed)
+    - Add-soname-and-local-data.patch -> deb_local-data.patch
+      (SONAME and SOVERSIONing is done now by upstream)
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Mon, 11 Aug 2014 10:59:40 -0400
 
