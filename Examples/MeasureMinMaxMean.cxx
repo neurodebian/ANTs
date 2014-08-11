@@ -119,7 +119,7 @@ int MeasureMinMaxMean(int argc, char *argv[])
     }
 
   float temp = (1.0 / (float)ct) * variance;
-  antscout <<  argv[2] << " Max : " << max << " Min : " << min << " Mean : " << mean << " Var : " <<  temp
+  std::cout <<  argv[2] << " Max : " << max << " Min : " << min << " Mean : " << mean << " Var : " <<  temp
            << " SD : " << sqrt(1.0 / (float)(ct - 1) * variance) << std::endl;
 
   if( argc > 3 )
@@ -132,7 +132,7 @@ int MeasureMinMaxMean(int argc, char *argv[])
       }
     else
       {
-      antscout << " cant open file " << argv[3] << std::endl;
+      std::cout << " cant open file " << argv[3] << std::endl;
       }
     logfile.close();
     }
@@ -141,7 +141,7 @@ int MeasureMinMaxMean(int argc, char *argv[])
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
 // 'main()'
-int MeasureMinMaxMean( std::vector<std::string> args, std::ostream* out_stream = NULL )
+int MeasureMinMaxMean( std::vector<std::string> args, std::ostream* /*out_stream = NULL */ )
 {
   // put the arguments coming in as 'args' into standard (argc,argv) format;
   // 'args' doesn't have the command name as first, argument, so add it manually;
@@ -183,13 +183,13 @@ private:
   };
   Cleanup_argv cleanup_argv( argv, argc + 1 );
 
-  antscout->set_stream( out_stream );
+  // antscout->set_stream( out_stream );
 
   if( argc < 3 )
     {
-    antscout << "Basic useage ex: " << std::endl;
-    antscout << argv[0] << " ImageDimension  image.nii {log.txt} {take-absolute-value}  {mask-name} " << std::endl;
-    antscout << "  log.txt is optional  - take-abs-val reports min-max-mean of abs val image " << std::endl;
+    std::cout << "Basic useage ex: " << std::endl;
+    std::cout << argv[0] << " ImageDimension  image.nii {log.txt} {take-absolute-value}  {mask-name} " << std::endl;
+    std::cout << "  log.txt is optional  - take-abs-val reports min-max-mean of abs val image " << std::endl;
     if( argc >= 2 &&
         ( std::string( argv[1] ) == std::string("--help") || std::string( argv[1] ) == std::string("-h") ) )
       {
@@ -294,7 +294,7 @@ private:
       }
       break;
     default:
-      antscout << " not supported " << dim  << std::endl;
+      std::cout << " not supported " << dim  << std::endl;
       return EXIT_FAILURE;
     }
   return EXIT_SUCCESS;

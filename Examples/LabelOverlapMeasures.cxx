@@ -14,19 +14,27 @@
 
 namespace ants
 {
+
 template <unsigned int ImageDimension>
 int LabelOverlapMeasures( int argc, char * argv[] )
 {
-  if( argc < 2 )
-    {
-    antscout << "missing 1st filename" << std::endl;
-    throw;
-    }
   if( argc < 3 )
     {
-    antscout << "missing 2nd filename" << std::endl;
+    std::cout << "missing 1st filename" << std::endl;
     throw;
     }
+  if( argc < 4 )
+    {
+    std::cout << "missing 2nd filename" << std::endl;
+    throw;
+    }
+
+  bool outputCSVFormat = false;
+  if( argc == 5 && atoi( argv[4] ) == 1 )
+    {
+    outputCSVFormat = true;
+    }
+
   typedef unsigned int                          PixelType;
   typedef itk::Image<PixelType, ImageDimension> ImageType;
 
@@ -42,146 +50,91 @@ int LabelOverlapMeasures( int argc, char * argv[] )
   filter->SetTargetImage( reader2->GetOutput() );
   filter->Update();
 
-  antscout << "                                          "
-           << "************ All Labels *************" << std::endl;
-  antscout << std::setw( 10 ) << "   "
-           << std::setw( 17 ) << "Total"
-           << std::setw( 17 ) << "Union (jaccard)"
-           << std::setw( 17 ) << "Mean (dice)"
-           << std::setw( 17 ) << "Volume sim."
-           << std::setw( 17 ) << "False negative"
-           << std::setw( 17 ) << "False positive" << std::endl;
-  antscout << std::setw( 10 ) << "   ";
-  antscout << std::setw( 17 ) << filter->GetTotalOverlap();
-  antscout << std::setw( 17 ) << filter->GetUnionOverlap();
-  antscout << std::setw( 17 ) << filter->GetMeanOverlap();
-  antscout << std::setw( 17 ) << filter->GetVolumeSimilarity();
-  antscout << std::setw( 17 ) << filter->GetFalseNegativeError();
-  antscout << std::setw( 17 ) << filter->GetFalsePositiveError();
-  antscout << std::endl;
-
-  antscout << "                                       "
-           << "************ Individual Labels *************" << std::endl;
-  antscout << std::setw( 10 ) << "Label"
-           << std::setw( 17 ) << "Target"
-           << std::setw( 17 ) << "Union (jaccard)"
-           << std::setw( 17 ) << "Mean (dice)"
-           << std::setw( 17 ) << "Volume sim."
-           << std::setw( 17 ) << "False negative"
-           << std::setw( 17 ) << "False positive"
-//            << std::setw( 17 ) << "Hausdorff"
-//            << std::setw( 17 ) << "Avg. Hausdorff"
-//            << std::setw( 17 ) << "Min. dist. sum"
-           << std::endl;
-
   typename FilterType::MapType labelMap = filter->GetLabelSetMeasures();
-  typename FilterType::MapType::const_iterator it;
-  for( it = labelMap.begin(); it != labelMap.end(); ++it )
+
+  std::vector<int> allLabels;
+  allLabels.clear();
+  for( typename FilterType::MapType::const_iterator it = labelMap.begin();
+       it != labelMap.end(); ++it )
     {
     if( (*it).first == 0 )
       {
       continue;
       }
 
-    int label = (*it).first;
+    const int label = (*it).first;
+    allLabels.push_back( label );
+    }
+  std::sort( allLabels.begin(), allLabels.end() );
 
-    antscout << std::setw( 10 ) << label;
-    antscout << std::setw( 17 ) << filter->GetTargetOverlap( label );
-    antscout << std::setw( 17 ) << filter->GetUnionOverlap( label );
-    antscout << std::setw( 17 ) << filter->GetMeanOverlap( label );
-    antscout << std::setw( 17 ) << filter->GetVolumeSimilarity( label );
-    antscout << std::setw( 17 ) << filter->GetFalseNegativeError( label );
-    antscout << std::setw( 17 ) << filter->GetFalsePositiveError( label );
+  if( outputCSVFormat )
+    {
+    std::cout << "Label,Total/Target,Jaccard,Dice,VolumeSimilarity,FalseNegative,FalsePositive" << std::endl;
+    std::cout << "All,";
+    std::cout << filter->GetTotalOverlap() << ",";
+    std::cout << filter->GetUnionOverlap() << ",";
+    std::cout << filter->GetMeanOverlap() << ",";
+    std::cout << filter->GetVolumeSimilarity() << ",";
+    std::cout << filter->GetFalseNegativeError() << ",";
+    std::cout << filter->GetFalsePositiveError();
+    std::cout << std::endl;
+    for( unsigned int i = 0; i < allLabels.size(); i++ )
+      {
+      int label = allLabels[i];
 
-    /**
-     * Calculate distance-related measures which, perhaps, aren't considered
-     * "label overlap measures" in a precise sense but are still used to determine
-     * segmentation/registration accuracy. These measurements include
-     *     1. Hausdorff distance
-     *     2. Min distance sum
-     */
+      std::cout << label << ",";
+      std::cout << filter->GetTargetOverlap( label ) << ",";
+      std::cout << filter->GetUnionOverlap( label ) << ",";
+      std::cout << filter->GetMeanOverlap( label ) << ",";
+      std::cout << filter->GetVolumeSimilarity( label ) << ",";
+      std::cout << filter->GetFalseNegativeError( label ) << ",";
+      std::cout << filter->GetFalsePositiveError( label );
+      std::cout << std::endl;
+      }
+    }
+  else
+    {
+    std::cout << "                                          "
+              << "************ All Labels *************" << std::endl;
+    std::cout << std::setw( 10 ) << "   "
+              << std::setw( 17 ) << "Total"
+              << std::setw( 17 ) << "Union (jaccard)"
+              << std::setw( 17 ) << "Mean (dice)"
+              << std::setw( 17 ) << "Volume sim."
+              << std::setw( 17 ) << "False negative"
+              << std::setw( 17 ) << "False positive" << std::endl;
+    std::cout << std::setw( 10 ) << "   ";
+    std::cout << std::setw( 17 ) << filter->GetTotalOverlap();
+    std::cout << std::setw( 17 ) << filter->GetUnionOverlap();
+    std::cout << std::setw( 17 ) << filter->GetMeanOverlap();
+    std::cout << std::setw( 17 ) << filter->GetVolumeSimilarity();
+    std::cout << std::setw( 17 ) << filter->GetFalseNegativeError();
+    std::cout << std::setw( 17 ) << filter->GetFalsePositiveError();
+    std::cout << std::endl;
 
-//    typedef itk::BinaryThresholdImageFilter<ImageType, ImageType> ThresholderType;
-//    typename ThresholderType::Pointer source = ThresholderType::New();
-//    source->SetInput( filter->GetSourceImage() );
-//    source->SetLowerThreshold( label );
-//    source->SetUpperThreshold( label );
-//    source->SetInsideValue( static_cast<PixelType>( 1 ) );
-//    source->SetOutsideValue( static_cast<PixelType>( 0 ) );
-//    source->Update();
-//
-//    typename ThresholderType::Pointer target = ThresholderType::New();
-//    target->SetInput( filter->GetTargetImage() );
-//    target->SetLowerThreshold( label );
-//    target->SetUpperThreshold( label );
-//    target->SetInsideValue( static_cast<PixelType>( 1 ) );
-//    target->SetOutsideValue( static_cast<PixelType>( 0 ) );
-//    target->Update();
-//
-//    // Calculate Hausdorff distances
-//    typedef itk::HausdorffDistanceImageFilter<ImageType, ImageType> HausdorffType;
-//    typename HausdorffType::Pointer hausdorff = HausdorffType::New();
-//    hausdorff->SetInput1( source->GetOutput() );
-//    hausdorff->SetInput2( target->GetOutput() );
-//    hausdorff->Update();
-//
-//    antscout << std::setw( 17 ) << hausdorff->GetHausdorffDistance();
-//    antscout << std::setw( 17 ) << hausdorff->GetAverageHausdorffDistance();
-//
-//    // Calculate min sum distance
-//
-//    typedef itk::SignedMaurerDistanceMapImageFilter<ImageType, ImageType> DistancerType;
-//    typename DistancerType::Pointer sourceDistance = DistancerType::New();
-//    sourceDistance->SetInput( source->GetOutput() );
-//    sourceDistance->SetSquaredDistance( false );
-//    sourceDistance->SetUseImageSpacing( true );
-//    sourceDistance->SetInsideIsPositive( false );
-//    sourceDistance->Update();
-//
-//    typename DistancerType::Pointer targetDistance = DistancerType::New();
-//    targetDistance->SetInput( target->GetOutput() );
-//    targetDistance->SetSquaredDistance( false );
-//    targetDistance->SetUseImageSpacing( true );
-//    targetDistance->SetInsideIsPositive( false );
-//    targetDistance->Update();
-//
-//    float distanceToSource = 0.0;
-//    float NS = 0.0;
-//    float distanceToTarget = 0.0;
-//    float NT = 0.0;
-//
-//    itk::ImageRegionIteratorWithIndex<ImageType> ItS( sourceDistance->GetOutput(),
-//      sourceDistance->GetOutput()->GetLargestPossibleRegion() );
-//    itk::ImageRegionIteratorWithIndex<ImageType> ItT( targetDistance->GetOutput(),
-//      targetDistance->GetOutput()->GetLargestPossibleRegion() );
-//    for( ItS.GoToBegin(), ItT.GoToBegin(); !ItS.IsAtEnd(); ++ItS, ++ItT )
-//      {
-//      // on the boundary or inside the source object?
-//      if( ItS.Get() <= 0.0 )
-//        {
-//        // outside the target object?
-//        if( ItT.Get() > 0.0 )
-//          {
-//          distanceToTarget += ItT.Get();
-//          NS += 1.0;
-//          }
-//        }
-//
-//      // on the boundary or inside the target object?
-//      if( ItT.Get() <= 0.0 )
-//        {
-//        // outside the source object?
-//        if( ItS.Get() > 0.0 )
-//          {
-//          distanceToSource += ItS.Get();
-//          NT += 1.0;
-//          }
-//        }
-//      }
-//    float minDistanceSum = ( distanceToSource + distanceToTarget ) / ( NS + NT );
-//    antscout << std::setw( 17 ) << minDistanceSum;
+    std::cout << "                                       "
+              << "************ Individual Labels *************" << std::endl;
+    std::cout << std::setw( 10 ) << "Label"
+              << std::setw( 17 ) << "Target"
+              << std::setw( 17 ) << "Union (jaccard)"
+              << std::setw( 17 ) << "Mean (dice)"
+              << std::setw( 17 ) << "Volume sim."
+              << std::setw( 17 ) << "False negative"
+              << std::setw( 17 ) << "False positive"
+              << std::endl;
+    for( unsigned int i = 0; i < allLabels.size(); i++ )
+      {
+      int label = allLabels[i];
 
-    antscout << std::endl;
+      std::cout << std::setw( 10 ) << label;
+      std::cout << std::setw( 17 ) << filter->GetTargetOverlap( label );
+      std::cout << std::setw( 17 ) << filter->GetUnionOverlap( label );
+      std::cout << std::setw( 17 ) << filter->GetMeanOverlap( label );
+      std::cout << std::setw( 17 ) << filter->GetVolumeSimilarity( label );
+      std::cout << std::setw( 17 ) << filter->GetFalseNegativeError( label );
+      std::cout << std::setw( 17 ) << filter->GetFalsePositiveError( label );
+      std::cout << std::endl;
+      }
     }
 
   return EXIT_SUCCESS;
@@ -189,7 +142,7 @@ int LabelOverlapMeasures( int argc, char * argv[] )
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
 // 'main()'
-int LabelOverlapMeasures( std::vector<std::string> args, std::ostream* out_stream = NULL )
+int LabelOverlapMeasures( std::vector<std::string> args, std::ostream * /*out_stream = NULL */ )
 {
   // put the arguments coming in as 'args' into standard (argc,argv) format;
   // 'args' doesn't have the command name as first, argument, so add it manually;
@@ -231,12 +184,13 @@ private:
   };
   Cleanup_argv cleanup_argv( argv, argc + 1 );
 
-  antscout->set_stream( out_stream );
+  // antscout->set_stream( out_stream );
 
   if( argc < 4 )
     {
-    antscout << "Usage: " << argv[0] << " imageDimension sourceImage "
-             << "targetImage" << std::endl;
+    std::cout << "Usage: " << argv[0] << " imageDimension sourceImage "
+              << "targetImage [outputCSVFormat=0]" << std::endl;
+    std::cout << "   If output format should be csv-compatible, set outputCSVFormat to 1." << std::endl;
     if( argc >= 2 &&
         ( std::string( argv[1] ) == std::string("--help") || std::string( argv[1] ) == std::string("-h") ) )
       {
@@ -258,9 +212,10 @@ private:
       }
       break;
     default:
-      antscout << "Unsupported dimension" << std::endl;
+      std::cout << "Unsupported dimension" << std::endl;
       return EXIT_FAILURE;
     }
   return EXIT_SUCCESS;
 }
+
 } // namespace ants

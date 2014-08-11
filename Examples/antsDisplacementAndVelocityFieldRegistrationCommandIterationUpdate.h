@@ -33,7 +33,8 @@ public:
 
   typedef typename TFilter::OutputTransformType                          OutputTransformType;
   typedef typename TFilter::OutputTransformType::ScalarType              RealType;
-  typedef itk::ImageToImageMetricv4<FixedImageType, MovingImageType>     MetricType;
+  typedef itk::ImageToImageMetricv4
+           <FixedImageType, MovingImageType, FixedImageType, RealType>   MetricType;
   typedef typename MetricType::MeasureType                               MeasureType;
   typedef typename MetricType::VirtualImageType                          VirtualImageType;
   typedef itk::CompositeTransform<RealType, VImageDimension>             CompositeTransformType;
@@ -50,7 +51,7 @@ protected:
     const itk::RealTimeClock::TimeStampType now = m_clock.GetTotal();
     this->m_lastTotalTime = now;
     m_clock.Start();
-    this->m_LogStream = &::ants::antscout;
+    this->m_LogStream = &std::cout;
     this->m_ComputeFullScaleCCInterval = 0;
     this->m_WriteInterationsOutputsInIntervals = 0;
     this->m_CurrentStageNumber = 0;
@@ -99,7 +100,7 @@ public:
       this->m_lastTotalTime = now;
       m_clock.Start();
 
-      typedef itk::GradientDescentOptimizerv4 GradientDescentOptimizerType;
+      typedef itk::GradientDescentOptimizerv4Template<RealType> GradientDescentOptimizerType;
       GradientDescentOptimizerType * optimizer = reinterpret_cast<GradientDescentOptimizerType *>(
           const_cast<typename TFilter::OptimizerType *>( const_cast<TFilter *>( filter )->GetOptimizer() ) );
 
@@ -156,7 +157,7 @@ public:
         std::cout << " "; // if the output of current iteration is written to disk, and star
         }                 // will appear before line, else a free space will be printed to keep visual alignment.
 
-      this->Logger() << "DIAGNOSTIC, "
+      this->Logger() << "1DIAGNOSTIC, "
                      << std::setw(5) << lCurrentIteration << ", "
                      << std::scientific << std::setprecision(12) << filter->GetCurrentMetricValue() << ", "
                      << std::scientific << std::setprecision(12) << filter->GetCurrentConvergenceValue() << ", "
@@ -220,7 +221,7 @@ public:
     // This metric type is used to measure the general similarity metric between the original input fixed and moving
     // images.
     typename MetricType::Pointer metric;
-    typedef itk::ANTSNeighborhoodCorrelationImageToImageMetricv4<FixedImageType, MovingImageType> CorrelationMetricType;
+    typedef itk::ANTSNeighborhoodCorrelationImageToImageMetricv4<FixedImageType, MovingImageType, FixedImageType, MeasureType> CorrelationMetricType;
     typename CorrelationMetricType::Pointer correlationMetric = CorrelationMetricType::New();
       {
       typename CorrelationMetricType::RadiusType radius;
@@ -309,7 +310,7 @@ public:
       */
       if( filter->GetDownsampleImagesForMetricDerivatives() )
         {
-        typedef itk::ResampleImageFilter<FixedImageType, FixedImageType> FixedResamplerType;
+        typedef itk::ResampleImageFilter<FixedImageType, FixedImageType, RealType> FixedResamplerType;
         typename FixedResamplerType::Pointer fixedResampler = FixedResamplerType::New();
         fixedResampler->SetTransform( fixedComposite );
         fixedResampler->SetInput( this->m_origFixedImage );
@@ -317,7 +318,7 @@ public:
         fixedResampler->SetDefaultPixelValue( 0 );
         fixedResampler->Update();
 
-        typedef itk::ResampleImageFilter<MovingImageType, MovingImageType> MovingResamplerType;
+        typedef itk::ResampleImageFilter<MovingImageType, MovingImageType, RealType> MovingResamplerType;
         typename MovingResamplerType::Pointer movingResampler = MovingResamplerType::New();
         movingResampler->SetTransform( movingComposite );
         movingResampler->SetInput( this->m_origMovingImage );
@@ -422,7 +423,7 @@ public:
     typedef itk::LinearInterpolateImageFunction<MovingImageType, RealType> LinearInterpolatorType;
     typename LinearInterpolatorType::Pointer linearInterpolator = LinearInterpolatorType::New();
 
-    typedef itk::ResampleImageFilter<FixedImageType, MovingImageType> ResampleFilterType;
+    typedef itk::ResampleImageFilter<FixedImageType, MovingImageType, RealType> ResampleFilterType;
     typename ResampleFilterType::Pointer resampler = ResampleFilterType::New();
     resampler->SetTransform( outputCompositTransform );
     resampler->SetInput( this->m_origMovingImage );
@@ -465,9 +466,9 @@ public:
       }
     catch( itk::ExceptionObject & err )
       {
-      antscout << "Can't write warped image " << currentFileName.str().c_str() << std::endl;
-      antscout << "Exception Object caught: " << std::endl;
-      antscout << err << std::endl;
+      std::cout << "Can't write warped image " << currentFileName.str().c_str() << std::endl;
+      std::cout << "Exception Object caught: " << std::endl;
+      std::cout << err << std::endl;
       }
   }
 

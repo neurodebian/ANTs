@@ -101,7 +101,7 @@ option(USE_SYSTEM_SlicerExecutionModel "Build using an externally defined versio
 option(USE_VTK "Build tools that depend on VTK" OFF)
 CMAKE_DEPENDENT_OPTION(
      USE_SYSTEM_VTK "Build using an externally defined version of VTK" OFF
-     "USE_ITK" OFF
+     "USE_VTK" OFF
      )
 
 option(RUN_SHORT_TESTS    "Run the quick unit tests."                                   ON  )
@@ -114,7 +114,7 @@ option(OLD_BASELINE_TESTS "Use reported metrics from old tests"                 
 
 set(ITK_EXTERNAL_NAME ITKv${ITK_VERSION_MAJOR})
 
-set(${LOCAL_PROJECT_NAME}_DEPENDENCIES ${ITK_EXTERNAL_NAME} Boost )
+set(${LOCAL_PROJECT_NAME}_DEPENDENCIES ${ITK_EXTERNAL_NAME}  )
 if(USE_VTK)
   list(APPEND ${LOCAL_PROJECT_NAME}_DEPENDENCIES VTK)
 endif()
@@ -159,6 +159,7 @@ endmacro()
 # Common external projects CMake variables
 #-----------------------------------------------------------------------------
 list(APPEND ${CMAKE_PROJECT_NAME}_SUPERBUILD_EP_VARS
+  USE_VTK:BOOL
   CMAKE_BUILD_TYPE:PATH
   MAKECOMMAND:STRING
   CMAKE_SKIP_RPATH:BOOL
@@ -229,8 +230,6 @@ list(APPEND ${CMAKE_PROJECT_NAME}_SUPERBUILD_EP_VARS
   BUILD_TESTING:BOOL
   ITK_VERSION_MAJOR:STRING
   ITK_DIR:PATH
-  BOOST_INCLUDE_DIR:PATH
-  BOOST_ROOT:PATH
   RUN_SHORT_TESTS:BOOL
   RUN_LONG_TESTS:BOOL
   OLD_BASELINE_TESTS:BOOL

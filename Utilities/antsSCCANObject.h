@@ -34,7 +34,7 @@ namespace ants
 {
 template <class TInputImage, class TRealType = double>
 class antsSCCANObject :
-  public         ImageToImageFilter<TInputImage, TInputImage>
+  public ImageToImageFilter<TInputImage, TInputImage>
 {
 public:
   /** Standard class typdedefs. */
@@ -102,12 +102,13 @@ public:
   itkGetMacro( Silent, bool );
   itkSetMacro( RowSparseness, RealType );
   itkGetMacro( RowSparseness, RealType );
-  itkSetMacro( UseLongitudinalFormulation , RealType );
-  itkGetMacro( UseLongitudinalFormulation , RealType );
-  itkSetMacro( Smoother , RealType );
-  itkGetMacro( Smoother , RealType );
+  itkSetMacro( UseLongitudinalFormulation, RealType );
+  itkGetMacro( UseLongitudinalFormulation, RealType );
+  itkSetMacro( Smoother, RealType );
+  itkGetMacro( Smoother, RealType );
 
   void NormalizeWeights(const unsigned int k );
+
   void NormalizeWeightsByCovariance(const unsigned int k, const TRealType taup = 0, const TRealType tauq = 0);
 
   void WhitenDataSetForRunSCCANMultiple(unsigned int nvecs = 0);
@@ -333,6 +334,12 @@ public:
     return this->m_MatrixPriorROI;
   }
 
+  // Prior Constrained PCA
+  MatrixType GetMatrixPriorROI2()
+  {
+    return this->m_MatrixPriorROI2;
+  }
+
   void SetFlagForSort()
   {
     this->flagForSort = true;
@@ -379,11 +386,13 @@ public:
   RealType PowerIteration( MatrixType & A,  VectorType & x_k, unsigned int, bool);
 
   RealType IHTPowerIteration( MatrixType & A,  VectorType & x_k, unsigned int, unsigned int );
+  RealType IHTPowerIterationU( MatrixType & A,  VectorType & x_k, unsigned int, unsigned int );
 
   RealType IHTPowerIterationPrior( MatrixType & A,  VectorType & x_k, VectorType & x_k_1, unsigned int, unsigned int,
                                    double );
 
-  void SoftClustThreshold( VectorType& v_in, RealType fractional_goal, bool allow_negative_weights , unsigned int, ImagePointer );
+  void SoftClustThreshold( VectorType & v_in, RealType fractional_goal, bool allow_negative_weights, unsigned int,
+                           ImagePointer );
   void ReSoftThreshold( VectorType& v_in, RealType fractional_goal, bool allow_negative_weights );
 
   void ConstantProbabilityThreshold( VectorType& v_in, RealType probability_goal, bool allow_negative_weights );
@@ -391,6 +400,7 @@ public:
   VectorType InitializeV( MatrixType p, unsigned long seed = 0 );
 
   TRealType InitializeSCCA_simple( unsigned int n_vecs );
+
   TRealType InitializeSCCA( unsigned int n_vecs, unsigned int seeder );
 
   TRealType InitializeSPCA( unsigned int n_vecs, unsigned int seeder, MatrixType &, VectorType & );
@@ -443,9 +453,9 @@ public:
     bool       debug = false;
     if( debug )
       {
-      ::ants::antscout << " cov " << std::endl;   ::ants::antscout << cov << std::endl;
-      ::ants::antscout << " invcov " << std::endl;   ::ants::antscout << invcov << std::endl;
-      ::ants::antscout << " id? " << std::endl;   ::ants::antscout << cov * invcov << std::endl;
+      std::cout << " cov " << std::endl;   std::cout << cov << std::endl;
+      std::cout << " invcov " << std::endl;   std::cout << invcov << std::endl;
+      std::cout << " id? " << std::endl;   std::cout << cov * invcov << std::endl;
       }
     if( p.rows() < p.columns() )
       {
@@ -509,7 +519,7 @@ public:
 
   MatrixType PartialOutZ( MatrixType /*X*/, MatrixType /*Y*/, MatrixType /*Z*/ )
   {
-    ::ants::antscout << "ERROR:  This function not yet implemented." << std::endl;
+    std::cout << "ERROR:  This function not yet implemented." << std::endl;
     /** compute the effect of Z and store it for later use */
   }
 
@@ -520,6 +530,12 @@ public:
     this->m_OriginalMatrixPriorROI.set_size(matrix.rows(), matrix.cols() );  this->m_MatrixPriorROI.set_size(
       matrix.rows(), matrix.cols() ); this->m_OriginalMatrixPriorROI.update(matrix); this->m_MatrixPriorROI.update(
       matrix);
+  }
+
+  void SetMatrixPriorROI2(  MatrixType matrix )
+  {
+    this->m_MatrixPriorROI2.set_size( matrix.rows(), matrix.cols() );
+    this->m_MatrixPriorROI2.update( matrix);
   }
 
   // itkSetMacro( priorScale, RealType );
@@ -582,13 +598,13 @@ public:
 
   VectorType FastOuterProductVectorMultiplication( VectorType& p, VectorType& v )
   {     // computes  outer_product( p , p ) * v
-	  
-	//::ants::antscout << p.size() <<v.size() <<std::endl;  
+
+    // std::cout << p.size() <<v.size() <<std::endl;
     if( p.size() != v.size() )
       {
-      ::ants::antscout << "FastOuterProductVectorMultiplication Usage Error " << std::endl;
-		::ants::antscout <<"Size 1: " <<p.size()<<"Size 2: " <<v.size() <<std::endl;   
-		  return v;
+      std::cout << "FastOuterProductVectorMultiplication Usage Error " << std::endl;
+      std::cout << "Size 1: " << p.size() << "Size 2: " << v.size() << std::endl;
+      return v;
       }
     RealType   ip = inner_product( p, v );
     VectorType vout( p );
@@ -644,9 +660,9 @@ public:
 
   RealType SparsePartialCCA(unsigned int nvecs);
 
-  bool CCAUpdate(unsigned int nvecs, bool , bool );
+  bool CCAUpdate(unsigned int nvecs, bool, bool );
 
-  bool CCAUpdateLong(unsigned int nvecs, bool , bool );
+  bool CCAUpdateLong(unsigned int nvecs, bool, bool );
 
   RealType SparsePartialArnoldiCCA(unsigned int nvecs);
 
@@ -663,6 +679,8 @@ public:
   RealType SparseReconHome(unsigned int nvecs);
 
   RealType SparseArnoldiSVDGreedy(unsigned int nvecs);
+
+  RealType SparseArnoldiSVD_Other( MatrixType & A );
 
   RealType SparseArnoldiSVD(unsigned int nvecs);
 
@@ -735,9 +753,9 @@ protected:
 // for pscca
   void UpdatePandQbyR();
 
-  void PositivePart( VectorType& x_k1 , bool takemin = false )
+  void PositivePart( VectorType& x_k1, bool takemin = false )
   {
-    if ( takemin )
+    if( takemin )
       {
       RealType minval = x_k1.min_value();
       x_k1 = x_k1 - minval;
@@ -747,50 +765,75 @@ protected:
       {
       if( x_k1[i] < 0 )
         {
-	x_k1[i] = vnl_math_abs( x_k1[i] );
-	x_k1[i] = 0;
+        x_k1[i] = vnl_math_abs( x_k1[i] );
+        x_k1[i] = 0;
         }
       }
   }
 
-  void SparsifyOther( VectorType& x_k1  )
+  void SparsifyOther( VectorType& x_k1 , bool doclassic = false )
   {
     RealType fnp = vnl_math_abs( this->m_RowSparseness );
-    if ( fnp < 1.e-11 ) return;
-    bool usel1 = this->m_UseL1; 
+    if( fnp < 1.e-11 )
+      {
+      return;
+      }
+    if ( doclassic ) {
+    if ( this->m_RowSparseness < 0  ) 
+      {
+      if ( fnp > x_k1.max_value() ) fnp = x_k1.max_value() * 0.9;
+      for ( unsigned int i = 0; i < x_k1.size(); i++ )
+	{
+	RealType delta = vnl_math_abs( x_k1( i ) ) - fnp;
+	if ( delta < 0 ) delta = 0; else if ( x_k1( i ) < 0 ) delta *= ( -1 );
+	x_k1( i ) = delta;
+	}
+      return;
+      }
+    if ( this->m_RowSparseness > 0  ) 
+      {
+      if ( fnp > x_k1.max_value() ) fnp = x_k1.max_value() * 0.9;
+      for ( unsigned int i = 0; i < x_k1.size(); i++ )
+	{
+	RealType delta = vnl_math_abs( x_k1( i ) ) - fnp;
+	if ( delta < 0 ) delta = 0; 
+	x_k1( i ) = delta;
+	}
+      return;
+      }
+    }
+
+    bool usel1 = this->m_UseL1;
     this->m_UseL1 = true;
     bool keeppos = false;
-    if ( this->m_RowSparseness > 1.e-11 ) keeppos = true;
-    VectorType x_k1_inv( x_k1 );
-    for ( unsigned int i = 0; i < x_k1.size(); i++ )
+    if( this->m_RowSparseness > 1.e-11 )
       {
-      if (  vnl_math_abs( x_k1_inv( i ) ) > 1.e-9 ) x_k1_inv( i ) = x_k1( i ) ;
+      keeppos = true;
       }
-    this->Sparsify( x_k1_inv, fnp, keeppos , 0, NULL );
-    for ( unsigned int i = 0; i < x_k1.size(); i++ )
-      {
-      if (  vnl_math_abs( x_k1_inv( i ) ) > 1.e-9 ) x_k1( i ) = x_k1_inv( i ) ;
-      }
-    this->m_UseL1 = usel1; 
+    this->Sparsify( x_k1, fnp, keeppos, 0, NULL );
+    this->m_UseL1 = usel1;
   }
 
   void SparsifyP( VectorType& x_k1 )
   {
     RealType fnp = vnl_math_abs( this->m_FractionNonZeroP  );
-    this->Sparsify( x_k1, fnp, this->m_KeepPositiveP , this->m_MinClusterSizeP, this->m_MaskImageP);
+    this->Sparsify( x_k1, fnp, this->m_KeepPositiveP, this->m_MinClusterSizeP, this->m_MaskImageP);
   }
 
   void SparsifyQ( VectorType& x_k1 )
   {
     RealType fnp = vnl_math_abs( this->m_FractionNonZeroQ  );
-    this->Sparsify( x_k1, fnp, this->m_KeepPositiveQ , this->m_MinClusterSizeQ, this->m_MaskImageQ);
+    this->Sparsify( x_k1, fnp, this->m_KeepPositiveQ, this->m_MinClusterSizeQ, this->m_MaskImageQ);
   }
 
-  void Sparsify( VectorType& x_k1 , RealType fnp, bool keeppos, unsigned int clust, ImagePointer mask  )
+  void Sparsify( VectorType& x_k1, RealType fnp, bool keeppos, unsigned int clust, ImagePointer mask  )
   {
-    
-    if ( x_k1.size() <= 1 ) return;
-    if (  fnp >= 1 &&  keeppos )
+
+    if( x_k1.size() <= 1 )
+      {
+      return;
+      }
+    if(  fnp >= 1 &&  keeppos )
       {
       this->PositivePart( x_k1 );
       return;
@@ -802,7 +845,7 @@ protected:
     bool negate = false;
     if( x_k1.mean() <= 0 )
       {
-      negate = false;
+      negate = true;
       }
     if( negate )
       {
@@ -810,19 +853,18 @@ protected:
       }
     RealType initmax = x_k1.max_value();
     x_k1 = x_k1 / initmax;
-    RealType low  = 0;
-    RealType high = 1;
-    RealType eng = fnp;
-    RealType mid = low + 0.5 * ( high - low );
+    RealType     low  = 0;
+    RealType     high = 1;
+    RealType     eng = fnp;
+    RealType     mid = low + 0.5 * ( high - low );
     unsigned int its = 0;
-    RealType fnm = 0;
-    RealType lastfnm = 1;
-    while ( ( ( eng > 1.e-3 )  &&  
-	      ( vnl_math_abs( high - low ) > 1.e-3  )  && 
-	      ( its < 25 ) &&  
-	      ( vnl_math_abs( fnm - lastfnm ) > 1.e-8  ) )
-	     || its < 5
-	    )
+    RealType     fnm = 0;
+    RealType     lastfnm = 1;
+    while( ( ( eng > 5.e-3 )  &&
+             ( vnl_math_abs( high - low ) > this->m_Epsilon )  &&
+             ( its < 50 ) ) || 
+	     its < 5  
+	 )
       {
       mid = low + 0.5 * ( high - low );
       VectorType searcherm( x_k1 );
@@ -830,12 +872,19 @@ protected:
       searcherm = this->SpatiallySmoothVector( searcherm, mask );
       lastfnm = fnm;
       fnm = this->CountNonZero( searcherm );
-      if ( fnm > fnp ) { low = mid;  }
-      if ( fnm < fnp ) { high = mid; }
+      //      if ( mask ) std::cout <<" its " << its << " spar " << fnm << " low " << low << " mid " << mid << " high " << high << " eng " << eng << std::endl;
+      if( fnm > fnp )
+        {
+        low = mid;
+        }
+      if( fnm < fnp )
+        {
+        high = mid;
+        }
       eng = vnl_math_abs( fnp - fnm );
-      //      if ( mask ) ::ants::antscout <<" its " << its << " spar " << fnm << " initmax " << initmax << std::endl;
       its++;
       }
+
     this->SoftClustThreshold( x_k1, mid, keeppos,  clust, mask  );
     x_k1 = this->SpatiallySmoothVector( x_k1, mask );
     if( negate )
@@ -849,7 +898,7 @@ protected:
   {
     if( x_k1.size() != refvec.size() )
       {
-      ::ants::antscout << " sizes dont match " << std::endl; std::exception();
+      std::cout << " sizes dont match " << std::endl; std::exception();
       }
     for( unsigned int i = 0; i < x_k1.size(); i++ )
       {
@@ -887,7 +936,7 @@ protected:
 
     for( unsigned int i = 0; i < v.size(); i++ )
       {
-	if( vnl_math_abs( v[i] ) > this->m_Epsilon )
+      if( vnl_math_abs( v[i] ) > this->m_Epsilon )
         {
         ct++;
         }
@@ -895,10 +944,15 @@ protected:
     return (RealType)ct / (RealType)v.size();
   }
 
+  bool Close2Zero( RealType x ) 
+  {
+    if ( vnl_math_abs( x - itk::NumericTraits<RealType>::Zero ) < this->m_Epsilon ) return true;
+    return false;
+  }
+
   RealType PearsonCorr(VectorType v1, VectorType v2 )
   {
     double xysum = 0;
-
     for( unsigned int i = 0; i < v1.size(); i++ )
       {
       xysum += v1(i) * v2(i);
@@ -933,10 +987,10 @@ protected:
   MatrixType mEtoV( eMatrix m , unsigned int ncols = 0) {
     MatrixType m_out( m.data() , m.rows() , m.cols() );
     if (  m(0,1) != m_out(0,1) ) {
-      ::ants::antscout << " WARNING!! in eigen to vnl coversion for matrices " << std::endl;
-      ::ants::antscout <<" eigen " << m(0,1) << " vnl " << m_out(0,1) << std::endl;
+      std::cout << " WARNING!! in eigen to vnl coversion for matrices " << std::endl;
+      std::cout <<" eigen " << m(0,1) << " vnl " << m_out(0,1) << std::endl;
     }
-    //    ::ants::antscout <<" eigen at (0,1) " << m(0,1) << " vnl at (0,1) " << m_out(0,1) <<  " vnl at (1,0) " << m_out(1,0)  << std::endl;
+    //    std::cout <<" eigen at (0,1) " << m(0,1) << " vnl at (0,1) " << m_out(0,1) <<  " vnl at (1,0) " << m_out(1,0)  << std::endl;
     if ( ncols == 0 )
       return m_out;
     else return (m_out).get_n_columns(0,ncols);
@@ -982,15 +1036,15 @@ protected:
   {
     if( this->m_MaskImageP && this->m_MaskImageQ && this->m_MaskImageR )
       {
-      ::ants::antscout << " 3 matrices " << std::endl;
+      std::cout << " 3 matrices " << std::endl;
       }
     else if( this->m_MaskImageP && this->m_MaskImageQ  )
       {
-      ::ants::antscout << " 2 matrices " << std::endl;
+      std::cout << " 2 matrices " << std::endl;
       }
     else
       {
-      ::ants::antscout << " fewer than 2 matrices " << std::endl;
+      std::cout << " fewer than 2 matrices " << std::endl;
       }
   }
 
@@ -1014,7 +1068,7 @@ protected:
     mat_to_add_to = outmat;
   }
 
-  RealType CurvatureSparseness( VectorType& x, RealType sparsenessgoal, unsigned int maxit, ImagePointer );
+  RealType CurvatureSparseness( VectorType & x, RealType sparsenessgoal, unsigned int maxit, ImagePointer );
 
   // , MatrixType& A, VectorType& b );
 private:
@@ -1048,6 +1102,7 @@ private:
 
   // Prior constrained PCA --Refer to notation in the paper
   MatrixType m_MatrixPriorROI;
+  MatrixType m_MatrixPriorROI2;
   MatrixType m_SortedIndicesAll;
   VectorType sortedIndicesLoop;
   MatrixType m_Ip;
@@ -1079,7 +1134,7 @@ private:
   VariateType m_VariatesP;
   VariateType m_VariatesQ;
   /** solution to   X - U V */
-  MatrixType   m_MatrixU;
+  MatrixType m_MatrixU;
 
   VectorType   m_WeightsR;
   MatrixType   m_MatrixR;

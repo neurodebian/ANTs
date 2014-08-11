@@ -16,7 +16,7 @@
 #include "itkMatrixOffsetTransformBase.h"
 #include "itkTransformFactory.h"
 #include "itkTransformFileReader.h"
-#include "itkTransformToDisplacementFieldSource.h"
+#include "itkTransformToDisplacementFieldFilter.h"
 
 #include "itkBSplineInterpolateImageFunction.h"
 #include "itkLinearInterpolateImageFunction.h"
@@ -32,7 +32,7 @@ template <typename TensorImageType, typename ImageType>
 void
 CorrectImageTensorDirection( TensorImageType * movingTensorImage, ImageType * referenceImage )
 {
-  typedef typename TensorImageType::DirectionType DirectionType;
+  typedef typename TensorImageType::DirectionType    DirectionType;
   typedef typename DirectionType::InternalMatrixType MatrixType;
   MatrixType direction =
     movingTensorImage->GetDirection().GetTranspose() * referenceImage->GetDirection().GetVnlMatrix();
@@ -42,17 +42,17 @@ CorrectImageTensorDirection( TensorImageType * movingTensorImage, ImageType * re
     itk::ImageRegionIterator<TensorImageType> It( movingTensorImage, movingTensorImage->GetBufferedRegion() );
     for( It.GoToBegin(); !It.IsAtEnd(); ++It )
       {
-      typedef typename TensorImageType::PixelType TensorType;
+      typedef typename TensorImageType::PixelType                         TensorType;
       typedef typename TensorImageType::DirectionType::InternalMatrixType TensorMatrixType;
 
-      TensorType tensor = It.Get();
+      TensorType       tensor = It.Get();
       TensorMatrixType dt;
 
-      Vector2Matrix<TensorType,TensorMatrixType>(tensor,dt);
+      Vector2Matrix<TensorType, TensorMatrixType>(tensor, dt);
 
       dt = direction * dt * direction.transpose();
 
-      tensor = Matrix2Vector<TensorType,TensorMatrixType>(dt);
+      tensor = Matrix2Vector<TensorType, TensorMatrixType>(dt);
 
       It.Set( tensor );
       }
@@ -100,7 +100,7 @@ CorrectImageVectorDirection( DisplacementFieldType * movingVectorImage, ImageTyp
 template <unsigned int NDim>
 unsigned int numTensorElements()
 {
-  return NDim + numTensorElements<NDim-1>();
+  return NDim + numTensorElements<NDim - 1>();
 }
 
 template <>
@@ -109,11 +109,11 @@ unsigned int numTensorElements<0>()
   return 0;
 }
 
-template <unsigned int Dimension>
+template <class T, unsigned int Dimension>
 int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigned int inputImageType = 0 )
 {
-  typedef double                           RealType;
-  typedef double                           PixelType;
+  typedef T                                RealType;
+  typedef T                                PixelType;
   typedef itk::Vector<RealType, Dimension> VectorType;
 
   // typedef unsigned int                     LabelPixelType;
@@ -123,6 +123,11 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
   typedef itk::Image<PixelType, Dimension + 1> TimeSeriesImageType;
   typedef itk::Image<VectorType, Dimension>    DisplacementFieldType;
   typedef ImageType                            ReferenceImageType;
+
+  typedef typename ants::RegistrationHelper<T, Dimension>         RegistrationHelperType;
+  typedef typename RegistrationHelperType::AffineTransformType    AffineTransformType;
+  typedef typename RegistrationHelperType::CompositeTransformType CompositeTransformType;
+  typedef typename CompositeTransformType::TransformType          TransformType;
 
   typedef itk::SymmetricSecondRankTensor<RealType, Dimension> TensorPixelType;
   typedef itk::Image<TensorPixelType, Dimension>              TensorImageType;
@@ -147,24 +152,24 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
 
   if( inputImageType == 3 && inputOption && inputOption->GetNumberOfFunctions() )
     {
-    antscout << "Input time-series image: " << inputOption->GetFunction( 0 )->GetName() << std::endl;
+    std::cout << "Input time-series image: " << inputOption->GetFunction( 0 )->GetName() << std::endl;
     ReadImage<TimeSeriesImageType>( timeSeriesImage, ( inputOption->GetFunction( 0 )->GetName() ).c_str() );
     }
   else if( inputImageType == 2 && inputOption && inputOption->GetNumberOfFunctions() )
     {
-    antscout << "Input tensor image: " << inputOption->GetFunction( 0 )->GetName() << std::endl;
-    ReadTensorImage<TensorImageType>( tensorImage, ( inputOption->GetFunction( 0 )->GetName() ).c_str(), true );
+    std::cout << "Input tensor image: " << inputOption->GetFunction( 0 )->GetName() << std::endl;
+    ReadTensorImage<TensorImageType>( tensorImage, ( inputOption->GetFunction( 0 )->GetName() ).c_str(), false );
     }
   else if( inputImageType == 0 && inputOption && inputOption->GetNumberOfFunctions() )
     {
-    antscout << "Input scalar image: " << inputOption->GetFunction( 0 )->GetName() << std::endl;
+    std::cout << "Input scalar image: " << inputOption->GetFunction( 0 )->GetName() << std::endl;
     typename ImageType::Pointer image;
     ReadImage<ImageType>( image, ( inputOption->GetFunction( 0 )->GetName() ).c_str()  );
     inputImages.push_back( image );
     }
   else if( inputImageType == 1 && inputOption && inputOption->GetNumberOfFunctions() )
     {
-    antscout << "Input vector image: " << inputOption->GetFunction( 0 )->GetName() << std::endl;
+    std::cout << "Input vector image: " << inputOption->GetFunction( 0 )->GetName() << std::endl;
 
     typedef itk::ImageFileReader<DisplacementFieldType> ReaderType;
     typename ReaderType::Pointer reader = ReaderType::New();
@@ -187,7 +192,7 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
     if( outputOption->GetFunction( 0 )->GetNumberOfParameters() > 1 &&
         parser->Convert<unsigned int>( outputOption->GetFunction( 0 )->GetParameter( 1 ) ) == 0 )
       {
-      antscout << "An input image is required." << std::endl;
+      std::cerr << "An input image is required." << std::endl;
       return EXIT_FAILURE;
       }
     }
@@ -195,19 +200,31 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
   /**
    * Reference image option
    */
+  bool needReferenceImage = true;
+  if( outputOption && outputOption->GetNumberOfFunctions() )
+    {
+    std::string outputOptionName = outputOption->GetFunction( 0 )->GetName();
+    ConvertToLowerCase( outputOptionName );
+    if( !std::strcmp( outputOptionName.c_str(), "linear" ) )
+      {
+      needReferenceImage = false;
+      }
+    }
+
   typedef ImageType ReferenceImageType;
   typename ReferenceImageType::Pointer referenceImage;
 
   typename itk::ants::CommandLineParser::OptionType::Pointer referenceOption =
     parser->GetOption( "reference-image" );
+
   if( referenceOption && referenceOption->GetNumberOfFunctions() )
     {
-    antscout << "Reference image: " << referenceOption->GetFunction( 0 )->GetName() << std::endl;
+    std::cout << "Reference image: " << referenceOption->GetFunction( 0 )->GetName() << std::endl;
     ReadImage<ReferenceImageType>( referenceImage,  ( referenceOption->GetFunction( 0 )->GetName() ).c_str() );
     }
-  else
+  else if( needReferenceImage == true )
     {
-    antscout << "Error:  No reference image specified." << std::endl;
+    std::cerr << "A reference image is required." << std::endl;
     return EXIT_FAILURE;
     }
 
@@ -268,10 +285,7 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
   // transform factory for compatibility with the current ANTs.
   typedef itk::MatrixOffsetTransformBase<RealType, Dimension, Dimension> MatrixOffsetTransformType;
   itk::TransformFactory<MatrixOffsetTransformType>::RegisterTransform();
-  typedef itk::MatrixOffsetTransformBase<RealType, Dimension, Dimension> MatrixOffsetTransformType;
-  itk::TransformFactory<MatrixOffsetTransformType>::RegisterTransform();
 
-  typedef itk::CompositeTransform<RealType, Dimension> CompositeTransformType;
   typename itk::ants::CommandLineParser::OptionType::Pointer transformOption = parser->GetOption( "transform" );
 
   bool useStaticCastForR = false;
@@ -284,7 +298,8 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
 
   std::vector<bool> isDerivedTransform;
   typename CompositeTransformType::Pointer compositeTransform =
-    GetCompositeTransformFromParserOption<Dimension>( parser, transformOption, isDerivedTransform, useStaticCastForR );
+    GetCompositeTransformFromParserOption<RealType, Dimension>( parser, transformOption, isDerivedTransform,
+                                                                useStaticCastForR );
   if( compositeTransform.IsNull() )
     {
     return EXIT_FAILURE;
@@ -292,7 +307,7 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
 
   if( !compositeTransform->GetNumberOfParameters() )
     {
-    antscout << "WARNING: No transforms found, using identify transform" << std::endl;
+    std::cout << "WARNING: No transforms found, using identify transform" << std::endl;
     typename MatrixOffsetTransformType::Pointer idTransform = MatrixOffsetTransformType::New();
     idTransform->SetIdentity();
     compositeTransform->AddTransform( idTransform );
@@ -328,7 +343,7 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
     {
     defaultValue = parser->Convert<PixelType>( defaultOption->GetFunction( 0 )->GetName() );
     }
-  antscout << "Default pixel value: " << defaultValue << std::endl;
+  std::cout << "Default pixel value: " << defaultValue << std::endl;
   for( unsigned int n = 0; n < inputImages.size(); n++ )
     {
     typedef itk::ResampleImageFilter<ImageType, ImageType, RealType> ResamplerType;
@@ -342,11 +357,12 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
     resampleFilter->SetInterpolator( interpolator );
     if( n == 0 )
       {
-      antscout << "Interpolation type: " << resampleFilter->GetInterpolator()->GetNameOfClass() << std::endl;
+      std::cout << "Interpolation type: " << resampleFilter->GetInterpolator()->GetNameOfClass() << std::endl;
       }
     if( inputImageType == 3 )
       {
-      antscout << "  Applying transform(s) to time point " << n << " (out of " << inputImages.size() << ")." << std::endl;
+      std::cout << "  Applying transform(s) to time point " << n << " (out of " << inputImages.size() << ")."
+                << std::endl;
       }
     resampleFilter->Update();
     outputImages.push_back( resampleFilter->GetOutput() );
@@ -357,16 +373,56 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
    */
   if( outputOption && outputOption->GetNumberOfFunctions() )
     {
-    if( outputOption->GetFunction( 0 )->GetNumberOfParameters() > 1 &&
-        parser->Convert<unsigned int>( outputOption->GetFunction( 0 )->GetParameter( 1 ) ) != 0 )
+    std::string outputOptionName = outputOption->GetFunction( 0 )->GetName();
+    ConvertToLowerCase( outputOptionName );
+    if( !std::strcmp( outputOptionName.c_str(), "linear" ) )
       {
-      antscout << "Output composite transform displacement field: "
-               << outputOption->GetFunction( 0 )->GetParameter( 0 ) << std::endl;
+      if( !compositeTransform->IsLinear() )
+        {
+        std::cerr << "The transform or set of transforms is not linear." << std::endl;
+        return EXIT_FAILURE;
+        }
+      else
+        {
+        typename RegistrationHelperType::Pointer helper = RegistrationHelperType::New();
 
-      typedef typename itk::TransformToDisplacementFieldSource<DisplacementFieldType, RealType> ConverterType;
+        typename AffineTransformType::Pointer transform = helper->CollapseLinearTransforms( compositeTransform );
+
+        typedef itk::TransformFileWriterTemplate<T> TransformWriterType;
+        typename TransformWriterType::Pointer transformWriter = TransformWriterType::New();
+        transformWriter->SetFileName( ( outputOption->GetFunction( 0 )->GetParameter( 0 ) ).c_str() );
+
+        if( outputOption->GetFunction( 0 )->GetNumberOfParameters() > 1 &&
+            parser->Convert<unsigned int>( outputOption->GetFunction( 0 )->GetParameter( 1 ) ) != 0 )
+          {
+          typename AffineTransformType::Pointer inverseTransform = AffineTransformType::New();
+          inverseTransform->SetMatrix(
+            dynamic_cast<MatrixOffsetTransformType *>( transform->GetInverseTransform().GetPointer() )->GetMatrix() );
+          inverseTransform->SetOffset( -( inverseTransform->GetMatrix() * transform->GetOffset() ) );
+          transformWriter->SetInput( inverseTransform );
+          }
+        else
+          {
+          transformWriter->SetInput( transform );
+          }
+        transformWriter->Update();
+        }
+      }
+    else if( outputOption->GetFunction( 0 )->GetNumberOfParameters() > 1 &&
+             parser->Convert<unsigned int>( outputOption->GetFunction( 0 )->GetParameter( 1 ) ) != 0 )
+      {
+      std::cout << "Output composite transform displacement field: "
+                << outputOption->GetFunction( 0 )->GetParameter( 0 ) << std::endl;
+
+      typedef typename itk::TransformToDisplacementFieldFilter<DisplacementFieldType, RealType> ConverterType;
       typename ConverterType::Pointer converter = ConverterType::New();
-      converter->SetOutputParametersFromImage( referenceImage );
+      converter->SetOutputOrigin( referenceImage->GetOrigin() );
+      converter->SetOutputStartIndex( referenceImage->GetBufferedRegion().GetIndex() );
+      converter->SetSize( referenceImage->GetBufferedRegion().GetSize() );
+      converter->SetOutputSpacing( referenceImage->GetSpacing() );
+      converter->SetOutputDirection( referenceImage->GetDirection() );
       converter->SetTransform( compositeTransform );
+      converter->Update();
 
       typedef  itk::ImageFileWriter<DisplacementFieldType> DisplacementFieldWriterType;
       typename DisplacementFieldWriterType::Pointer displacementFieldWriter = DisplacementFieldWriterType::New();
@@ -386,13 +442,13 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
         {
         outputFileName = outputOption->GetFunction( 0 )->GetName();
         }
-      antscout << "Output warped image: " << outputFileName << std::endl;
+      std::cout << "Output warped image: " << outputFileName << std::endl;
 
       if( inputImageType == 1 )
         {
         if( outputImages.size() != Dimension )
           {
-          antscout << "The number of output images does not match the number of vector components." << std::endl;
+          std::cerr << "The number of output images does not match the number of vector components." << std::endl;
           return EXIT_FAILURE;
           }
 
@@ -426,7 +482,7 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
         {
         if( outputImages.size() != NumberOfTensorElements )
           {
-          antscout << "The number of output images does not match the number of tensor elements." << std::endl;
+          std::cerr << "The number of output images does not match the number of tensor elements." << std::endl;
           return EXIT_FAILURE;
           }
 
@@ -450,7 +506,7 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
             }
           It.Set( tensor );
           }
-        WriteTensorImage<TensorImageType>( outputTensorImage, ( outputFileName ).c_str(), true );
+        WriteTensorImage<TensorImageType>( outputTensorImage, ( outputFileName ).c_str(), false );
         }
       else if( inputImageType == 3 )
         {
@@ -458,7 +514,7 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
 
         if( outputImages.size() != numberOfTimePoints )
           {
-          antscout << "The number of output images does not match the number of image time points." << std::endl;
+          std::cerr << "The number of output images does not match the number of image time points." << std::endl;
           return EXIT_FAILURE;
           }
 
@@ -515,13 +571,13 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
           }
         catch( itk::ExceptionObject & err )
           {
-          std::cout << "Caught an ITK exception: " << std::endl;
-          std::cout << err << " " << __FILE__ << " " << __LINE__ << std::endl;
-          throw & err;
+          std::cerr << "Caught an ITK exception: " << std::endl;
+          std::cerr << err << " " << __FILE__ << " " << __LINE__ << std::endl;
+          throw &err;
           }
         catch( ... )
           {
-          std::cout << "Error while writing in image: " << outputFileName << std::endl;
+          std::cerr << "Error while writing in image: " << outputFileName << std::endl;
           throw;
           }
         }
@@ -531,7 +587,7 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
   return EXIT_SUCCESS;
 }
 
-static void InitializeCommandLineOptions( itk::ants::CommandLineParser *parser )
+static void antsApplyTransformsInitializeCommandLineOptions( itk::ants::CommandLineParser *parser )
 {
   typedef itk::ants::CommandLineParser::OptionType OptionType;
 
@@ -595,14 +651,17 @@ static void InitializeCommandLineOptions( itk::ants::CommandLineParser *parser )
     {
     std::string description =
       std::string( "One can either output the warped image or, if the boolean " )
-      + std::string( "is set, one can print out the displacement field based on the" )
-      + std::string( "composite transform and the reference image." );
+      + std::string( "is set, one can print out the displacement field based on the " )
+      + std::string( "composite transform and the reference image.  A third option " )
+      + std::string( "is to compose all affine transforms and (if boolean is set) " )
+      + std::string( "calculate its inverse which is then written to an ITK file ");
 
     OptionType::Pointer option = OptionType::New();
     option->SetLongName( "output" );
     option->SetShortName( 'o' );
     option->SetUsageOption( 0, "warpedOutputFileName" );
-    option->SetUsageOption( 1, "[compositeDisplacementField,<printOutCompositeWarpFile=0>]" );
+    option->SetUsageOption( 1, "[warpedOutputFileName or compositeDisplacementField,<printOutCompositeWarpFile=0>]" );
+    option->SetUsageOption( 2, "Linear[genericAffineTransformFile,<calculateInverse=0>]" );
     option->SetDescription( description );
     parser->AddOption( option );
     }
@@ -671,7 +730,7 @@ static void InitializeCommandLineOptions( itk::ants::CommandLineParser *parser )
     }
 
     {
-    std::string description = std::string( "forces static cast in ReadTransform (for R)" );
+    std::string         description = std::string( "forces static cast in ReadTransform (for R)" );
     OptionType::Pointer option = OptionType::New();
     option->SetShortName( 'z' );
     option->SetDescription( description );
@@ -682,12 +741,21 @@ static void InitializeCommandLineOptions( itk::ants::CommandLineParser *parser )
     }
 
     {
+    std::string description = std::string( "Use 'float' instead of 'double' for computations." );
+
+    OptionType::Pointer option = OptionType::New();
+    option->SetLongName( "float" );
+    option->SetDescription( description );
+    option->AddFunction( std::string( "0" ) );
+    parser->AddOption( option );
+    }
+
+    {
     std::string description = std::string( "Print the help menu (short version)." );
 
     OptionType::Pointer option = OptionType::New();
     option->SetShortName( 'h' );
     option->SetDescription( description );
-    option->AddFunction( std::string( "0" ) );
     parser->AddOption( option );
     }
 
@@ -697,14 +765,13 @@ static void InitializeCommandLineOptions( itk::ants::CommandLineParser *parser )
     OptionType::Pointer option = OptionType::New();
     option->SetLongName( "help" );
     option->SetDescription( description );
-    option->AddFunction( std::string( "0" ) );
     parser->AddOption( option );
     }
 }
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
 // 'main()'
-int antsApplyTransforms( std::vector<std::string> args, std::ostream* out_stream = NULL )
+int antsApplyTransforms( std::vector<std::string> args, std::ostream * /*out_stream = NULL */ )
 {
   // put the arguments coming in as 'args' into standard (argc,argv) format;
   // 'args' doesn't have the command name as first, argument, so add it manually;
@@ -745,7 +812,7 @@ private:
   };
   Cleanup_argv cleanup_argv( argv, argc + 1 );
 
-  antscout->set_stream( out_stream );
+  // antscout->set_stream( out_stream );
 
   itk::ants::CommandLineParser::Pointer parser = itk::ants::CommandLineParser::New();
 
@@ -757,32 +824,31 @@ private:
     + std::string( "(or a set of transforms)." );
 
   parser->SetCommandDescription( commandDescription );
-  InitializeCommandLineOptions( parser );
+  antsApplyTransformsInitializeCommandLineOptions( parser );
 
   parser->Parse( argc, argv );
 
-  if( argc < 2 || ( parser->GetOption( "help" ) &&
-                    ( parser->Convert<bool>( parser->GetOption( "help" )->GetFunction()->GetName() ) ) ) )
+  if( argc == 1 )
     {
-    parser->PrintMenu( antscout, 5, false );
-    if( argc < 2 )
-      {
-      return EXIT_FAILURE;
-      }
+    parser->PrintMenu( std::cout, 5, false );
+    return EXIT_FAILURE;
+    }
+  else if( parser->GetOption( "help" )->GetFunction() && parser->Convert<bool>( parser->GetOption( "help" )->GetFunction()->GetName() ) )
+    {
+    parser->PrintMenu( std::cout, 5, false );
     return EXIT_SUCCESS;
     }
-  else if( parser->GetOption( 'h' ) &&
-           ( parser->Convert<bool>( parser->GetOption( 'h' )->GetFunction()->GetName() ) ) )
+  else if( parser->GetOption( 'h' )->GetFunction() && parser->Convert<bool>( parser->GetOption( 'h' )->GetFunction()->GetName() ) )
     {
-    parser->PrintMenu( antscout, 5, true );
+    parser->PrintMenu( std::cout, 5, true );
     return EXIT_SUCCESS;
     }
 
 #if 0 // HACK This makes no sense here, filename is never used.
-  //Perhaps the "input" option is not needed in this program
-  //but is a copy/paste error from another program.
+  // Perhaps the "input" option is not needed in this program
+  // but is a copy/paste error from another program.
   // Read in the first intensity image to get the image dimension.
-  std::string filename;
+  std::string                                       filename;
   itk::ants::CommandLineParser::OptionType::Pointer inputOption =
     parser->GetOption( "reference-image" );
   if( inputOption && inputOption->GetNumberOfFunctions() )
@@ -798,7 +864,7 @@ private:
     }
   else
     {
-    antscout << "No reference image was specified." << std::endl;
+    std::cerr << "No reference image was specified." << std::endl;
     return EXIT_FAILURE;
     }
 #endif
@@ -824,6 +890,23 @@ private:
   if( dimOption && dimOption->GetNumberOfFunctions() )
     {
     dimension = parser->Convert<unsigned int>( dimOption->GetFunction( 0 )->GetName() );
+    }
+
+  bool useDoublePrecision = true;
+
+  std::string         precisionType;
+  OptionType::Pointer typeOption = parser->GetOption( "float" );
+  if( typeOption && parser->Convert<bool>( typeOption->GetFunction( 0 )->GetName() ) )
+    {
+    std::cout << "Using single precision for computations." << std::endl;
+    precisionType = "float";
+    useDoublePrecision = false;
+    }
+  else
+    {
+    std::cout << "Using double precision for computations." << std::endl;
+    precisionType = "double";
+    useDoublePrecision = true;
     }
 
   enum InputImageType
@@ -856,7 +939,7 @@ private:
       }
     else
       {
-      antscout << "Unrecognized input image type (cf --input-image-type option)." << std::endl;
+      std::cerr << "Unrecognized input image type (cf --input-image-type option)." << std::endl;
       return EXIT_FAILURE;
       }
     }
@@ -867,40 +950,62 @@ private:
       {
       if( imageType == TENSOR )
         {
-        antscout << "antsApplyTransforms is not implemented for 2-D tensor images." << std::endl;
+        std::cerr << "antsApplyTransforms is not implemented for 2-D tensor images." << std::endl;
         return EXIT_FAILURE;
         }
       else
         {
-        antsApplyTransforms<2>( parser, imageType );
+        if( useDoublePrecision )
+          {
+          antsApplyTransforms<double, 2>( parser, imageType );
+          }
+        else
+          {
+          antsApplyTransforms<float, 2>( parser, imageType );
+          }
         }
       }
       break;
     case 3:
       {
-      antsApplyTransforms<3>( parser, imageType );
+      if( useDoublePrecision )
+        {
+        antsApplyTransforms<double, 3>( parser, imageType );
+        }
+      else
+        {
+        antsApplyTransforms<float, 3>( parser, imageType );
+        }
       }
       break;
     case 4:
       {
       if( imageType == TENSOR )
         {
-        antscout << "antsApplyTransforms is not implemented for 4-D tensor images." << std::endl;
+        std::cerr << "antsApplyTransforms is not implemented for 4-D tensor images." << std::endl;
         }
       else if( imageType == TIME_SERIES )
         {
-        antscout << "antsApplyTransforms is not implemented for 4-D + time images." << std::endl;
+        std::cerr << "antsApplyTransforms is not implemented for 4-D + time images." << std::endl;
         }
       else
         {
-        antsApplyTransforms<4>( parser, imageType );
+        if( useDoublePrecision )
+          {
+          antsApplyTransforms<double, 4>( parser, imageType );
+          }
+        else
+          {
+          antsApplyTransforms<float, 4>( parser, imageType );
+          }
         }
       }
       break;
     default:
-      antscout << "Unsupported dimension" << std::endl;
+      std::cerr << "Unsupported dimension" << std::endl;
       return EXIT_FAILURE;
     }
   return EXIT_SUCCESS;
 }
+
 } // namespace ants

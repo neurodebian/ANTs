@@ -6,7 +6,7 @@ namespace ants
 /** \class antsRegistrationOptimizerCommandIterationUpdate
  *  \brief observe the optimizer for traditional registration methods
  */
-template <unsigned VImageDimension, class TOptimizer>
+template <class ParametersValueType, unsigned VImageDimension, class TOptimizer>
 class antsRegistrationOptimizerCommandIterationUpdate : public itk::Command
 {
 public:
@@ -15,11 +15,14 @@ public:
   typedef itk::SmartPointer<Self>                         Pointer;
   itkNewMacro( Self );
 
-  typedef typename itk::Image<double, VImageDimension>     ImageType;
-  typedef itk::ImageToImageMetricv4<ImageType, ImageType>  MetricType;
-  typedef typename MetricType::MeasureType                 MeasureType;
-  typedef itk::CompositeTransform<double, VImageDimension> CompositeTransformType;
-  typedef typename CompositeTransformType::TransformType   TransformBaseType;
+  typedef ParametersValueType     RealType;
+  typedef ParametersValueType     PixelType;
+  typedef typename itk::Image<PixelType, VImageDimension>              ImageType;
+  typedef itk::ImageToImageMetricv4
+                <ImageType, ImageType, ImageType, RealType>            MetricType;
+  typedef typename MetricType::MeasureType                             MeasureType;
+  typedef itk::CompositeTransform<RealType, VImageDimension>           CompositeTransformType;
+  typedef typename CompositeTransformType::TransformType               TransformBaseType;
 protected:
   antsRegistrationOptimizerCommandIterationUpdate()
   {
@@ -28,7 +31,7 @@ protected:
     const itk::RealTimeClock::TimeStampType now = m_clock.GetTotal();
     this->m_lastTotalTime = now;
     m_clock.Start();
-    this->m_LogStream = &::ants::antscout;
+    this->m_LogStream = &std::cout;
     this->m_origFixedImage = ImageType::New();
     this->m_origMovingImage = ImageType::New();
     this->m_ComputeFullScaleCCInterval = 0;
@@ -79,7 +82,7 @@ public:
       this->m_lastTotalTime = now;
       m_clock.Start();
 
-      typedef itk::GradientDescentOptimizerv4 GradientDescentOptimizerType;
+      typedef itk::GradientDescentOptimizerv4<ParametersValueType> GradientDescentOptimizerType;
       GradientDescentOptimizerType * optimizer = reinterpret_cast<GradientDescentOptimizerType *>(
           const_cast<typename TOptimizer::OptimizerType *>( const_cast<TOptimizer *>( this->m_Optimizer )->GetOptimizer() ) );
 
@@ -136,7 +139,7 @@ public:
         std::cout << " "; // if the output of current iteration is written to disk, and star
         }                 // will appear before line, else a free space will be printed to keep visual alignment.
 
-      this->Logger() << "DIAGNOSTIC, "
+      this->Logger() << "2DIAGNOSTIC, "
                      << std::setw(5) << lCurrentIteration << ", "
                      << std::scientific << std::setprecision(12) << this->m_Optimizer->GetValue() << ", "
                      << std::scientific << std::setprecision(12) << this->m_Optimizer->GetConvergenceValue() << ", "
@@ -211,7 +214,7 @@ public:
     // Define the CC metric type
     // This metric type is used to measure the general similarity metric between the original input fixed and moving
     // images.
-    typedef itk::ANTSNeighborhoodCorrelationImageToImageMetricv4<ImageType, ImageType> CorrelationMetricType;
+    typedef itk::ANTSNeighborhoodCorrelationImageToImageMetricv4<ImageType, ImageType, ImageType, MeasureType> CorrelationMetricType;
     typename CorrelationMetricType::Pointer correlationMetric = CorrelationMetricType::New();
       {
       typename CorrelationMetricType::RadiusType radius;
@@ -260,7 +263,7 @@ public:
       }
     else if( strcmp( inputMetric->GetFixedTransform()->GetNameOfClass(), "IdentityTransform" ) == 0 )
       {
-      typedef typename itk::IdentityTransform<double, VImageDimension> IdentityTransformType;
+      typedef typename itk::IdentityTransform<RealType, VImageDimension>    IdentityTransformType;
       typename IdentityTransformType::Pointer myFixedTransform = IdentityTransformType::New();
       fixedTransform = myFixedTransform;
       }
@@ -326,10 +329,10 @@ public:
     movingTransform->SetOnlyMostRecentTransformToOptimizeOn();
 
     // Now we apply this output transform to get warped image
-    typedef itk::LinearInterpolateImageFunction<ImageType, double> LinearInterpolatorType;
+    typedef itk::LinearInterpolateImageFunction<ImageType, RealType> LinearInterpolatorType;
     typename LinearInterpolatorType::Pointer linearInterpolator = LinearInterpolatorType::New();
 
-    typedef itk::ResampleImageFilter<ImageType, ImageType> ResampleFilterType;
+    typedef itk::ResampleImageFilter<ImageType, ImageType, RealType> ResampleFilterType;
     typename ResampleFilterType::Pointer resampler = ResampleFilterType::New();
     resampler->SetTransform( movingTransform );
     resampler->SetInput( this->m_origMovingImage );
@@ -376,9 +379,9 @@ public:
       }
     catch( itk::ExceptionObject & err )
       {
-      antscout << "Can't write warped image " << currentFileName.str().c_str() << std::endl;
-      antscout << "Exception Object caught: " << std::endl;
-      antscout << err << std::endl;
+      std::cout << "Can't write warped image " << currentFileName.str().c_str() << std::endl;
+      std::cout << "Exception Object caught: " << std::endl;
+      std::cout << err << std::endl;
       }
   }
 

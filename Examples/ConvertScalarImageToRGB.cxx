@@ -186,7 +186,7 @@ int ConvertScalarImageToRGB( int argc, char *argv[] )
 
       colormap->SetBlueChannel( channel );
       }
-//    rgbfilter->SetColormap( colormap );
+    rgbfilter->SetColormap( colormap );
     }
 
   if( maskImage )
@@ -295,7 +295,7 @@ int ConvertScalarImageToRGB( int argc, char *argv[] )
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
 // 'main()'
-int ConvertScalarImageToRGB( std::vector<std::string> args, std::ostream* out_stream = NULL )
+int ConvertScalarImageToRGB( std::vector<std::string> args, std::ostream* /*out_stream = NULL */ )
 {
   // put the arguments coming in as 'args' into standard (argc,argv) format;
   // 'args' doesn't have the command name as first, argument, so add it manually;
@@ -336,15 +336,15 @@ private:
   };
   Cleanup_argv cleanup_argv( argv, argc + 1 );
 
-  antscout->set_stream( out_stream );
+  // antscout->set_stream( out_stream );
 
   if( argc < 6 )
     {
-    antscout << "Usage: " << argv[0] << " imageDimension inputImage outputImage "
+    std::cout << "Usage: " << argv[0] << " imageDimension inputImage outputImage "
              << "mask colormap [customColormapFile] [minimumInput] [maximumInput] "
              << "[minimumRGBOutput] [maximumRGBOutput]" << std::endl;
-    antscout << "  Possible colormaps: grey, red, green, blue, copper, jet, hsv, ";
-    antscout << "spring, summer, autumn, winter, hot, cool, overunder, custom" << std::endl;
+    std::cout << "  Possible colormaps: grey, red, green, blue, copper, jet, hsv, ";
+    std::cout << "spring, summer, autumn, winter, hot, cool, overunder, custom" << std::endl;
     if( argc >= 2 &&
         ( std::string( argv[1] ) == std::string("--help") || std::string( argv[1] ) == std::string("-h") ) )
       {
@@ -366,7 +366,7 @@ private:
       }
       break;
     default:
-      antscout << "Unsupported dimension" << std::endl;
+      std::cout << "Unsupported dimension" << std::endl;
       return EXIT_FAILURE;
     }
   return EXIT_SUCCESS;

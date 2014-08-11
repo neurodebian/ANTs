@@ -4,21 +4,13 @@ include(${CMAKE_CURRENT_LIST_DIR}/Common.cmake)
 configure_file(${CMAKE_CURRENT_LIST_DIR}/CTestCustom.cmake
   ${CMAKE_CURRENT_BINARY_DIR}/CTestCustom.cmake COPYONLY)
 
-set(BUILDSCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/BuildScripts)
 set(CMAKE_MODULE_PATH
-    ${BUILDSCRIPTS_DIR}
     ${${PROJECT_NAME}_SOURCE_DIR}/CMake
     ${${PROJECT_NAME}_BINARY_DIR}/CMake
     ${CMAKE_MODULE_PATH}
     )
 
 set (CMAKE_INCLUDE_DIRECTORIES_BEFORE ON)
-
-# Set up ITK
-find_package(Boost REQUIRED)
-if(Boost_FOUND)
-  include_directories(${Boost_INCLUDE_DIRS})
-endif()
 
 # Set up ITK
 find_package(ITK 4 REQUIRED)

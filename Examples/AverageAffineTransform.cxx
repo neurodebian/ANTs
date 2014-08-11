@@ -47,10 +47,10 @@ static bool AverageAffineTransform_ParseInput(int argc, char * *argv, char *& ou
       opt.filename = argv[ind];
       if( CheckFileType(opt.filename) != AFFINE_FILE )
         {
-        antscout << "file: " << opt.filename
+        std::cerr << "file: " << opt.filename
                  << " is not an affine .txt file. Invalid to use '-i' "
                  << std::endl;
-        return false;
+        return EXIT_FAILURE;
         }
       opt.file_type = AFFINE_FILE;
       opt.do_affine_inv = true;
@@ -73,9 +73,9 @@ static bool AverageAffineTransform_ParseInput(int argc, char * *argv, char *& ou
       opt.filename = argv[ind];
       if( CheckFileType(opt.filename) != AFFINE_FILE )
         {
-        antscout << "file: " << opt.filename
+        std::cerr << "file: " << opt.filename
                  << " is not an affine .txt file." << std::endl;
-        return false;
+        return EXIT_FAILURE;
         }
       opt.file_type = CheckFileType(opt.filename);
       opt.do_affine_inv = false;
@@ -97,7 +97,7 @@ static bool AverageAffineTransform_ParseInput(int argc, char * *argv, char *& ou
     }
 
 //    if (reference_image_filename == NULL) {
-//        antscout << "the reference image file (-R) must be given!!!"
+//        std::cout << "the reference image file (-R) must be given!!!"
 //        << std::endl;
 //        return false;
 //    }
@@ -160,7 +160,7 @@ void AverageAffineTransform(char *output_affine_txt, char *reference_affine_txt,
           {
           aff->GetInverse(aff);
           }
-        // antscout << aff << std::endl;
+        // std::cout << aff << std::endl;
 
         double weight = opt.weight;
         average_func.PushBackAffineTransform(aff, weight);
@@ -169,12 +169,13 @@ void AverageAffineTransform(char *output_affine_txt, char *reference_affine_txt,
         }
       case DEFORMATION_FILE:
         {
-        antscout << "Average affine only files: ignore " << opt.filename
+        std::cout << "Average affine only files: ignore " << opt.filename
                  << std::endl;
         }
         break;
       default:
-        antscout << "Unknown file type!" << std::endl;
+        std::cerr << "Unknown file type!" << std::endl;
+
       }
     }
 
@@ -194,18 +195,18 @@ void AverageAffineTransform(char *output_affine_txt, char *reference_affine_txt,
     {
     if( cnt_affine > 0 )
       {
-      antscout << "the reference affine file for center is selected as the first affine!" << std::endl;
+      std::cout << "the reference affine file for center is selected as the first affine!" << std::endl;
       aff_ref_tmp = average_func.GetTransformList().begin()->aff;
       }
     else
       {
-      antscout << "No affine input is given. nothing to do ......" << std::endl;
+      std::cerr << "No affine input is given. nothing to do ......" << std::endl;
       return;
       }
     }
 
   aff_center = aff_ref_tmp->GetCenter();
-  antscout << "new center is : " << aff_center << std::endl;
+  std::cout << "new center is : " << aff_center << std::endl;
 
   // warper->PrintTransformList();
 
@@ -220,12 +221,12 @@ void AverageAffineTransform(char *output_affine_txt, char *reference_affine_txt,
   tran_writer->SetInput(aff_output);
   tran_writer->Update();
 
-  antscout << "wrote file to : " << output_affine_txt << std::endl;
+  std::cout << "wrote file to : " << output_affine_txt << std::endl;
 }
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
 // 'main()'
-int AverageAffineTransform( std::vector<std::string> args, std::ostream* out_stream = NULL )
+int AverageAffineTransform( std::vector<std::string> args, std::ostream* /*out_stream = NULL */)
 {
   // put the arguments coming in as 'args' into standard (argc,argv) format;
   // 'args' doesn't have the command name as first, argument, so add it manually;
@@ -266,11 +267,11 @@ private:
   };
   Cleanup_argv cleanup_argv( argv, argc + 1 );
 
-  antscout->set_stream( out_stream );
+  // antscout->set_stream( out_stream );
 
   if( argc <= 3 )
     {
-    antscout
+    std::cerr
       << "AverageAffineTransform ImageDimension output_affine_transform [-R reference_affine_transform] "
       << "{[-i] affine_transform_txt [weight(=1)] ]}"
       << std::endl
@@ -314,17 +315,17 @@ private:
 
   if( is_parsing_ok )
     {
-    antscout << "output_transform_filename: " << output_transform_filename
+    std::cout << "output_transform_filename: " << output_transform_filename
              << std::endl;
-    antscout << "reference_transform_filename: ";
+    std::cout << "reference_transform_filename: ";
 
     if( reference_transform_filename )
       {
-      antscout << reference_transform_filename << std::endl;
+      std::cout << reference_transform_filename << std::endl;
       }
     else
       {
-      antscout << "NULL" << std::endl;
+      std::cout << "NULL" << std::endl;
       }
 
     DisplayOptQueue(opt_queue);
@@ -348,7 +349,7 @@ private:
 
   else
     {
-    antscout << "Input error!" << std::endl;
+    std::cerr << "Input error!" << std::endl;
     return EXIT_FAILURE;
     }
 
