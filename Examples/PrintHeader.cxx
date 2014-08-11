@@ -126,34 +126,102 @@ int PrintHeader(int argc, char *argv[])
   typename readertype::Pointer reader = readertype::New();
   if( argc < 2 )
     {
-    antscout << "missing input image name" << std::endl;
+    std::cout << "missing input image name" << std::endl;
     throw;
     }
   reader->SetFileName(argv[1]);
   reader->Update();
-  antscout << " Spacing " << reader->GetOutput()->GetSpacing() << std::endl;
-  antscout << " Origin " << reader->GetOutput()->GetOrigin() << std::endl;
-  antscout << " Direction " << std::endl << reader->GetOutput()->GetDirection() << std::endl;
+
+  // Print only specific header information
+
+  if( argc > 2 )
+    {
+    switch( atoi( argv[2] ) )
+      {
+      case 0:
+        {
+        for( int d = 0; d < static_cast<int>( ImageDimension )-1; d++ )
+          {
+          std::cout << reader->GetOutput()->GetOrigin()[d] << 'x';
+          }
+        std::cout << reader->GetOutput()->GetOrigin()[static_cast<int>( ImageDimension )-1] << std::endl;
+        break;
+        }
+      case 1:
+        {
+        for( int d = 0; d < static_cast<int>( ImageDimension )-1; d++ )
+          {
+          std::cout << reader->GetOutput()->GetSpacing()[d] << 'x';
+          }
+        std::cout << reader->GetOutput()->GetSpacing()[static_cast<int>( ImageDimension )-1] << std::endl;
+        break;
+        }
+      case 2:
+        {
+        for( int d = 0; d < static_cast<int>( ImageDimension )-1; d++ )
+          {
+          std::cout << reader->GetOutput()->GetLargestPossibleRegion().GetSize()[d] << 'x';
+          }
+        std::cout << reader->GetOutput()->GetLargestPossibleRegion().GetSize()[static_cast<int>( ImageDimension )-1] << std::endl;
+        break;
+        }
+      case 3:
+        {
+        for( int d = 0; d < static_cast<int>( ImageDimension )-1; d++ )
+          {
+          std::cout << reader->GetOutput()->GetLargestPossibleRegion().GetIndex()[d] << 'x';
+          }
+        std::cout << reader->GetOutput()->GetLargestPossibleRegion().GetIndex()[static_cast<int>( ImageDimension )-1] << std::endl;
+        break;
+        }
+      case 4:
+        {
+        for( int di = 0; di < static_cast<int>( ImageDimension ); di++ )
+          {
+          for( int dj = 0; dj < static_cast<int>( ImageDimension ); dj++ )
+            {
+            std::cout << reader->GetOutput()->GetDirection()[di][dj];
+            if( di == dj && di == static_cast<int>( ImageDimension )-1 )
+              {
+              std::cout << std::endl;
+              }
+            else
+              {
+              std::cout << 'x';
+              }
+            }
+          }
+        break;
+        }
+      }
+    return EXIT_SUCCESS;
+    }
+
+  // else print out entire header information
+
+  std::cout << " Spacing " << reader->GetOutput()->GetSpacing() << std::endl;
+  std::cout << " Origin " << reader->GetOutput()->GetOrigin() << std::endl;
+  std::cout << " Direction " << std::endl << reader->GetOutput()->GetDirection() << std::endl;
   if( ImageDimension == 1 )
     {
-    antscout << " Size : " << reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0] << " " <<   std::endl;
+    std::cout << " Size : " << reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0] << " " <<   std::endl;
     }
   else if( ImageDimension == 2 )
     {
-    antscout << " Size : " << reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0] << " "
+    std::cout << " Size : " << reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0] << " "
              << reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1] << " " << std::endl;
     }
   else if( ImageDimension == 3 )
     {
-    antscout << " Size : " << reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0] << " "
+    std::cout << " Size : " << reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0] << " "
              << reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1] << " " <<  " "
              << reader->GetOutput()->GetLargestPossibleRegion().GetSize()[2] << std::endl;
     }
   else
     {
-    antscout << " Size : " << reader->GetOutput()->GetLargestPossibleRegion().GetSize() << std::endl;
+    std::cout << " Size : " << reader->GetOutput()->GetLargestPossibleRegion().GetSize() << std::endl;
     }
-//  antscout << " Orientation " << reader->GetOutput()->GetOrientation() << std::endl;
+//  std::cout << " Orientation " << reader->GetOutput()->GetOrientation() << std::endl;
 
   unsigned int VDim = ImageDimension;
   // Get the input image
@@ -202,11 +270,11 @@ int PrintHeader(int argc, char *argv[])
     cout << "  Intensity Range    : [" << iMin << ", " << iMax << "]" << endl;
     cout << "  Mean Intensity     : " << iMean << endl;
     cout << "  Direction Cos Mtx. : " << endl;
-    antscout << image->GetDirection().GetVnlMatrix() << std::endl;
+    std::cout << image->GetDirection().GetVnlMatrix() << std::endl;
     // Print NIFTI s-form matrix (check against freesurfer's MRIinfo)
     cout << "  Voxel->RAS x-form  : " << endl;
     //    image->GetVoxelSpaceToRASPhysicalSpaceMatrix().GetVnlMatrix();
-    //    antscout << image->GetVoxelSpaceToRASPhysicalSpaceMatrix().GetVnlMatrix() << std::endl;
+    //    std::cout << image->GetVoxelSpaceToRASPhysicalSpaceMatrix().GetVnlMatrix() << std::endl;
 
     //
     // Print metadata
@@ -329,7 +397,7 @@ bool FileExists(string strFilename)
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
 // 'main()'
-int PrintHeader( std::vector<std::string> args, std::ostream* out_stream = NULL )
+int PrintHeader( std::vector<std::string> args, std::ostream* /*out_stream = NULL */ )
 {
   // put the arguments coming in as 'args' into standard (argc,argv) format;
   // 'args' doesn't have the command name as first, argument, so add it manually;
@@ -371,11 +439,17 @@ private:
   };
   Cleanup_argv cleanup_argv( argv, argc + 1 );
 
-  antscout->set_stream( out_stream );
+  // antscout->set_stream( out_stream );
 
   if( argc < 2  || ( (argc == 2) && ( strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0 ) ) )
     {
-    antscout << "Usage:  " << argv[0] << " image.ext " << std::endl;
+    std::cout << "Usage:  " << argv[0] << " image.ext [whatInformation]" << std::endl;
+    std::cout << "  whatInformation:  " << std::endl;
+    std::cout << "    0 = origin" << std::endl;
+    std::cout << "    1 = spacing" << std::endl;
+    std::cout << "    2 = size" << std::endl;
+    std::cout << "    3 = index" << std::endl;
+    std::cout << "    4 = direction" << std::endl;
     if( argc < 2 )
       {
       return EXIT_FAILURE;
@@ -386,7 +460,7 @@ private:
   std::string fn = std::string(argv[1]);
   if( !FileExists(fn) )
     {
-    antscout << " file " << fn << " does not exist . " << std::endl;
+    std::cout << " file " << fn << " does not exist . " << std::endl;
     return EXIT_FAILURE;
     }
   itk::ImageIOBase::Pointer imageIO =
@@ -399,7 +473,7 @@ private:
     }
   catch( ... )
     {
-    antscout << " cant read " << fn << std::endl;
+    std::cout << " cant read " << fn << std::endl;
     return EXIT_FAILURE;
     }
 
@@ -426,7 +500,7 @@ private:
       }
       break;
     default:
-      antscout << "Unsupported dimension " <<  imageIO->GetNumberOfDimensions() << std::endl;
+      std::cout << "Unsupported dimension " <<  imageIO->GetNumberOfDimensions() << std::endl;
       return EXIT_FAILURE;
     }
 

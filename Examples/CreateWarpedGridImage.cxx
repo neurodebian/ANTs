@@ -1,4 +1,3 @@
-
 #include "antsUtilities.h"
 #include <algorithm>
 
@@ -95,7 +94,7 @@ int CreateWarpedGridImage( int argc, char *argv[] )
       = ConvertVector<unsigned int>( std::string( argv[4] ) );
     if( directions.size() != ImageDimension )
       {
-      antscout << "Incorrect direction size." << std::endl;
+      std::cout << "Incorrect direction size." << std::endl;
       return EXIT_FAILURE;
       }
     else
@@ -118,7 +117,7 @@ int CreateWarpedGridImage( int argc, char *argv[] )
       = ConvertVector<RealType>( std::string( argv[5] ) );
     if( spacing.size() != ImageDimension )
       {
-      antscout << "Incorrect spacing size." << std::endl;
+      std::cout << "Incorrect spacing size." << std::endl;
       return EXIT_FAILURE;
       }
     else
@@ -136,7 +135,7 @@ int CreateWarpedGridImage( int argc, char *argv[] )
       = ConvertVector<RealType>( std::string( argv[6] ) );
     if( sigma.size() != ImageDimension )
       {
-      antscout << "Incorrect sigma size." << std::endl;
+      std::cout << "Incorrect sigma size." << std::endl;
       return EXIT_FAILURE;
       }
     else
@@ -181,7 +180,7 @@ int CreateWarpedGridImage( int argc, char *argv[] )
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
 // 'main()'
-int CreateWarpedGridImage( std::vector<std::string> args, std::ostream* out_stream = NULL )
+int CreateWarpedGridImage( std::vector<std::string> args, std::ostream* /*out_stream = NULL */ )
 {
   // put the arguments coming in as 'args' into standard (argc,argv) format;
   // 'args' doesn't have the command name as first, argument, so add it manually;
@@ -223,12 +222,12 @@ private:
   };
   Cleanup_argv cleanup_argv( argv, argc + 1 );
 
-  antscout->set_stream( out_stream );
+  // antscout->set_stream( out_stream );
 
   if( argc < 4 )
     {
-    antscout << "Usage: " << argv[0] << " ImageDimension deformationField "
-             << "outputImage [directions,e.g. 1x0x0] [gridSpacing] [gridSigma]"
+    std::cout << "Usage: " << argv[0] << " ImageDimension deformationField "
+             << "outputImage [directions, e.g. 1x0x0] [gridSpacing, e.g. 10x10x10] [gridSigma, e.g. 1x1x1]"
              << std::endl;
     if( argc >= 2 &&
         ( std::string( argv[1] ) == std::string("--help") || std::string( argv[1] ) == std::string("-h") ) )
@@ -251,7 +250,7 @@ private:
       }
       break;
     default:
-      antscout << "Unsupported dimension" << std::endl;
+      std::cout << "Unsupported dimension" << std::endl;
       return EXIT_FAILURE;
     }
   return EXIT_SUCCESS;

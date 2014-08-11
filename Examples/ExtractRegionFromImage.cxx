@@ -111,7 +111,7 @@ int ExtractRegionFromImage( int argc, char *argv[] )
     region = stats->GetRegion( atoi( argv[4] ) );
     }
 
-  antscout << region << std::endl;
+  std::cout << region << std::endl;
 
   typedef itk::ExtractImageFilter<ImageType, ImageType> CropperType;
   typename CropperType::Pointer cropper = CropperType::New();
@@ -131,7 +131,7 @@ int ExtractRegionFromImage( int argc, char *argv[] )
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
 // 'main()'
-int ExtractRegionFromImage( std::vector<std::string> args, std::ostream* out_stream = NULL )
+int ExtractRegionFromImage( std::vector<std::string> args, std::ostream* /*out_stream = NULL */ )
 {
   // put the arguments coming in as 'args' into standard (argc,argv) format;
   // 'args' doesn't have the command name as first, argument, so add it manually;
@@ -173,13 +173,13 @@ private:
   };
   Cleanup_argv cleanup_argv( argv, argc + 1 );
 
-  antscout->set_stream( out_stream );
+  // antscout->set_stream( out_stream );
 
   if( argc < 5 || argc > 6 )
     {
-    antscout << "Usage 1: " << argv[0] << " ImageDimension "
+    std::cout << "Usage 1: " << argv[0] << " ImageDimension "
              << "inputImage outputImage minIndex maxIndex " << std::endl;
-    antscout << "Usage 2: " << argv[0] << " ImageDimension "
+    std::cout << "Usage 2: " << argv[0] << " ImageDimension "
              << "inputImage outputImage label " << std::endl;
     if( argc >= 2 &&
         ( std::string( argv[1] ) == std::string("--help") || std::string( argv[1] ) == std::string("-h") ) )
@@ -202,7 +202,7 @@ private:
       }
       break;
     default:
-      antscout << "Unsupported dimension" << std::endl;
+      std::cout << "Unsupported dimension" << std::endl;
       return EXIT_FAILURE;
     }
   return EXIT_SUCCESS;

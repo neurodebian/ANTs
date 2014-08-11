@@ -7,7 +7,7 @@ set(PICSL_INCLUDE_DIRS
 ../Temporary
 .
 )
-
+	
 include_directories( ${BOOST_INCLUDE_DIR} ) #Define where to find Boost includes
 include_directories(${PICSL_INCLUDE_DIRS})
 link_directories( ${ITK_LIBRARY_PATH}  )
@@ -18,15 +18,17 @@ set(UI_SOURCES "../Utilities/antsCommandLineParser" "../Utilities/antsCommandLin
 ## Note that the antsUtilities can always be built static.  It will then be linked
 ## Directly into the other libraries.
 add_library(antsUtilities STATIC antsUtilities.cxx ../Utilities/ReadWriteImage.cxx
-		antsRegistrationTemplateHeader.cxx
-	      	antsRegistration2DDouble.cxx
-		antsRegistration3DDouble.cxx)
+            antsRegistrationTemplateHeader.cxx
+            antsRegistration2DDouble.cxx antsRegistration2DFloat.cxx
+            antsRegistration3DDouble.cxx antsRegistration3DFloat.cxx)
 target_link_libraries(antsUtilities ${ITK_LIBRARIES} )
 
 macro(STANDARD_ANTS_BUILD ANTS_FUNCTION_NAME EXTRA_LIBS)
   set( ANTS_FUNCTION_NAME ${ANTS_FUNCTION_NAME} )
 
   add_library(l_${ANTS_FUNCTION_NAME} ${ANTS_FUNCTION_NAME}.cxx ${UI_SOURCES})
+  SET_TARGET_PROPERTIES(l_${ANTS_FUNCTION_NAME} PROPERTIES 
+    SOVERSION ${LIBRARY_SOVERSION_INFO}  VERSION ${LIBRARY_VERSION_INFO})
   message(STATUS "${ANTS_FUNCTION_NAME} ${EXTRA_LIBS}")
   target_link_libraries(l_${ANTS_FUNCTION_NAME} antsUtilities ${ITK_LIBRARIES} ${EXTRA_LIBS} )
   configure_file( template_for_executables.cxx.in cli_${ANTS_FUNCTION_NAME}.cxx )
@@ -70,7 +72,7 @@ set(BASE_ANTS_APPS
   # WarpFunctionalImage
   ConvertScalarImageToRGB
   CreateWarpedGridImage
-  # CreateJacobianDeterminantImage
+  CreateJacobianDeterminantImage
   MeasureImageSimilarity
   ConvertToJpg
   ConvertImagePixelType
@@ -103,6 +105,7 @@ set(BASE_ANTS_APPS
   LabelGeometryMeasures
   PasteImageIntoImage
   TileImages
+  CreateTiledMosaic
   CreateImage
   WarpTensorImageMultiTransform
   ReorientTensorImage
@@ -125,22 +128,23 @@ set(BASE_ANTS_APPS
   CreateDisplacementField
   ANTSIntegrateVectorField
   ANTSIntegrateVelocityField
-  AtroposMin
   Atropos
   ConvertTransformFile
   compareTwoCompositeTransforms
   TimeSCCAN
+  GetConnectedComponentsFeatureImages
+  DeNrrd
 )
 foreach(ANTS_APP ${BASE_ANTS_APPS})
   STANDARD_ANTS_BUILD(${ANTS_APP} "")
 endforeach()
 
 if(USE_VTK)
-include(${CMAKE_ROOT}/Modules/FindVTK.cmake)
-if(USE_VTK_FILE)
-  include(${USE_VTK_FILE})
+find_package(VTK REQUIRED NO_MODULE)
+include(${VTK_USE_FILE})
 set(VTK_ANTS_APPS
-    ConvertVectorFieldToVTK
+#    ConvertVectorFieldToVTK
+    antsSurf
     GetMeshAndTopology
     CheckTopology
     WarpVTKPolyDataMultiTransform
@@ -148,10 +152,10 @@ set(VTK_ANTS_APPS
     # ConformalMapping
     # ANTSConformalMapping
   )
+
 foreach(ANTS_APP ${VTK_ANTS_APPS})
   STANDARD_ANTS_BUILD(${ANTS_APP} "${VTK_LIBRARIES}")
 endforeach()
-endif(USE_VTK_FILE)
 endif(USE_VTK)
 
 install(PROGRAMS ../Scripts/ants.sh

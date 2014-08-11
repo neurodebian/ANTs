@@ -35,7 +35,7 @@ void RegisterMatOff()
  */
 static void PrintGenericUsageStatement()
 {
-  antscout << "Usage: CompositeTransformUtil --disassemble <CompositeTransform FileName>"
+  std::cout << "Usage: CompositeTransformUtil --disassemble <CompositeTransform FileName>"
            << " <transform name prefix>" << std::endl
            << "or" << std::endl
            << "CompositeTransformUtil  --assemble <CompositeTransform> "
@@ -48,7 +48,7 @@ static void PrintGenericUsageStatement()
  */
 template <unsigned int VImageDimension>
 int
-Disassemble(itk::TransformBase *transform, const std::string & transformName, const std::string & prefix)
+Disassemble(itk::TransformBaseTemplate<double> *transform, const std::string & transformName, const std::string & prefix)
 {
   typedef itk::CompositeTransform<double, VImageDimension>                  CompositeTransformType;
   typedef typename CompositeTransformType::TransformTypePointer             TransformPointer;
@@ -58,7 +58,7 @@ Disassemble(itk::TransformBase *transform, const std::string & transformName, co
   CompositeTransformType *composite = dynamic_cast<CompositeTransformType *>(transform);
   if( composite == 0 )
     {
-    antscout << "Transform File " << transformName << " is a "
+    std::cout << "Transform File " << transformName << " is a "
              << transform->GetNameOfClass() << " not a Composite Transform."
              << std::endl;
     return EXIT_FAILURE;
@@ -82,7 +82,7 @@ Disassemble(itk::TransformBase *transform, const std::string & transformName, co
       {
       fname << ".mat";  //  .txt does not have enough precision!
       }
-    itk::ants::WriteTransform<VImageDimension>(curXfrm, fname.str() );
+    itk::ants::WriteTransform<double, VImageDimension>(curXfrm, fname.str() );
     }
   return EXIT_SUCCESS;
 }
@@ -90,11 +90,11 @@ Disassemble(itk::TransformBase *transform, const std::string & transformName, co
 static int Disassemble(const std::string & CompositeName,
                        const std::string & Prefix)
 {
-  itk::TransformBase::Pointer transform = itk::ants::ReadTransform<2>(CompositeName).GetPointer();
+  itk::TransformBaseTemplate<double>::Pointer transform = itk::ants::ReadTransform<double, 2>(CompositeName).GetPointer();
 
   if( transform.IsNull() )
     {
-    transform = itk::ants::ReadTransform<3>(CompositeName).GetPointer();
+    transform = itk::ants::ReadTransform<double, 3>(CompositeName).GetPointer();
     if( transform.IsNull() )
       {
       return EXIT_FAILURE; // ReadTransform prints error messages on
@@ -105,7 +105,7 @@ static int Disassemble(const std::string & CompositeName,
   const unsigned int outDim(transform->GetOutputSpaceDimension() );
   if( inDim != outDim )
     {
-    antscout << "Can't handle mixed input & output dimension: input("
+    std::cout << "Can't handle mixed input & output dimension: input("
              << inDim << ") output (" << outDim << ")" << std::endl;
     return EXIT_FAILURE;
     }
@@ -117,7 +117,7 @@ static int Disassemble(const std::string & CompositeName,
     case 3:
       return Disassemble<3>(transform, CompositeName, Prefix);
     default:
-      antscout << "Unknown dimension " << inDim << std::endl;
+      std::cout << "Unknown dimension " << inDim << std::endl;
       return EXIT_FAILURE;
     }
   return EXIT_SUCCESS;
@@ -135,7 +135,7 @@ Assemble(const std::string & CompositeName,
   composite->AddTransform(firstTransform);
   for( unsigned int i = 1; i < transformNames.size(); ++i )
     {
-    typename TransformType::Pointer curXfrm = itk::ants::ReadTransform<VImageDimension>(transformNames[i]);
+    typename TransformType::Pointer curXfrm = itk::ants::ReadTransform<double, VImageDimension>(transformNames[i]);
     if( curXfrm.IsNull() )
       {
       return EXIT_FAILURE; // ReadTransform will complain if anything goes wrong.
@@ -143,21 +143,21 @@ Assemble(const std::string & CompositeName,
     composite->AddTransform(curXfrm);
     }
   typename TransformType::Pointer genericXfrmPtr = composite.GetPointer();
-  return itk::ants::WriteTransform<VImageDimension>(genericXfrmPtr, CompositeName);
+  return itk::ants::WriteTransform<double, VImageDimension>(genericXfrmPtr, CompositeName);
 }
 
 static int Assemble(const std::string & CompositeName,
                     const std::vector<std::string> & transformNames)
 {
     {
-    itk::Transform<double, 2, 2>::Pointer FirstTransform = itk::ants::ReadTransform<2>(transformNames[0]);
+    itk::Transform<double, 2, 2>::Pointer FirstTransform = itk::ants::ReadTransform<double, 2>(transformNames[0]);
     if( FirstTransform.IsNotNull() )
       {
       return Assemble<2>(CompositeName, transformNames, FirstTransform);
       }
     }
     {
-    itk::Transform<double, 3, 3>::Pointer FirstTransform = itk::ants::ReadTransform<3>(transformNames[0]);
+    itk::Transform<double, 3, 3>::Pointer FirstTransform = itk::ants::ReadTransform<double, 3>(transformNames[0]);
     if( FirstTransform.IsNotNull() )
       {
       return Assemble<3>(CompositeName, transformNames, FirstTransform);
@@ -168,7 +168,7 @@ static int Assemble(const std::string & CompositeName,
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
 // 'main()'
-int CompositeTransformUtil( std::vector<std::string> args, std::ostream* out_stream = NULL )
+int CompositeTransformUtil( std::vector<std::string> args, std::ostream* /*out_stream = NULL */)
 {
   // put the arguments coming in as 'args' into standard (argc,argv) format;
   // 'args' doesn't have the command name as first, argument, so add it manually;
@@ -209,7 +209,7 @@ private:
   };
   Cleanup_argv cleanup_argv( argv, argc + 1 );
 
-  antscout->set_stream( out_stream );
+  // antscout->set_stream( out_stream );
   if( argc >= 2 && ( std::string( argv[1] ) == std::string("--help") || std::string( argv[1] ) == std::string("-h") ) )
     {
     PrintGenericUsageStatement();
@@ -226,7 +226,7 @@ private:
   ++argv; --argc;
   if( argc == 0 )
     {
-    antscout << "Missing CompositeTransformName" << std::endl;
+    std::cout << "Missing CompositeTransformName" << std::endl;
     PrintGenericUsageStatement();
     return EXIT_FAILURE;
     }
@@ -240,7 +240,7 @@ private:
     {
     if( argc == 0 )
       {
-      antscout << "Missing output transforms prefix" << std::endl;
+      std::cout << "Missing output transforms prefix" << std::endl;
       PrintGenericUsageStatement();
       return EXIT_FAILURE;
       }
@@ -249,7 +249,7 @@ private:
     }
   else if( action != "--assemble" )
     {
-    antscout << "Unknown action " << action << std::endl;
+    std::cout << "Unknown action " << action << std::endl;
     PrintGenericUsageStatement();
     return EXIT_FAILURE;
     }
@@ -265,7 +265,7 @@ private:
 
   if( transformNames.size() < 1 )
     {
-    antscout << "Missing transform names to "
+    std::cout << "Missing transform names to "
              << "assemble into a composite transform"
              << std::endl;
     PrintGenericUsageStatement();

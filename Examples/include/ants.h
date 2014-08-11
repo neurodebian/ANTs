@@ -23,6 +23,8 @@
 
 #include "antsRegistration.h"
 
+#include "antsSurf.h"
+
 #include "ANTSUseDeformationFieldToGetAffineTransform.h"
 
 #include "ANTSUseLandmarkImagesToGetAffineTransform.h"
@@ -30,8 +32,6 @@
 #include "ANTSUseLandmarkImagesToGetBSplineDisplacementField.h"
 
 #include "Atropos.h"
-
-#include "AtroposMin.h"
 
 #include "AverageAffineTransform.h"
 
@@ -71,7 +71,11 @@
 
 #include "CreateJacobianDeterminantImage.h"
 
+#include "CreateTiledMosaic.h"
+
 #include "CreateWarpedGridImage.h"
+
+#include "DeNrrd.h"
 
 #include "ExtractRegionFromImageByMask.h"
 
@@ -170,5 +174,7 @@
 #include "ConvertTransformFile.h"
 
 #include "compareTwoCompositeTransforms.h"
+
+#include "GetConnectedComponentsFeatureImages.h"
 
 #endif // ants_h

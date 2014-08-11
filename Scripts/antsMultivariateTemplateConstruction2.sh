@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.0.15 test"
+VERSION="0.0.0"
 
 # trap keyboard interrupt (control-c)
 trap control_c SIGINT
@@ -25,23 +25,24 @@ SETPATH
     exit 1
 }
 
-# Uncomment the line below in case you have not set the ANTSPATH variable in your environment.
+# Uncomment the line below in case you have not set the ANTSPATH variable in your
+# environment.
 # export ANTSPATH=${ANTSPATH:="$HOME/bin/ants/"} # EDIT THIS
 
-#ANTSPATH=YOURANTSPATH
 if [[ ${#ANTSPATH} -le 3 ]];
-    then
+  then
     setPath >&2
-fi
+  fi
 
 if [[ ! -s ${ANTSPATH}/antsRegistration ]];
-    then
-    echo "antsRegistration program can't be found. Please (re)define \$ANTSPATH in your environment."
+  then
+    echo "antsRegistration program can't be found. Please (re)define \$ANTSPATH in your \
+          environment."
     exit
-fi
+  fi
 
-# Test availability of helper scripts.
-# No need to test this more than once. Can reside outside of the main loop.
+# Test availability of helper scripts.  No need to test this more than once. Can reside
+# outside of the main loop.
 ANTS=${ANTSPATH}/antsRegistration
 WARP=${ANTSPATH}/antsApplyTransforms
 N4=${ANTSPATH}N4BiasFieldCorrection
@@ -51,98 +52,133 @@ PBS=${ANTSPATH}waitForPBSQJobs.pl
 XGRID=${ANTSPATH}waitForXGridJobs.pl
 
 fle_error=0
-for FLE in $N4 $PEXEC $SGE $XGRID $PBS
+for FLE in $ANTS $WARP $N4 $PEXEC $SGE $XGRID $PBS
   do
   if [[ ! -x $FLE ]];
-      then
+    then
       echo
-      echo "--------------------------------------------------------------------------------------"
+      echo "-----------------------------------------------------------------------------"
       echo " FILE $FLE DOES NOT EXIST -- OR -- IS NOT EXECUTABLE !!! $0 will terminate."
-      echo "--------------------------------------------------------------------------------------"
+      echo "-----------------------------------------------------------------------------"
       echo " if the file is not executable, please change its permissions. "
       fle_error=1
-  fi
-done
+    fi
+  done
 
 if [[ $fle_error = 1 ]];
-    then
+  then
     echo "missing helper script"
     exit 1
-fi
-
-
-#assuming .nii.gz as default file type. This is the case for ANTS 1.7 and up
+  fi
 
 function Usage {
     cat <<USAGE
 
 Usage:
 
-`basename $0` -d ImageDimension -o OUTPREFIX <other options> <images>
+`basename $0` -d ImageDimension -o OutputPrefix <other options> <images>
 
-Compulsory arguments (minimal command line requires SGE cluster, otherwise use -c & -j options):
+Compulsory arguments (minimal command line requires SGE/PBS cluster, otherwise use -c and
+  -j options):
 
      -d:  ImageDimension: 2 or 3 (for 2 or 3 dimensional registration of single volume)
-	  ImageDimension: 4 (for template generation of time-series data)
+   ImageDimension: 4 (for template generation of time-series data)
 
-     -o:  OUTPREFIX; A prefix that is prepended to all output files.
+     -o:  OutputPrefix; A prefix that is prepended to all output files.
 
 <images>  List of images in the current directory, eg *_t1.nii.gz. Should be at the end
           of the command.  Optionally, one can specify a .csv or .txt file where each
           line is the location of the input image.  One can also specify more than
           one file for each image for multi-modal template construction (e.g. t1 and t2).
           For the multi-modal case, the templates will be consecutively numbered (e.g.
-          ${OUTPUTPREFIX}template0.nii.gz, ${OUTPUTPREFIX}template1.nii.gz, ...).
+          ${OutputPrefix}template0.nii.gz, ${OutputPrefix}template1.nii.gz, ...).
 
-NB: All images to be added to the template should be in the same directory, and this script
-should be invoked from that directory.
+NB: All images to be added to the template should be in the same directory, and this
+    script should be invoked from that directory.
 
 Optional arguments:
 
-     -c:  Control for parallel computation (default 1) -- 0 == run serially,  1 == SGE qsub,
-	         2 == use PEXEC (localhost), 3 == Apple XGrid, 4 == PBS qsub
+     -b:  Backup images and results from all iterations (default = 0):  Boolean to save
+          the transform files, bias corrected, and warped images for each iteration.
 
-     -g:  Gradient step size (default 0.25) -- smaller in magnitude results in more cautious steps
+     -c:  Control for parallel computation (default 0):
+          0 = run serially
+          1 = SGE qsub
+          2 = use PEXEC (localhost)
+          3 = Apple XGrid
+          4 = PBS qsub
 
-     -i:  Iteration limit (default 4) -- iterations of the template construction (Iteration limit)*NumImages registrations.
+     -e   use single precision ( default 1 )
 
-     -j:  Number of cpu cores to use (default 2; -- requires "-c 2")
+     -g:  Gradient step size (default 0.25): smaller in magnitude results in more
+          cautious steps.
 
-     -k:  Number of modalities used to construct the template (default 1)
+     -i:  Iteration limit (default 4): iterations of the template construction
+          (Iteration limit)*NumImages registrations.
 
-     -w:  Modality weights used in the similarity metric (default = 1) --- specified as e.g. 1x0.5x0.75
+     -j:  Number of cpu cores to use locally for pexec option (default 2; requires "-c 2")
 
-     -q:  Max iterations for each registration
+     -k:  Number of modalities used to construct the template (default 1):  For example,
+          if one wanted to create a multimodal template consisting of T1,T2,and FA
+          components ("-k 3").
 
-     -f shrink factors (also in the same form as -q max iterations, needs to have the same number of components)
+     -w:  Modality weights used in the similarity metric (default = 1): specified as
+          e.g. 1x0.5x0.75.
 
-     -s smoothing factors (also in the same form as -q max iterations, needs to have the same number of components)
+     -q:  Max iterations for each pairwise registration (default = 100x100x70x20):
+          specified in the form ...xJxKxL where
+            J = max iterations at coarsest resolution (here, reduced by power of 2^2)
+            K = middle resolution iterations (here, reduced by power of 2)
+            L = fine resolution iteratioxns (here, full resolution).
+          Finer resolutions take much more time per iteration than coarser resolutions.
 
-     -n:  N4BiasFieldCorrection of moving image (default 1) -- 0 == off, 1 == on
+     -f:  Shrink factors (default = 6x4x2x1):  Also in the same form as -q max iterations.  
+          Needs to have the same number of components.
 
-     -p:  Commands to prepend to job scripts (e.g., change into appropriate directory, set paths, etc)
+     -s:  Smoothing factors (default = 3x2x1x0):  Also in the same form as -q max
+          iterations.  Needs to have the same number of components.
 
-     -r:  Do rigid-body registration of inputs before creating template (default 0) -- 0 == off 1 == on. Only useful when
-          you do not have an initial template
+     -n:  N4BiasFieldCorrection of moving image: 0 == off, 1 == on (default 1).
 
-     -m:  Type of similarity metric used for registration.
+     -p:  Commands to prepend to job scripts (e.g., change into appropriate directory, set
+          paths, etc)
 
-     -t:  Type of transformation model used for registration.
+     -r:  Do rigid-body registration of inputs before creating template (default 0):
+          0 == off 1 == on. Only useful when you do not have an initial template
+
+     -l:  Use linear image registration stages during the pairwise (template/subject)
+          deformable registration.  Otherwise, registration is limited to SyN or
+          B-spline SyN (see '-t' option).  This is '1' by default.
+
+     -m:  Type of similarity metric used for registration (default = CC):  Options are
+            CC = cross-correlation
+            MI = mutual information
+            MSQ = mean square difference
+            DEMONS = demon's metric
+          A similarity metric per modality can be specified.  If the CC metric is chosen,
+          one can also specify the radius in brackets, e.g. '-m CC[4]'.
+
+     -t:  Type of transformation model used for registration (default = SyN):  Options are
+            SyN = Greedy SyN
+            BSplineSyN = Greedy B-spline SyN
+            TimeVaryingVelocityField = Time-varying velocity field
+            TimeVaryingBSplineVelocityField = Time-varying B-spline velocity field
+
+     -u:  Walltime (default = 20:00:00):  Option for PBS qsub specifying requested time
+          per pairwise registration.
+
+     -v:  Memory limit (default = 8gb):  Option for PBS qsub specifying requested memory
+          per pairwise registration.
 
      -x:  XGrid arguments (e.g., -x "-p password -h controlhost")
 
      -z:  Use this this volume as the target of all inputs. When not used, the script
-          will create an unbiased starting point by averaging all inputs. Use the full path!
+          will create an unbiased starting point by averaging all inputs. Use the full
+          path.
 
 Example:
 
-`basename $0` -d 3 -m 30x50x20 -t SyN -s CC -c 1 -o MY -z InitialTemplate.nii.gz  *RF*T1x.nii.gz
-
-- In this example 30x50x20 iterations per registration are used for template creation (that is the default)
-- Greedy-SyN and CC are the metrics to guide the mapping.
-- Output is prepended with MY and the initial template is InitialTemplate.nii.gz (optional).
-- The -c option is set to 1, which will result in using the Sun Grid Engine (SGE) to distribute the computation.
-- if you do not have SGE, read the help for multi-core computation on the local machine, or Apple X-grid options.
+`basename $0` -d 3 -i 3 -k 1 -f 4x2x1 -s 2x1x0vox -q 30x20x4 -t SyN  -m CC -c 0 -o MY sub*avg.nii.gz
 
 --------------------------------------------------------------------------------------
 ANTS was created by:
@@ -162,173 +198,12 @@ Also see http://www.ncbi.nlm.nih.gov/pubmed/19818860 for more details.
 The script has been updated and improved since this publication.
 
 --------------------------------------------------------------------------------------
-script adapted by N.M. van Strien, http://www.mri-tutorial.com | NTNU MR-Center
-multivariate template adaption by Nick Tustison
+Script by Nick Tustison
 --------------------------------------------------------------------------------------
 Apple XGrid support by Craig Stark
 --------------------------------------------------------------------------------------
 
 USAGE
-    exit 1
-}
-
-function Help {
-    cat <<HELP
-
-`basename $0` will make a template out of the input files using an elastic
-or diffeomorphic transformation. This script builds a template iteratively from the input
-images and uses Sun Grid Engine (SGE) or multiple cpu cores on the localhost (min 2) to
-parallelize the registration of each subject to the template.
-
-Usage:
-
-`basename $0` -d ImageDimension -o OUTPREFIX <other options> <images>
-
-Example Case:
-
- bash `basename $0` -d 3 -m 30x50x20 -t SyN  -s CC -c 1 -o MY -z InitialTemplate.nii.gz  *RF*T1x.nii.gz
-
- - In this case you use 30x50x20 iterations per registration
- - 4 iterations over template creation (that is the default)
- - With Greedy-SyN and CC metrics to guide the mapping.
- - Output is prepended with MY and the initial template is InitialTemplate.nii.gz (optional).
- - The -c option is set to 1 which will try to use SGE to distribute the computation.
- - If you do not have SGE, use -c 0 or -c 2 combined with -j.
-
- - Continue reading this help file if things are not yet clear.
-
-Compulsory arguments (minimal command line requires SGE cluster, otherwise use -c & -j options):
-
-     -d:  ImageDimension: 2 or 3 (for 2 or 3 dimensional registration of single volume)
-	  ImageDimension: 4 (for template generation of time-series data)
-
-     -o:  OUTPREFIX; A prefix that is prepended to all output files.
-
-<images>  List of images in the current directory, eg *_t1.nii.gz. Should be at the end
-          of the command.  Optionally, one can specify a .csv or .txt file where each
-          line is the location of the input image.  One can also specify more than
-          one file for each image for multi-modal template construction (e.g. t1 and t2).
-          For the multi-modal case, the templates will be consecutively numbered (e.g.
-          ${OUTPUTPREFIX}template0.nii.gz, ${OUTPUTPREFIX}template1.nii.gz, ...).
-
-NB: All files to be added to the template should be in the same directory.
-
-Optional arguments:
-
-     -c:  Control for parallel computation (default 1) -- 0 == run serially,  1 == SGE qsub,
-	         2 == use PEXEC (localhost), 3 == Apple XGrid, 4 == PBS qsub
-
-     -g:  Gradient step size; smaller in magnitude results in more cautious steps (default 0.25)
-
-     -i:  Iteration limit (default = 4) for template construction. requires 4*NumImages registrations.
-
-     -j:  Number of cpu cores to use (default: 2; --- set -c option to 2 to use this.
-
-     -k:  Number of modalities used to construct the template.
-
-     -w:  Modality weights used in the similarity metric (default = 1) --- specified as e.g. 1x0.5x0.75
-
-	  The optimal number of cpu cores to use for template generation depends on the availability of cores, the amount of
-	  free working memory (RAM) and the resolution of the data. High resolution datasets typically require more RAM during
-	  processing. Running out of RAM during a calculation will slow down all processing on your computer.
-
-     -q:  max iterations
-          max Iterations in form: JxKxL where
-	     J = max iterations at coarsest resolution (here, reduce by power of 2^2)
-	     K = middle resolution iterations (here,reduce by power of 2)
-	     L = fine resolution iterations (here, full resolution) !!this level takes much
-                 more time per iteration!!
-
-      -f shrink factors (also in the same form as -q max iterations, needs to have the same number of components)
-      -s smoothing factors (also in the same form as -q max iterations, needs to have the same number of components)
-
-	  Adding an extra value before JxKxL (i.e. resulting in IxJxKxL) would add another
-	  iteration level.
-
-     -n:  N4BiasFieldCorrection of moving image ( 0 = off; 1 = on (default) )
-
-     -p:  Commands to prepend to job scripts (e.g., change into appropriate directory, set paths, etc)
-
-     -r:  Do rigid-body registration of inputs before creating template (default 0) -- 0 == off 1 == on. Only useful when
-          you do not have an initial template
-
-          In case a template is specified (-z option), all inputs are registered to that template. If
-          no template is specified, the inputs will be registered to the averaged input.
-
-     -m:  Type of similarity metric used for registration.
-
-	     For intramodal image registration, use:
-	     CC = cross-correlation
-	     MI = mutual information
-	     PR = probability mapping (default)
-	     MSQ = mean square difference (Demons-like)
-	     SSD = sum of squared differences
-
-	     For intermodal image registration, use:
-	     MI = mutual information
-	     PR = probability mapping (default)
-
-     -t:  Type of transformation model used for registration.
-
-	     For rigid image registration, use:
-	     RI = Purely rigid
-	     RA = Affine rigid
-
-	     For diffeomorphic image registration, use:
-	     SyN = Greedy SyN
-	     BSplineSyN = Greedy B-spline SyN
-
-     -x:  XGrid arguments (e.g., -x "-p password -h controlhost")
-
-     -z:  Use this this volume as the target of all inputs. When not used, the script
-          will create an unbiased starting point by averaging all inputs. Use the full path!
-
-Requirements:
-
-This scripts relies on the following scripts in your $ANTSPATH directory. The script
-will terminate prematurely if these files are not present or are not executable.
-- antsIntroduction.sh
-- pexec.sh
-- waitForSGEQJobs.pl (only for use with Sun Grid Engine)
-- waitForPBSQJobs.pl  (only for use with Portable Batch System)
-- ANTSpexec.sh (only for use with localhost parallel execution)
-- waitForXGridJobs.pl (only for use with Apple XGrid)
-
---------------------------------------------------------------------------------------
-Get the latest ANTS version at:
---------------------------------------------------------------------------------------
-http://sourceforge.net/projects/advants/
-
---------------------------------------------------------------------------------------
-Read the ANTS documentation at:
---------------------------------------------------------------------------------------
-http://picsl.upenn.edu/ANTS/
-
---------------------------------------------------------------------------------------
-ANTS was created by:
---------------------------------------------------------------------------------------
-Brian B. Avants, Nick Tustison and Gang Song
-Penn Image Computing And Science Laboratory
-University of Pennsylvania
-
-Please reference http://www.ncbi.nlm.nih.gov/pubmed/20851191 when employing this script
-in your studies. A reproducible evaluation of ANTs similarity metric performance in
-brain image registration:
-
-* Avants BB, Tustison NJ, Song G, Cook PA, Klein A, Gee JC. Neuroimage, 2011.
-
-Also see http://www.ncbi.nlm.nih.gov/pubmed/19818860 for more details.
-
-The script has been updated and improved since this publication.
-
---------------------------------------------------------------------------------------
-script adapted by N.M. van Strien, http://www.mri-tutorial.com | NTNU MR-Center
-multivariate template adaption by Nick Tustison
---------------------------------------------------------------------------------------
-Apple XGrid support by Craig Stark
---------------------------------------------------------------------------------------
-
-HELP
     exit 1
 }
 
@@ -340,20 +215,20 @@ function reportMappingParameters {
 --------------------------------------------------------------------------------------
  ANTSPATH is $ANTSPATH
 
- Dimensionality:			$DIM
- N4BiasFieldCorrection:			$N4CORRECT
- Similarity Metric:			$METRICTYPE
- Transformation:			$TRANSFORMATIONTYPE
- Regularization:			$REGULARIZATION
- MaxIterations:				$MAXITERATIONS
- Smoothing Factors:  $SMOOTHINGFACTORS
- Shrink Factors:  $SHRINKFACTORS
- Number Of MultiResolution Levels:	$NUMLEVELS
- OutputName prefix:			$OUTPUTNAME
- Template:  				$TEMPLATENAME
- Template Update Steps:			$ITERATIONLIMIT
- Template population:	   		$IMAGESETVARIABLE
- Number of Modalities:     $NUMBEROFMODALITIES
+ Dimensionality:           $DIM
+ Do N4 bias correction:    $N4CORRECT
+ Back up each iteration:   $BACKUPEACHITERATION
+ Similarity metric:        ${METRICTYPE[@]}
+ Gradient step:            $GRADIENTSTEP
+ Transformation:           $TRANSFORMATIONTYPE
+ Max iterations:           $MAXITERATIONS
+ Smoothing factors:        $SMOOTHINGFACTORS
+ Shrink factors:           $SHRINKFACTORS
+ Output prefix:            $OUTPUTNAME
+ Template:                 $TEMPLATENAME
+ Template update steps:    $ITERATIONLIMIT
+ Template population:      $IMAGESETVARIABLE
+ Number of modalities:     $NUMBEROFMODALITIES
  Madality weights:         $MODALITYWEIGHTSTRING
 --------------------------------------------------------------------------------------
 REPORTMAPPINGPARAMETERS
@@ -383,15 +258,21 @@ function shapeupdatetotemplate() {
     echo
     echo "--------------------------------------------------------------------------------------"
     echo " shapeupdatetotemplate---voxel-wise averaging of the warped images to the current template"
-    echo "   ${ANTSPATH}AverageImages $dim ${template} 1 ${templatename}${whichtemplate}*WarpedToTemplate.nii.gz    "
+    #echo "   ${ANTSPATH}AverageImages $dim ${template} 1 ${templatename}${whichtemplate}*WarpedToTemplate.nii.gz    "
+    echo "    ${ANTSPATH}ImageSetStatistics $dim ${whichtemplate}WarpedToTemplateList.txt ${template} 0"
     echo "--------------------------------------------------------------------------------------"
-	   ${ANTSPATH}AverageImages $dim ${template} 1 ${templatename}${whichtemplate}*WarpedToTemplate.nii.gz
+    # ${ANTSPATH}AverageImages $dim ${template} 1 ${templatename}${whichtemplate}*WarpedToTemplate.nii.gz
 
-    if [[ $whichtemplate -eq 0 ]] ;
+    # Using median instead of mean
+    ls ${whichtemplate}*WarpedToTemplate.nii.gz > ${whichtemplate}WarpedToTemplateList.txt
+    ${ANTSPATH}ImageSetStatistics $dim ${whichtemplate}WarpedToTemplateList.txt ${template} 0
+
+    if [[ $whichtemplate -eq 0 ]];
+      then
         echo
         echo "--------------------------------------------------------------------------------------"
         echo " shapeupdatetotemplate---voxel-wise averaging of the inverse warp fields (from subject to template)"
-        echo	"   ${ANTSPATH}AverageImages $dim ${templatename}${whichtemplate}warp.nii.gz 0 `ls ${outputname}*Warp.nii.gz | grep -v "InverseWarp"`"
+        echo "   ${ANTSPATH}AverageImages $dim ${templatename}${whichtemplate}warp.nii.gz 0 `ls ${outputname}*Warp.nii.gz | grep -v "InverseWarp"`"
         echo "--------------------------------------------------------------------------------------"
 
         ${ANTSPATH}AverageImages $dim ${templatename}${whichtemplate}warp.nii.gz 0 `ls ${outputname}*Warp.nii.gz | grep -v "InverseWarp"`
@@ -404,7 +285,6 @@ function shapeupdatetotemplate() {
 
         ${ANTSPATH}MultiplyImages $dim ${templatename}${whichtemplate}warp.nii.gz ${gradientstep} ${templatename}${whichtemplate}warp.nii.gz
 
-        then
         echo
         echo "--------------------------------------------------------------------------------------"
         echo " shapeupdatetotemplate---average the affine transforms (template <-> subject)"
@@ -414,17 +294,17 @@ function shapeupdatetotemplate() {
         echo "--------------------------------------------------------------------------------------"
 
         ${ANTSPATH}AverageAffineTransform ${dim} ${templatename}0GenericAffine.mat ${outputname}*GenericAffine.mat
-        ${WARP} -d ${dim} -i ${templatename}0warp.nii.gz -o ${templatename}0warp.nii.gz -t [${templatename}0GenericAffine.mat,1] -r ${template}
+        ${WARP} -d ${dim} -e vector -i ${templatename}0warp.nii.gz -o ${templatename}0warp.nii.gz -t [${templatename}0GenericAffine.mat,1] -r ${template}
 
         ${ANTSPATH}MeasureMinMaxMean ${dim} ${templatename}0warp.nii.gz ${templatename}warplog.txt 1
-    fi
+      fi
 
     echo "--------------------------------------------------------------------------------------"
     echo " shapeupdatetotemplate---warp each template by the resulting transforms"
-    echo "   ${WARP} -d ${dim} -i ${template} -o ${template} -t [${templatename}0GenericAffine.mat,1] -t ${templatename}0warp.nii.gz -t ${templatename}0warp.nii.gz -t ${templatename}0warp.nii.gz -t ${templatename}0warp.nii.gz -r ${template}"
+    echo "   ${WARP} -d ${dim} --float $USEFLOAT -i ${template} -o ${template} -t [${templatename}0GenericAffine.mat,1] -t ${templatename}0warp.nii.gz -t ${templatename}0warp.nii.gz -t ${templatename}0warp.nii.gz -t ${templatename}0warp.nii.gz -r ${template}"
     echo "--------------------------------------------------------------------------------------"
 
-    ${WARP} -d ${dim} -i ${template} -o ${template} -t [${templatename}0GenericAffine.mat,1] -t ${templatename}0warp.nii.gz -t ${templatename}0warp.nii.gz -t ${templatename}0warp.nii.gz -t ${templatename}0warp.nii.gz -r ${template}
+    ${WARP} -d ${dim} --float $USEFLOAT -i ${template} -o ${template} -t [${templatename}0GenericAffine.mat,1] -t ${templatename}0warp.nii.gz -t ${templatename}0warp.nii.gz -t ${templatename}0warp.nii.gz -t ${templatename}0warp.nii.gz -r ${template}
 }
 
 function jobfnamepadding {
@@ -467,10 +347,10 @@ CURRENTIMAGESET=()
 COUNT=0
 
 for (( g = $WHICHMODALITY; g < ${#IMAGESETARRAY[@]}; g+=$NUMBEROFMODALITIES ))
-    do
+  do
     CURRENTIMAGESET[$COUNT]=${IMAGESETARRAY[$g]}
     (( COUNT++ ))
-done
+  done
 }
 
 cleanup()
@@ -512,32 +392,36 @@ time_start=`date +%s`
 currentdir=`pwd`
 nargs=$#
 
-MAXITERATIONS=100x70x20
-SMOOTHINGFACTORS=2x1x0
-SHRINKFACTORS=4x2x1
-LABELIMAGE=0 # initialize optional parameter
-METRICTYPE=CC # initialize optional parameter
-TRANSFORMATIONTYPE="SyN" # initialize optional parameter
+USEFLOAT=1
+BACKUPEACHITERATION=0
+MAXITERATIONS=100x100x70x20
+SMOOTHINGFACTORS=3x2x1x0
+SHRINKFACTORS=6x4x2x1
+METRICTYPE=()
+TRANSFORMATIONTYPE="SyN"
 NUMBEROFMODALITIES=1
 MODALITYWEIGHTSTRING=""
-N4CORRECT=1 # initialize optional parameter
-DOQSUB=1 # By default, antsMultivariateTemplateConstruction tries to do things in parallel
-GRADIENTSTEP=0.25 # Gradient step size, smaller in magnitude means more smaller (more cautious) steps
+N4CORRECT=1
+DOLINEAR=1
+DOQSUB=0
+GRADIENTSTEP=0.25
 ITERATIONLIMIT=4
 CORES=2
 TDIM=0
 RIGID=0
-RIGIDTYPE="" # set to an empty string to use affine initialization
 range=0
 REGTEMPLATES=()
 TEMPLATES=()
 CURRENTIMAGESET=()
 XGRIDOPTS=""
 SCRIPTPREPEND=""
+PBSWALLTIME="20:00:00"
+PBSMEMORY="8gb"
 # System specific queue options, eg "-q name" to submit to a specific queue
 # It can be set to an empty string if you do not need any special cluster options
 QSUBOPTS="" # EDIT THIS
 OUTPUTNAME=antsBTP
+
 
 ##Getting system info from linux can be done with these variables.
 # RAM=`cat /proc/meminfo | sed -n -e '/MemTotal/p' | awk '{ printf "%s %s\n", $2, $3 ; }' | cut -d " " -f 1`
@@ -545,90 +429,106 @@ OUTPUTNAME=antsBTP
 # cpu_free_ram=$((${RAMfree}/${cpu_count}))
 
 if [[ ${OSTYPE:0:6} == 'darwin' ]];
-	then
-	cpu_count=`sysctl -n hw.physicalcpu`
-else
-	cpu_count=`cat /proc/cpuinfo | grep processor | wc -l`
-fi
+  then
+    cpu_count=`sysctl -n hw.physicalcpu`
+  else
+    cpu_count=`cat /proc/cpuinfo | grep processor | wc -l`
+  fi
 
 # Provide output for Help
 if [[ "$1" == "-h" ]];
-    then
-    Help >&2
-
-fi
+  then
+    Usage >&2
+  fi
 
 # reading command line arguments
-while getopts "c:d:f:g:h:i:j:k:m:n:o:p:q:s:r:t:w:x:z:" OPT
+while getopts "b:c:d:e:f:g:h:i:j:k:l:m:n:o:p:q:s:r:t:u:v:w:x:z:" OPT
   do
   case $OPT in
       h) #help
-	  echo "$USAGE"
-	  exit 0
-	  ;;
+   Usage >&2
+   exit 0
+   ;;
+      b) #backup each iteration
+   BACKUPEACHITERATION=$OPTARG
+   ;;
+      e) #float boolean
+   USEFLOAT=$OPTARG
+   ;;
       c) #use SGE cluster
-	  DOQSUB=$OPTARG
-	  if [[ ${#DOQSUB} -gt 2 ]]; then
-	      echo " DOQSUB must be an integer value (0=serial, 1=SGE qsub, 2=try pexec, 3=XGrid, 4=PBS qsub ) you passed  -c $DOQSUB "
-	      exit 1
-	  fi
-	  ;;
+   DOQSUB=$OPTARG
+   if [[ $DOQSUB -gt 4 ]];
+     then
+       echo " DOQSUB must be an integer value (0=serial, 1=SGE qsub, 2=try pexec, 3=XGrid, 4=PBS qsub ) you passed  -c $DOQSUB "
+       exit 1
+     fi
+   ;;
       d) #dimensions
-	  DIM=$OPTARG
-	  if [[ ${DIM} -eq 4 ]]; then
-	      DIM=3
-	      TDIM=4
-	  fi
-	  ;;
+   DIM=$OPTARG
+   if [[ ${DIM} -eq 4 ]];
+     then
+       DIM=3
+       TDIM=4
+     fi
+   ;;
       g) #gradient stepsize (default = 0.25)
-	  GRADIENTSTEP=$OPTARG
-	  ;;
+   GRADIENTSTEP=$OPTARG
+   ;;
       i) #iteration limit (default = 3)
-	  ITERATIONLIMIT=$OPTARG
-	  ;;
+   ITERATIONLIMIT=$OPTARG
+   ;;
       j) #number of cpu cores to use (default = 2)
-	  CORES=$OPTARG
-	  ;;
+   CORES=$OPTARG
+   ;;
       k) #number of modalities used to construct the template (default = 1)
-	  NUMBEROFMODALITIES=$OPTARG
-	  ;;
+   NUMBEROFMODALITIES=$OPTARG
+   ;;
+      l) #do linear (rigid + affine) for deformable registration
+   DOLINEAR=$OPTARG
+   ;;
       w) #modality weights (default = 1)
-	  MODALITYWEIGHTSTRING=$OPTARG
-	  ;;
+   MODALITYWEIGHTSTRING=$OPTARG
+   ;;
       q) #max iterations other than default
-	  MAXITERATIONS=$OPTARG
-	  ;;
+   MAXITERATIONS=$OPTARG
+   ;;
       f) #shrink factors
-	  SHRINKFACTORS=$OPTARG
-	  ;;
+   SHRINKFACTORS=$OPTARG
+   ;;
       s) #smoothing factors
-	  SMOOTHINGFACTORS=$OPTARG
-	  ;;
+   SMOOTHINGFACTORS=$OPTARG
+   ;;
       n) #apply bias field correction
-	  N4CORRECT=$OPTARG
-	  ;;
+   N4CORRECT=$OPTARG
+   ;;
       o) #output name prefix
-	  OUTPUTNAME=$OPTARG
-	  TEMPLATENAME=${OUTPUTNAME}template
-	  ;;
+   OUTPUTNAME=$OPTARG
+   TEMPLATENAME=${OUTPUTNAME}template
+   ;;
       p) #Script prepend
-	  SCRIPTPREPEND=$OPTARG
-	  ;;
+   SCRIPTPREPEND=$OPTARG
+   ;;
       m) #similarity model
-	  METRICTYPE=$OPTARG
-	  ;;
+	  METRICTYPE[${#METRICTYPE[@]}]=$OPTARG
+   ;;
       r) #start with rigid-body registration
-	  RIGID=$OPTARG
-	  ;;
+   RIGID=$OPTARG
+   ;;
       t) #transformation model
-	  TRANSFORMATIONTYPE=$OPTARG
-	  ;;
+   TRANSFORMATIONTYPE=$OPTARG
+   ;;
+      u)
+   PBSWALLTIME=$OPTARG
+   ;;
+      v)
+   PBSMEMORY=$OPTARG
+   ;;
       x) #initialization template
-	  XGRIDOPTS=$XGRIDOPTS
-	  ;;
+   XGRIDOPTS=$XGRIDOPTS
+   ;;
       z) #initialization template
-	  REGTEMPLATES[${#REGTEMPLATES[@]}]=$OPTARG
-	  ;;
+   REGTEMPLATES[${#REGTEMPLATES[@]}]=$OPTARG
+   ;;
       \?) # getopts issues an error message
       echo "$USAGE" >&2
       exit 1
@@ -638,46 +538,109 @@ done
 
 # Provide different output for Usage and Help
 if [[ ${TDIM} -eq 4 && $nargs -lt 5 ]];
-    then
+  then
     Usage >&2
 elif [[ ${TDIM} -eq 4 && $nargs -eq 5 ]];
-    then
+  then
     echo ""
     # This option is required to run 4D template creation on SGE with a minimal command line
 elif [[ $nargs -lt 6 ]]
-    then
+  then
     Usage >&2
 fi
 
 if [[ $DOQSUB -eq 1 || $DOQSUB -eq 4 ]];
-    then
+  then
     qq=`which  qsub`
     if [[  ${#qq} -lt 1 ]];
-        then
+      then
         echo "do you have qsub?  if not, then choose another c option ... if so, then check where the qsub alias points ..."
         exit
-    fi
-fi
+      fi
+  fi
 
 for (( i = 0; i < $NUMBEROFMODALITIES; i++ ))
-    do
-	   TEMPLATES[$i]=${TEMPLATENAME}${i}.nii.gz
-done
+  do
+    TEMPLATES[$i]=${TEMPLATENAME}${i}.nii.gz
+  done
+
+if [[ ${#METRICTYPE[@]} -eq 0 ]];
+  then
+    METRICTYPE[0]=CC
+  fi
+
+if [[ ${#METRICTYPE[@]} -eq 1 ]];
+  then
+    for (( i = 1; i < $NUMBEROFMODALITIES; i++ ))
+      do
+        METRICTYPE[${#METRICTYPE[@]}]=${METRICTYPE[0]}
+      done
+  fi
+
+if [[ ${#METRICTYPE[@]} -ne $NUMBEROFMODALITIES ]];
+  then
+    echo "The number of similarity metrics does not match the number of specified modalities (see -s option)"
+    exit
+  fi
 
 if [[ ! -n "$MODALITYWEIGHTSTRING" ]];
-    then
-    for (( $i = 0; $i < $NUMBEROFMODALITIES; $i++ ))
-        do
+  then
+    for (( i = 0; i < $NUMBEROFMODALITIES; i++ ))
+      do
         MODALITYWEIGHTS[$i]=1
-    done
-else
+      done
+  else
     MODALITYWEIGHTS=(`echo $MODALITYWEIGHTSTRING | tr 'x' "\n"`)
     if [[ ${#MODALITYWEIGHTS[@]} -ne $NUMBEROFMODALITIES ]];
-        then
+      then
         echo "The number of weights (specified e.g. -w 1x1x1) does not match the number of specified modalities (see -k option)";
         exit 1
+      fi
+  fi
+
+
+TRANSFORMATION=''
+
+if [[ $TRANSFORMATIONTYPE == "BSplineSyN"* ]];
+  then
+    if [[ $TRANSFORMATIONTYPE == "BSplineSyN["*"]" ]]
+      then
+        TRANSFORMATION=${TRANSFORMATIONTYPE}
+      else
+        TRANSFORMATION=BSplineSyN[0.1,26,0,3]
     fi
+elif [[ $TRANSFORMATIONTYPE == "SyN"* ]];
+  then
+    if [[ $TRANSFORMATIONTYPE == "SyN["*"]" ]]
+      then
+        TRANSFORMATION=${TRANSFORMATIONTYPE}
+      else
+        TRANSFORMATION=SyN[0.1,3,0]
+    fi
+elif [[ $TRANSFORMATIONTYPE == "TimeVaryingVelocityField"* ]];
+  then
+    if [[ $TRANSFORMATIONTYPE == "TimeVaryingVelocityField["*"]" ]]
+      then
+        TRANSFORMATION=${TRANSFORMATIONTYPE}
+      else
+        TRANSFORMATION=TimeVaryingVelocityField[0.5,4,3,0,0,0]
+    fi
+elif [[ $TRANSFORMATIONTYPE == "TimeVaryingBSplineVelocityField"* ]];
+  then
+    if [[ $TRANSFORMATIONTYPE == "TimeVaryingBSplineVelocityField["*"]" ]]
+      then
+        TRANSFORMATION=${TRANSFORMATIONTYPE}
+      else
+        TRANSFORMATION=TimeVaryingVelocityField[0.5,12x12x12x2,4,3]
+    fi
+else
+  echo "Invalid transformation. See `basename $0` -h for help menu."
+  exit 1
 fi
+
+#echo $TRANSFORMATION
+#exit 1
+
 
 # Creating the file list of images to make a template from.
 # Shiftsize is calculated because a variable amount of arguments can be used on the command line.
@@ -690,12 +653,7 @@ IMAGESETVARIABLE=$*
 NINFILES=$(($nargs - $shiftsize))
 IMAGESETARRAY=()
 
-# FSL not needed anymore, all dependent on ImageMath
-# #test if FSL is available in case of 4D, exit if not
-# if [[  ${TDIM} -eq 4 && ${#FSLDIR} -le 0 ]];
-#     then
-#     setFSLPath >&2
-# fi
+
 
 if [[ ${NINFILES} -eq 0 ]];
     then
@@ -727,17 +685,17 @@ elif [[ ${NINFILES} -eq 1 ]];
     else
         range=`${ANTSPATH}ImageMath $TDIM abs nvols ${IMAGESETVARIABLE} | tail -1 | cut -d "," -f 4 | cut -d " " -f 2 | cut -d "]" -f 1 `
         if [[ ${range} -eq 1 && ${TDIM} -ne 4 ]];
-            then
+          then
             echo "Please provide at least 2 filenames for the template."
             echo "Use `basename $0` -h for help"
             exit 1
         elif [[ ${range} -gt 1 && ${TDIM} -ne 4 ]]
-            then
+          then
             echo "This is a multivolume file. Use -d 4"
             echo "Use `basename $0` -h for help"
             exit 1
         elif [[ ${range} -gt 1 && ${TDIM} -eq 4 ]];
-            then
+          then
             echo
             echo "--------------------------------------------------------------------------------------"
             echo " Creating template of 4D input. "
@@ -757,7 +715,7 @@ elif [[ ${NINFILES} -eq 1 ]];
              cp ${IMAGESETVARIABLE} ${tmpdir}/
              cd ${tmpdir}/
              # ${ANTSPATH}ImageMath $TDIM vol0.nii.gz TimeSeriesSubset ${IMAGESETVARIABLE} ${range}
-             #	rm -f ${IMAGESETVARIABLE}
+             # rm -f ${IMAGESETVARIABLE}
 
              # selecting 16 volumes randomly from the timeseries for averaging, placing them in tmp/selection folder.
              # the script will automatically divide timeseries into $total_volumes/16 bins from wich to take the random volumes;
@@ -765,7 +723,7 @@ elif [[ ${NINFILES} -eq 1 ]];
 
              nfmribins=16
             if [[ ${range} -gt 31  ]];
-                then
+              then
                 BINSIZE=$((${range} / ${nfmribins}))
                 j=1 # initialize counter j
                 for ((i = 0; i < ${nfmribins}; i++))
@@ -788,20 +746,20 @@ elif [[ ${NINFILES} -eq 1 ]];
                     #debug only
                     echo
                     echo "Random number between $FLOOR and $BINrange ---  $number"
-                    #			echo "Random number between $FLOOR and $range ---  $number"
+                    #  echo "Random number between $FLOOR and $range ---  $number"
 
                     if [[ ${number} -lt 10 ]];
                         then
                         ${ANTSPATH}ImageMath $TDIM selection/vol000${number}.nii.gz ExtractSlice ${IMAGESETVARIABLE} ${number}
-                        #					cp vol000${number}.nii.gz selection/
+                        #   cp vol000${number}.nii.gz selection/
                     elif [[ ${number} -ge 10 && ${number} -lt 100 ]];
                         then
                         ${ANTSPATH}ImageMath $TDIM selection/vol00${number}.nii.gz ExtractSlice ${IMAGESETVARIABLE} ${number}
-                        #					cp vol00${number}.nii.gz selection/
+                        #   cp vol00${number}.nii.gz selection/
                     elif [[ ${number} -ge 100 && ${number} -lt 1000 ]];
                         then
                         ${ANTSPATH}ImageMath $TDIM selection/vol0${number}.nii.gz ExtractSlice ${IMAGESETVARIABLE} ${number}
-                        #					cp vol0${number}.nii.gz selection/
+                        #   cp vol0${number}.nii.gz selection/
                     fi
                     let j++
                 done
@@ -815,17 +773,17 @@ elif [[ ${NINFILES} -eq 1 ]];
                 if [[ ${number} -lt 10 ]];
                     then
                     ${ANTSPATH}ImageMath $TDIM selection/vol0.nii.gz ExtractSlice ${IMAGESETVARIABLE} ${number}
-                    #					cp vol000${number}.nii.gz selection/
+                    #   cp vol000${number}.nii.gz selection/
                 elif [[ ${number} -ge 10 && ${number} -lt 100 ]];
                     then
                     ${ANTSPATH}ImageMath $TDIM selection/vol0.nii.gz ExtractSlice ${IMAGESETVARIABLE} ${number}
-                    #					cp vol00${number}.nii.gz selection/
+                    #   cp vol00${number}.nii.gz selection/
                 fi
             done
         elif [[ ${range} -le ${nfmribins} ]];
             then
             ${ANTSPATH}ImageMath selection/$TDIM vol0.nii.gz TimeSeriesSubset ${IMAGESETVARIABLE} ${range}
-            #		cp *.nii.gz selection/
+            # cp *.nii.gz selection/
         fi
         # set filelist variable
         rm -f ${IMAGESETVARIABLE}
@@ -835,14 +793,14 @@ elif [[ ${NINFILES} -eq 1 ]];
         IMAGESETARRAY=()
         for IMG in $IMAGESETVARIABLE
           do
-          IMAGESETARRAY[${#IMAGESETARRAY[@]}]=$IMG
+            IMAGESETARRAY[${#IMAGESETARRAY[@]}]=$IMG
           done
     fi
 else
     IMAGESETARRAY=()
     for IMG in $IMAGESETVARIABLE
       do
-      IMAGESETARRAY[${#IMAGESETARRAY[@]}]=$IMG
+        IMAGESETARRAY[${#IMAGESETARRAY[@]}]=$IMG
       done
 fi
 
@@ -908,25 +866,24 @@ rm -f ${outdir}/job*.sh
 #
 ##########################################################################
 if [[ "$RIGID" -eq 1 ]];
-    then
+  then
     count=0
     jobIDs=""
-
 
     for (( i = 0; i < ${#IMAGESETARRAY[@]}; i+=$NUMBEROFMODALITIES ))
       do
 
-        basecall="${ANTS} -d ${DIM} -u 1 -w [0.01,0.99] -z 1 -r [${TEMPLATES[0]},${IMAGESETARRAY[0]},1]"
+        basecall="${ANTS} -d ${DIM} --float $USEFLOAT -u 1 -w [0.01,0.99] -z 1 -r [${TEMPLATES[0]},${IMAGESETARRAY[0]},1]"
 
         IMAGEMETRICSET=""
         for (( j = 0; j < $NUMBEROFMODALITIES; j++ ))
-            do
+          do
             k=0
             let k=$i+$j
-            IMAGEMETRICSET="$IMAGEMETRICSET -m MI[${TEMPLATES[$j]},${IMAGESETARRAY[$k]},${MODALITYWEIGHTS[$j]},32,Regular,0.1]"
-        done
+            IMAGEMETRICSET="$IMAGEMETRICSET -m MI[${TEMPLATES[$j]},${IMAGESETARRAY[$k]},${MODALITYWEIGHTS[$j]},32,Regular,0.25]"
+          done
 
-        stage1="-t Rigid[0.1] ${IMAGEMETRICSET} -c [1000x1000x1000x1000,1e-9,10] -f 8x4x2x1 -s 4x2x1x0 -o ${outdir}/rigid${i}_"
+        stage1="-t Rigid[0.1] ${IMAGEMETRICSET} -c [1000x500x250x100,1e-8,10] -f 8x4x2x1 -s 4x2x1x0 -o ${outdir}/rigid${i}_"
         exe="${basecall} ${stage1}"
 
         qscript="${outdir}/job_${count}_qsub.sh"
@@ -942,7 +899,7 @@ if [[ "$RIGID" -eq 1 ]];
         pexe2='';
         pexe=" $exe > ${outdir}/job_${count}_metriclog.txt "
         for (( j = 0; j < $NUMBEROFMODALITIES; j++ ))
-            do
+          do
             k=0
             let k=$i+$j
             IMGbase=`basename ${IMAGESETARRAY[$k]}`
@@ -950,60 +907,58 @@ if [[ "$RIGID" -eq 1 ]];
             RIGID="${outdir}/rigid${i}_${j}_${IMGbase}"
             IMGbaseBASE=`basename ${IMAGESETARRAY[$i]}`
             BASENAMEBASE=` echo ${IMGbaseBASE} | cut -d '.' -f 1 `
-            exe2="$exe2 ${WARP} -d $DIM -i ${IMAGESETARRAY[$k]} -o $RIGID -t ${outdir}/rigid${i}_0GenericAffine.mat -r ${TEMPLATES[$j]}\n"
-            pexe2="$exe2 ${WARP} -d $DIM -i ${IMAGESETARRAY[$k]} -o $RIGID -t ${outdir}/rigid${i}_0GenericAffine.mat -r ${TEMPLATES[$j]} >> ${outdir}/job_${count}_metriclog.txt\n"
-        done
+            exe2="$exe2 ${WARP} -d $DIM --float $USEFLOAT -i ${IMAGESETARRAY[$k]} -o $RIGID -t ${outdir}/rigid${i}_0GenericAffine.mat -r ${TEMPLATES[$j]}\n"
+            pexe2="$exe2 ${WARP} -d $DIM --float $USEFLOAT -i ${IMAGESETARRAY[$k]} -o $RIGID -t ${outdir}/rigid${i}_0GenericAffine.mat -r ${TEMPLATES[$j]} >> ${outdir}/job_${count}_metriclog.txt\n"
+          done
 
         echo -e "$exe2" >> $qscript;
 
         if [[ $DOQSUB -eq 1 ]];
-            then
+          then
             id=`qsub -cwd -S /bin/bash -N antsBuildTemplate_rigid -v ANTSPATH=$ANTSPATH $QSUBOPTS $qscript | awk '{print $3}'`
             jobIDs="$jobIDs $id"
             sleep 0.5
         elif [[ $DOQSUB -eq 4 ]];
-            then
-            id=`qsub -N antsrigid -v ANTSPATH=$ANTSPATH $QSUBOPTS -q nopreempt -l nodes=1:ppn=1 -l walltime=4:00:00 $qscript | awk '{print $1}'`
+          then
+            id=`qsub -N antsrigid -v ANTSPATH=$ANTSPATH $QSUBOPTS -q nopreempt -l nodes=1:ppn=1 -l mem=${PBSMEMORY} -l walltime=${PBSWALLTIME} $qscript | awk '{print $1}'`
             jobIDs="$jobIDs $id"
             sleep 0.5
         elif [[ $DOQSUB -eq 2 ]];
-            then
+          then
             # Send pexe and exe2 to same job file so that they execute in series
             echo $pexe >> ${outdir}/job${count}_r.sh
             echo -e $pexe2 >> ${outdir}/job${count}_r.sh
         elif [[ $DOQSUB -eq 3 ]];
-            then
+          then
             id=`xgrid $XGRIDOPTS -job submit /bin/bash $qscript | awk '{sub(/;/,"");print $3}' | tr '\n' ' ' | sed 's:  *: :g'`
             #echo "xgrid $XGRIDOPTS -job submit /bin/bash $qscript"
             jobIDs="$jobIDs $id"
         elif [[ $DOQSUB -eq 0 ]];
-            then
-
+          then
             echo $qscript
-
              # execute jobs in series
-             bash $qscript
-        fi
+            bash $qscript
+          fi
         ((count++))
     done
     if [[ $DOQSUB -eq 1 ]];
-        then
+      then
         # Run jobs on SGE and wait to finish
         echo
         echo "--------------------------------------------------------------------------------------"
         echo " Starting ANTS rigid registration on SGE cluster. Submitted $count jobs "
         echo "--------------------------------------------------------------------------------------"
         # now wait for the jobs to finish. Rigid registration is quick, so poll queue every 60 seconds
-	${ANTSPATH}waitForSGEQJobs.pl 1 60 $jobIDs
+        ${ANTSPATH}waitForSGEQJobs.pl 1 60 $jobIDs
         # Returns 1 if there are errors
         if [[ ! $? -eq 0 ]];
-            then
+          then
             echo "qsub submission failed - jobs went into error state"
             exit 1;
-        fi
-    fi
+          fi
+      fi
     if [[ $DOQSUB -eq 4 ]];
-        then
+      then
         # Run jobs on PBS and wait to finish
         echo
         echo "--------------------------------------------------------------------------------------"
@@ -1013,14 +968,14 @@ if [[ "$RIGID" -eq 1 ]];
         ${ANTSPATH}waitForPBSQJobs.pl 1 60 $jobIDs
         # Returns 1 if there are errors
         if [[ ! $? -eq 0 ]];
-            then
+          then
             echo "qsub submission failed - jobs went into error state"
             exit 1;
-        fi
-    fi
+          fi
+      fi
     # Run jobs on localhost and wait to finish
     if [[ $DOQSUB -eq 2 ]];
-        then
+      then
         echo
         echo "--------------------------------------------------------------------------------------"
         echo " Starting ANTS rigid registration on max ${CORES} cpucores. "
@@ -1029,9 +984,9 @@ if [[ "$RIGID" -eq 1 ]];
         jobfnamepadding #adds leading zeros to the jobnames, so they are carried out chronologically
         chmod +x ${outdir}/job*_r.sh
         $PEXEC -j ${CORES} "sh" ${outdir}/job*_r.sh
-    fi
+      fi
     if [[ $DOQSUB -eq 3 ]];
-        then
+      then
         # Run jobs on XGrid and wait to finish
         echo
         echo "--------------------------------------------------------------------------------------"
@@ -1041,17 +996,17 @@ if [[ "$RIGID" -eq 1 ]];
         ${ANTSPATH}waitForXGridJobs.pl -xgridflags "$XGRIDOPTS" -verbose -delay 30 $jobIDs
         # Returns 1 if there are errors
         if [[ ! $? -eq 0 ]];
-            then
+          then
             echo "XGrid submission failed - jobs went into error state"
             exit 1;
-        fi
-    fi
+          fi
+      fi
 
     for (( j = 0; j < $NUMBEROFMODALITIES; j++ ))
-        do
+      do
         IMAGERIGIDSET=()
         for (( i = $j; i < ${#IMAGESETARRAY[@]}; i+=$NUMBEROFMODALITIES ))
-            do
+          do
             k=0
             let k=$i-$j
             IMGbase=`basename ${IMAGESETARRAY[$i]}`
@@ -1059,33 +1014,41 @@ if [[ "$RIGID" -eq 1 ]];
             RIGID="${outdir}/rigid${k}_${j}_${IMGbase}"
 
             IMAGERIGIDSET[${#IMAGERIGIDSET[@]}]=$RIGID
-        done
+          done
         echo
         echo  "${ANTSPATH}AverageImages $DIM ${TEMPLATES[$j]} 1 ${IMAGERIGIDSET[@]}"
 
-	   ${ANTSPATH}AverageImages $DIM ${TEMPLATES[$j]} 1 ${IMAGERIGIDSET[@]}
-    done
+      ${ANTSPATH}AverageImages $DIM ${TEMPLATES[$j]} 1 ${IMAGERIGIDSET[@]}
+      done
 
     # cleanup and save output in seperate folder
-    mkdir ${outdir}/rigid
-    mv ${outdir}/rigid*.nii.gz ${outdir}/*GenericAffine.mat ${outdir}/rigid/
-    # backup logs
-    if [[ $DOQSUB -eq 1 ]];
-	       then
-	       mv ${outdir}/antsBuildTemplate_rigid* ${outdir}/rigid/
-        # Remove qsub scripts
-	rm -f ${outdir}/job_${count}_qsub.sh
-    elif [[ $DOQSUB -eq 4 ]];
-        then
-	       mv ${outdir}/antsrigid* ${outdir}/rigid/
-        # Remove qsub scripts
-	  rm -f ${outdir}/job_${count}_qsub.sh
-    elif [[ $DOQSUB -eq 2 ]];
-	       then
-	       mv ${outdir}/job*.txt ${outdir}/rigid/
-    elif [[ $DOQSUB -eq 3 ]];
-	       then
-	       rm -f ${outdir}/job_*_qsub.sh
+    if [[ BACKUPEACHITERATION -eq 1 ]];
+      then
+        echo
+        echo "--------------------------------------------------------------------------------------"
+        echo " Backing up results from rigid iteration"
+        echo "--------------------------------------------------------------------------------------"
+
+        mkdir ${outdir}/rigid
+        mv ${outdir}/rigid*.nii.gz ${outdir}/*GenericAffine.mat ${outdir}/rigid/
+        # backup logs
+        if [[ $DOQSUB -eq 1 ]];
+          then
+            mv ${outdir}/antsBuildTemplate_rigid* ${outdir}/rigid/
+            # Remove qsub scripts
+            rm -f ${outdir}/job_${count}_qsub.sh
+        elif [[ $DOQSUB -eq 4 ]];
+          then
+            mv ${outdir}/antsrigid* ${outdir}/job* ${outdir}/rigid/
+        elif [[ $DOQSUB -eq 2 ]];
+          then
+            mv ${outdir}/job*.txt ${outdir}/rigid/
+        elif [[ $DOQSUB -eq 3 ]];
+          then
+            rm -f ${outdir}/job_*_qsub.sh
+        fi
+      else
+        rm -f  ${outdir}/rigid*.* ${outdir}/job*.txt
     fi
 fi # endif RIGID
 
@@ -1107,42 +1070,22 @@ echo
 echo "--------------------------------------------------------------------------------------"
 echo " Start to build templates: ${TEMPLATES[@]}"
 echo "--------------------------------------------------------------------------------------"
-reportMappingParameters
 #
 
-TRANSFORMATION=''
-REGULARIZATION=''
-if [[ "${TRANSFORMATIONTYPE}" == "BSplineSyN" ]];
-    then
-    # Mapping Parameters
-    if [[ $DIM -eq 3 ]];
-      then
-        TRANSFORMATION=BSplineSyN[0.15,10x10x11,0x0x0,3]
-    else
-        TRANSFORMATION=BSplineSyN[0.15,10x10,0x0,3]
-    fi
-elif [[ "${TRANSFORMATIONTYPE}" == "SyN" ]];
-    then
-    # Mapping Parameters for the greedy gradient descent (fast) version of SyN -- only needs GradientStepLength
-    TRANSFORMATION=SyN[0.15,3,0.0]
-else
-    echo "Invalid transformation metric. Use SyN or BSplineSyN or type bash `basename $0` -h."
-    exit 1
-fi
+
+reportMappingParameters
 
 i=0
 while [[ $i -lt ${ITERATIONLIMIT} ]];
-    do
+  do
     itdisplay=$((i+1))
-    rm -f ${OUTPUTNAME}*Warp*.nii*
+    rm -f ${OUTPUTNAME}*Warp.nii*
+    rm -f ${OUTPUTNAME}*GenericAffine.mat
     rm -f ${outdir}/job*.sh
     # Used to save time by only running coarse registration for the first couple of iterations
     # But with decent initialization, this is probably not worthwhile.
     # If you uncomment this, replace MAXITERATIONS with ITERATIONS in the call to ants below
     #
-    # # For the first couple of iterations, use high-level registration only
-    # # eg if MAXITERATIONS=30x90x20, then for iteration 0, do 30x0x0
-    # # for iteration 1 do 30x90x0, then do 30x90x20 on subsequent iterations
     # if [[ $i -gt $((NUMLEVELS - 1)) ]];
     #    then
     #    ITERATIONS=$MAXITERATIONS
@@ -1163,19 +1106,9 @@ while [[ $i -lt ${ITERATIONLIMIT} ]];
 
     for (( j = 0; j < ${#IMAGESETARRAY[@]}; j+=$NUMBEROFMODALITIES ))
       do
-        basecall="${ANTS} -d ${DIM} -u 1 -w [0.01,0.99] -z 1 -r [${TEMPLATES[0]},${IMAGESETARRAY[0]},1]"
+        basecall="${ANTS} -d ${DIM} --float $USEFLOAT -u 1 -w [0.01,0.99] -z 1"
 
-        IMAGEMETRICSET=""
-        for (( k = 0; k < $NUMBEROFMODALITIES; k++ ))
-            do
-            l=0
-            let l=$i+$k
-            IMAGEMETRICSET="$IMAGEMETRICSET -m MI[${TEMPLATES[$k]},${IMAGESETARRAY[$j]},${MODALITYWEIGHTS[$k]},32,Regular,0.1]"
-        done
-
-        stage1="-t Rigid[0.1] ${IMAGEMETRICSET} -c [1000x1000x1000x1000,1e-9,10] -f 8x4x2x1 -s 4x2x1x0"
-        stage2="-t Affine[0.1] ${IMAGEMETRICSET} -c [1000x1000x1000x1000,1e-9,10] -f 8x4x2x1 -s 4x2x1x0"
-
+        IMAGEMETRICLINEARSET=''
         IMAGEMETRICSET=''
         exe=''
         warpexe=''
@@ -1183,40 +1116,45 @@ while [[ $i -lt ${ITERATIONLIMIT} ]];
         warppexe=''
 
         for (( k = 0; k < $NUMBEROFMODALITIES; k++ ))
-            do
+          do
             l=0
             let l=$j+$k
 
-            if [[ "${METRICTYPE}" == "PR" ]];
-                then
+            if [[ "${METRICTYPE[$k]}" == "DEMONS" ]];
+              then
                 # Mapping Parameters
-                METRIC=CC[
+                METRIC=Demons[
                 METRICPARAMS="${MODALITYWEIGHTS[$k]},4]"
-            elif [[ "${METRICTYPE}" == "CC"  ]];
-                then
-                # Mapping Parameters
+            elif [[ "${METRICTYPE[$k]}" == CC*  ]];
+              then
                 METRIC=CC[
-                METRICPARAMS="${MODALITYWEIGHTS[$k]},4]"
-            elif [[ "${METRICTYPE}" == "MI" ]];
-                then
+                RADIUS=4
+                if [[ "${METRICTYPE[$k]}" == CC[* ]]
+                  then
+                    RADIUS=${METRICTYPE[$k]%]*}
+                    RADIUS=${RADIUS##*[}
+                  fi
+                METRICPARAMS="${MODALITYWEIGHTS[$k]},${RADIUS}]"
+            elif [[ "${METRICTYPE[$k]}" == "MI" ]];
+              then
                 # Mapping Parameters
                 METRIC=MI[
                 METRICPARAMS="${MODALITYWEIGHTS[$k]},32]"
-            elif [[ "${METRICTYPE}" == "MSQ" ]];
-                then
+            elif [[ "${METRICTYPE[$k]}" == "MSQ" ]];
+              then
                 # Mapping Parameters
-                METRIC=MSQ[
+                METRIC=MeanSquares[
                 METRICPARAMS="${MODALITYWEIGHTS[$k]},0]"
             else
-                echo "Invalid similarity metric. Use CC, MI, MSQ or type bash `basename $0` -h."
-                exit 1
+              echo "Invalid similarity metric. Use CC, MI, MSQ, DEMONS or type bash `basename $0` -h."
+              exit 1
             fi
             TEMPLATEbase=`basename ${TEMPLATES[$k]}`
             indir=`dirname ${IMAGESETARRAY[$j]}`
             if [[ ${#indir} -eq 0 ]];
-                then
+              then
                 indir=`pwd`
-            fi
+              fi
             IMGbase=`basename ${IMAGESETARRAY[$l]}`
             POO=${OUTPUTNAME}template${k}${IMGbase}
             OUTFN=${POO%.*.*}
@@ -1229,19 +1167,26 @@ while [[ $i -lt ${ITERATIONLIMIT} ]];
             OUTWARPFN=`basename ${OUTWARPFN}`
             OUTWARPFN="${OUTWARPFN}${j}"
 
+            OUTPUTTRANSFORMS="-t ${outdir}/${OUTWARPFN}1Warp.nii.gz -t ${outdir}/${OUTWARPFN}0GenericAffine.mat"
+
             if [[ $N4CORRECT -eq 1 ]];
-                then
+              then
                 REPAIRED="${outdir}/${OUTFN}Repaired.nii.gz"
                 exe=" $exe $N4 -d ${DIM} -b [200] -c [50x50x40x30,0.00000001] -i ${IMAGESETARRAY[$l]} -o ${REPAIRED} -s 2\n"
-                pexe=" $pexe $N4 -d ${DIM} -b [200] -c [50x50x40x30,0.00000001] -i ${IMAGESETARRAY[$l]} -o ${REPAIRED} -s 2  >> ${outdir}/job_${count}_metriclog.txt\n"
+                pexe=" $pexe $N4 -d ${DIM} -b [200] -c [50x50x40x30,0.00000001] -i ${IMAGESETARRAY[$l]} -o ${REPAIRED} -s 2  >> ${outdir}/job_${count}_metriclog.txt >> ${outdir}/job_${count}_metriclog.txt\n"
+
                 IMAGEMETRICSET="$IMAGEMETRICSET -m ${METRIC}${TEMPLATES[$k]},${REPAIRED},${METRICPARAMS}"
-                warpexe=" $warpexe ${WARP} -d ${DIM} -i ${REPAIRED} -o ${DEFORMED} -r ${TEMPLATES[$k]} -t ${outdir}/${OUTWARPFN}1Warp.nii.gz -t ${outdir}/${OUTWARPFN}0GenericAffine.mat\n"
-                warppexe=" $warppexe ${WARP} -d ${DIM} -i ${REPAIRED} -o ${DEFORMED} -r ${TEMPLATES[$k]} -t ${outdir}/${OUTWARPFN}1Warp.nii.gz -t ${outdir}/${OUTWARPFN}0GenericAffine.mat >> ${outdir}/job_${count}_metriclog.txt\n"
-            else
+                IMAGEMETRICLINEARSET="$IMAGEMETRICLINEARSET -m MI[${TEMPLATES[$k]},${REPAIRED},${MODALITYWEIGHTS[$k]},32,Regular,0.25]"
+
+                warpexe=" $warpexe ${WARP} -d ${DIM} --float $USEFLOAT -i ${REPAIRED} -o ${DEFORMED} -r ${TEMPLATES[$k]} ${OUTPUTTRANSFORMS}\n"
+                warppexe=" $warppexe ${WARP} -d ${DIM} --float $USEFLOAT -i ${REPAIRED} -o ${DEFORMED} -r ${TEMPLATES[$k]} ${OUTPUTTRANSFORMS} >> ${outdir}/job_${count}_metriclog.txt\n"
+              else
                 IMAGEMETRICSET="$IMAGEMETRICSET -m ${METRIC}${TEMPLATES[$k]},${IMAGESETARRAY[$l]},${METRICPARAMS}"
-                warpexe=" $warpexe ${WARP} -d ${DIM} -i ${IMAGESETARRAY[$l]} -o ${DEFORMED} -r ${TEMPLATES[$k]} -t ${outdir}/${OUTWARPFN}1Warp.nii.gz -t ${outdir}/${OUTWARPFN}0GenericAffine.mat\n"
-                warppexe=" $warppexe ${WARP} -d ${DIM} -i ${IMAGESETARRAY[$l]} -o ${DEFORMED} -r ${TEMPLATES[$k]} -t ${outdir}/${OUTWARPFN}1Warp.nii.gz -t ${outdir}/${OUTWARPFN}0GenericAffine.mat >> ${outdir}/job_${count}_metriclog.txt\n"
-            fi
+                IMAGEMETRICLINEARSET="$IMAGEMETRICLINEARSET -m MI[${TEMPLATES[$k]},${IMAGESETARRAY[$l]},${MODALITYWEIGHTS[$k]},32,Regular,0.25]"
+
+                warpexe=" $warpexe ${WARP} -d ${DIM} --float $USEFLOAT -i ${IMAGESETARRAY[$l]} -o ${DEFORMED} -r ${TEMPLATES[$k]} ${OUTPUTTRANSFORMS}\n"
+                warppexe=" $warppexe ${WARP} -d ${DIM} --float $USEFLOAT -i ${IMAGESETARRAY[$l]} -o ${DEFORMED} -r ${TEMPLATES[$k]} ${OUTPUTTRANSFORMS} >> ${outdir}/job_${count}_metriclog.txt\n"
+              fi
 
         done
 
@@ -1250,16 +1195,22 @@ while [[ $i -lt ${ITERATIONLIMIT} ]];
         OUTWARPFN=${POO%.*.*}
         OUTWARPFN=`basename ${OUTWARPFN}${j}`
 
+        stage0="-r [${TEMPLATES[0]},${IMAGESETARRAY[0]},1]"
+        stage1="-t Rigid[0.1] ${IMAGEMETRICLINEARSET} -c [1000x500x250x100,1e-8,10] -f 8x4x2x1 -s 4x2x1x0"
+        stage2="-t Affine[0.1] ${IMAGEMETRICLINEARSET} -c [1000x500x250x100,1e-8,10] -f 8x4x2x1 -s 4x2x1x0"
         stage3="-t ${TRANSFORMATION} ${IMAGEMETRICSET} -c [${MAXITERATIONS},1e-9,10] -f ${SHRINKFACTORS} -s ${SMOOTHINGFACTORS} -o ${outdir}/${OUTWARPFN}"
 
-        exe="${basecall} ${stage1} ${stage2} ${stage3}\n"
+        stageId="-t Rigid[0.1] ${IMAGEMETRICLINEARSET} -c [0,1e-8,10] -f 1 -s 0"
+
+        if [[ $DOLINEAR -ne 0 ]];
+          then
+            exe="$exe ${basecall} ${stage0} ${stage1} ${stage2} ${stage3}\n"
+            pexe="$pexe ${basecall} ${stage0} ${stage1} ${stage2} ${stage3} >> ${outdir}/job_${count}_metriclog.txt\n"
+          else
+            exe="$exe ${basecall} ${stageId} ${stage3}\n"
+            pexe="$pexe ${basecall} ${stageId} ${stage3} >> ${outdir}/job_${count}_metriclog.txt\n"
+          fi
         exe="$exe $warpexe"
-
-        exe="${basecall} ${stage1} ${stage2} ${stage3}\n"
-
-
-        exe="$exe $warpexe"
-        pexe="${basecall} ${stage1} ${stage2} ${stage3} >> ${outdir}/job_${count}_metriclog.txt\n"
         pexe="$pexe $warppexe"
 
         qscript="${outdir}/job_${count}_${i}.sh"
@@ -1267,42 +1218,40 @@ while [[ $i -lt ${ITERATIONLIMIT} ]];
         echo -e $exe >> ${outdir}/job_${count}_${i}_metriclog.txt
         # 6 submit to SGE (DOQSUB=1), PBS (DOQSUB=4), PEXEC (DOQSUB=2), XGrid (DOQSUB=3) or else run locally (DOQSUB=0)
         if [[ $DOQSUB -eq 1 ]];
-            then
+          then
             echo -e "$exe" > $qscript
             id=`qsub -cwd -N antsBuildTemplate_deformable_${i} -S /bin/bash -v ANTSPATH=$ANTSPATH $QSUBOPTS $qscript | awk '{print $3}'`
             jobIDs="$jobIDs $id"
             sleep 0.5
         elif [[ $DOQSUB -eq 4 ]];
-            then
+          then
             echo -e "$SCRIPTPREPEND" > $qscript
             echo -e "$exe" >> $qscript
-            id=`qsub -N antsdef${i} -v ANTSPATH=$ANTSPATH -q nopreempt -l nodes=1:ppn=1 -l walltime=4:00:00 $QSUBOPTS $qscript | awk '{print $1}'`
+            id=`qsub -N antsdef${i} -v ANTSPATH=$ANTSPATH -q nopreempt -l nodes=1:ppn=1 -l mem=${PBSMEMORY} -l walltime=${PBSWALLTIME} $QSUBOPTS $qscript | awk '{print $1}'`
             jobIDs="$jobIDs $id"
             sleep 0.5
         elif [[ $DOQSUB -eq 2 ]];
-            then
+          then
             echo -e $pexe >> ${outdir}/job${count}_r.sh
         elif [[ $DOQSUB -eq 3 ]];
-            then
+          then
             echo -e "$SCRIPTPREPEND" > $qscript
             echo -e "$exe" >> $qscript
             id=`xgrid $XGRIDOPTS -job submit /bin/bash $qscript | awk '{sub(/;/,"");print $3}' | tr '\n' ' ' | sed 's:  *: :g'`
             jobIDs="$jobIDs $id"
         elif [[ $DOQSUB -eq 0 ]];
-            then
+          then
             echo -e $exe > $qscript
             bash $qscript
         fi
 
-
-
         # counter updated, but not directly used in this loop
         count=`expr $count + 1`;
-    #		echo " submitting job number $count " # for debugging only
+    # echo " submitting job number $count " # for debugging only
     done
     # SGE wait for script to finish
     if [[ $DOQSUB -eq 1 ]];
-        then
+      then
         echo
         echo "--------------------------------------------------------------------------------------"
         echo " Starting ANTS registration on SGE cluster. Iteration: $itdisplay of $ITERATIONLIMIT"
@@ -1310,12 +1259,12 @@ while [[ $i -lt ${ITERATIONLIMIT} ]];
         # now wait for the stuff to finish - this will take a while so poll queue every 10 mins
         ${ANTSPATH}waitForSGEQJobs.pl 1 600 $jobIDs
         if [[ ! $? -eq 0 ]];
-            then
+          then
             echo "qsub submission failed - jobs went into error state"
             exit 1;
-        fi
+          fi
     elif [[ $DOQSUB -eq 4 ]];
-        then
+      then
         echo
         echo "--------------------------------------------------------------------------------------"
         echo " Starting ANTS registration on PBS cluster. Iteration: $itdisplay of $ITERATIONLIMIT"
@@ -1323,14 +1272,14 @@ while [[ $i -lt ${ITERATIONLIMIT} ]];
         # now wait for the stuff to finish - this will take a while so poll queue every 10 mins
         ${ANTSPATH}waitForPBSQJobs.pl 1 600 $jobIDs
         if [[ ! $? -eq 0 ]];
-            then
+          then
             echo "qsub submission failed - jobs went into error state"
             exit 1;
-        fi
-    fi
+          fi
+      fi
     # Run jobs on localhost and wait to finish
     if [[ $DOQSUB -eq 2 ]];
-        then
+      then
         echo
         echo "--------------------------------------------------------------------------------------"
         echo " Starting ANTS registration on max ${CORES} cpucores. Iteration: $itdisplay of $ITERATIONLIMIT"
@@ -1339,9 +1288,10 @@ while [[ $i -lt ${ITERATIONLIMIT} ]];
         jobfnamepadding #adds leading zeros to the jobnames, so they are carried out chronologically
         chmod +x ${outdir}/job*.sh
         $PEXEC -j ${CORES} sh ${outdir}/job*.sh
-    fi
+      fi
+
     if [[ $DOQSUB -eq 3 ]];
-        then
+      then
         # Run jobs on XGrid and wait to finish
         echo
         echo "--------------------------------------------------------------------------------------"
@@ -1351,35 +1301,58 @@ while [[ $i -lt ${ITERATIONLIMIT} ]];
         ${ANTSPATH}waitForXGridJobs.pl -xgridflags "$XGRIDOPTS" -verbose -delay 300 $jobIDs
         # Returns 1 if there are errors
         if [[ ! $? -eq 0 ]];
-            then
+          then
             echo "XGrid submission failed - jobs went into error state"
             exit 1;
-        fi
+          fi
+      fi
+
+    WARPFILES=`ls ${OUTPUTNAME}*Warp.nii.gz | grep -v "InverseWarp"`
+    AFFINEFILES=`ls ${OUTPUTNAME}*GenericAffine.mat`
+
+    if [[ ${#WARPFILES[@]} -eq 0 || ${#AFFINEFILES[@]} -eq 0 ]];
+      then
+        echo "The registrations did not terminate properly.  There are no warp files"
+        echo "or affine files."
+        exit 1
     fi
+
+    if [[ ${#WARPFILES[@]} -ne ${#AFFINEFILES[@]} ]];
+      then
+        echo "The registrations did not terminate properly.  The number of warp files"
+        echo "does not match the number of affine files."
+        exit 1
+    fi
+
+
     for (( j = 0; j < $NUMBEROFMODALITIES; j++ ))
-        do
+      do
         shapeupdatetotemplate ${DIM} ${TEMPLATES[$j]} ${TEMPLATENAME} ${OUTPUTNAME} ${GRADIENTSTEP} ${j}
-    done
-    echo
-    echo "--------------------------------------------------------------------------------------"
-    echo " Backing up results from iteration $itdisplay"
-    echo "--------------------------------------------------------------------------------------"
-    mkdir ${outdir}/${TRANSFORMATIONTYPE}_iteration_${i}
-    cp ${OUTPUTNAME}*.nii.gz ${outdir}/${TRANSFORMATIONTYPE}_iteration_${i}/
-    # backup logs
-    if [[ $DOQSUB -eq 1 ]];
-        then
-        mv ${outdir}/antsBuildTemplate_deformable_* ${outdir}/${TRANSFORMATIONTYPE}_iteration_${i}
-    elif [[ $DOQSUB -eq 4 ]];
-        then
-        mv ${outdir}/antsdef* ${outdir}/${TRANSFORMATIONTYPE}_iteration_${i}
-    elif [[ $DOQSUB -eq 2 ]];
-        then
-        mv ${outdir}/job*.txt ${outdir}/${TRANSFORMATIONTYPE}_iteration_${i}
-    elif [[ $DOQSUB -eq 3 ]];
-        then
-        rm -f ${outdir}/job_*.sh
-    fi
+      done
+
+    if [[ $BACKUPEACHITERATION -eq 1 ]];
+      then
+        echo
+        echo "--------------------------------------------------------------------------------------"
+        echo " Backing up results from iteration $itdisplay"
+        echo "--------------------------------------------------------------------------------------"
+        mkdir ${outdir}/${TRANSFORMATIONTYPE}_iteration_${i}
+        cp ${TEMPLATENAME}${j}warplog.txt ${outdir}/*.cfg ${OUTPUTNAME}*.nii.gz ${outdir}/${TRANSFORMATIONTYPE}_iteration_${i}/
+        # backup logs
+        if [[ $DOQSUB -eq 1 ]];
+            then
+            mv ${outdir}/antsBuildTemplate_deformable_* ${outdir}/${TRANSFORMATIONTYPE}_iteration_${i}
+        elif [[ $DOQSUB -eq 4 ]];
+            then
+            mv ${outdir}/antsdef* ${outdir}/${TRANSFORMATIONTYPE}_iteration_${i}
+        elif [[ $DOQSUB -eq 2 ]];
+            then
+            mv ${outdir}/job*.txt ${outdir}/${TRANSFORMATIONTYPE}_iteration_${i}
+        elif [[ $DOQSUB -eq 3 ]];
+            then
+            rm -f ${outdir}/job_*.sh
+        fi
+      fi
     ((i++))
 done
 
@@ -1388,11 +1361,11 @@ done
 rm -f job*.sh
 #cleanup of 4D files
 if [[ "${range}" -gt 1 && "${TDIM}" -eq 4 ]];
-    then
+  then
     mv ${tmpdir}/selection/${TEMPLATES[@]} ${currentdir}/
     cd ${currentdir}
     rm -rf ${tmpdir}/
-fi
+  fi
 time_end=`date +%s`
 time_elapsed=$((time_end - time_start))
 echo

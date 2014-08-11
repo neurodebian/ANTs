@@ -34,17 +34,10 @@ namespace itk
  *
  * \author Nicholas J. Tustison
  *
- * Contributed by Nicholas J. Tustison, Brian B. Avants
- * in the Insight Journal paper:
- *
  * \par REFERENCE
  * S. R. Das, B. B. Avants, M. Grossman, and J. C. Gee, "Registration based
  * cortical thickness measurement," Neuroimage 2009, 45:867--879.
  *
- * \par REFERENCE
- * S. E. Jones, B. R. Buchbinder, and I Aharon, "Three-dimensional mapping
- * of Cortical thickness using Laplace's Equation." Human Brian Mapping 2000,
- * 11:12-32.
  */
 
 template <class TInputImage, class TOutputImage>
@@ -100,6 +93,23 @@ public:
   {
     return this->GetInput( 0 );
   }
+
+
+  /**
+   * Get the label image.
+   */
+  const RealImageType * GetThicknessPriorImage() const
+  {
+    return this->m_ThicknessPriorImage;
+  }
+  /**
+   * Set the label image.
+   */
+  void SetThicknessPriorImage( RealImagePointer seg )
+  {
+    this->m_ThicknessPriorImage = seg;
+  }
+
 
   /**
    * Set the grey matter probability image.
@@ -316,6 +326,11 @@ private:
   InputImagePointer ExtractRegionalContours( const InputImageType *, LabelType );
 
   /**
+   * Private function for making thickness image.
+   */
+  void MakeThicknessImage( RealImagePointer, RealImagePointer, InputImagePointer, RealImagePointer );
+
+  /**
    * Private function for warping an image.
    */
   RealImagePointer WarpImage( const RealImageType *, const DisplacementFieldType * );
@@ -352,6 +367,9 @@ private:
   RealType     m_CurrentConvergenceMeasurement;
   RealType     m_ConvergenceThreshold;
   unsigned int m_ConvergenceWindowSize;
+
+  RealImagePointer  m_ThicknessPriorImage;
+
 };
 } // end namespace itk
 

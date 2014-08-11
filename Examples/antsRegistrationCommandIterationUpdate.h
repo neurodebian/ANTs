@@ -22,7 +22,7 @@ protected:
     const itk::RealTimeClock::TimeStampType now = m_clock.GetTotal();
     this->m_lastTotalTime = now;
     m_clock.Start();
-    this->m_LogStream = &::ants::antscout;
+    this->m_LogStream = &std::cout;
   }
 
 public:
@@ -68,7 +68,7 @@ public:
       this->m_lastTotalTime = now;
       m_clock.Start();
 
-      typedef itk::GradientDescentOptimizerv4 GradientDescentOptimizerType;
+      typedef itk::GradientDescentOptimizerv4Template<typename TFilter::RealType> GradientDescentOptimizerType;
       GradientDescentOptimizerType * optimizer = reinterpret_cast<GradientDescentOptimizerType *>(
           const_cast<typename TFilter::OptimizerType *>( const_cast<TFilter *>( filter )->GetOptimizer() ) );
 
@@ -88,7 +88,7 @@ public:
 
       m_clock.Stop();
       const itk::RealTimeClock::TimeStampType now = m_clock.GetTotal();
-      this->Logger() << "DIAGNOSTIC, "
+      this->Logger() << "WDIAGNOSTIC, "
                      << std::setw(5) << lCurrentIteration << ", "
                      << std::scientific << std::setprecision(12) << filter->GetCurrentMetricValue() << ", "
                      << std::scientific << std::setprecision(12) << filter->GetCurrentConvergenceValue() << ", "

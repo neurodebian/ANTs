@@ -20,20 +20,21 @@
 #include "itkLabelImageGaussianInterpolateImageFunction.h"
 #include "include/antsRegistration.h"
 
-namespace ants {
+namespace ants
+{
 
 extern const char * RegTypeToFileName(const std::string & type, bool & writeInverse, bool & writeVelocityField);
 
-template <unsigned VImageDimension>
+template <class TComputeType, unsigned VImageDimension>
 int
 DoRegistration(typename ParserType::Pointer & parser)
 {
-  typedef typename ants::RegistrationHelper<VImageDimension>      RegistrationHelperType;
-  typedef typename RegistrationHelperType::ImageType              ImageType;
-  typedef typename RegistrationHelperType::CompositeTransformType CompositeTransformType;
+  typedef TComputeType                                                     RealType;
+  typedef typename ants::RegistrationHelper<TComputeType, VImageDimension> RegistrationHelperType;
+  typedef typename RegistrationHelperType::ImageType                       ImageType;
+  typedef typename RegistrationHelperType::CompositeTransformType          CompositeTransformType;
 
-  typename RegistrationHelperType::Pointer regHelper =
-    RegistrationHelperType::New();
+  typename RegistrationHelperType::Pointer regHelper = RegistrationHelperType::New();
 
   OptionType::Pointer transformOption = parser->GetOption( "transform" );
 
@@ -45,6 +46,8 @@ DoRegistration(typename ParserType::Pointer & parser)
 
   OptionType::Pointer smoothingSigmasOption = parser->GetOption( "smoothing-sigmas" );
 
+  OptionType::Pointer restrictDeformationOption = parser->GetOption( "restrict-deformation" );
+
   OptionType::Pointer outputOption = parser->GetOption( "output" );
 
   OptionType::Pointer maskOption = parser->GetOption( "masks" );
@@ -55,7 +58,7 @@ DoRegistration(typename ParserType::Pointer & parser)
 
   if( !outputOption || outputOption->GetNumberOfFunctions() == 0 )
     {
-    antscout << "Output option not specified." << std::endl;
+    std::cout << "Output option not specified." << std::endl;
     return EXIT_FAILURE;
     }
 
@@ -116,8 +119,8 @@ DoRegistration(typename ParserType::Pointer & parser)
     {
     std::vector<bool> isDerivedInitialMovingTransform;
     typename CompositeTransformType::Pointer compositeTransform =
-      GetCompositeTransformFromParserOption<VImageDimension>( parser, initialMovingTransformOption,
-                                                              isDerivedInitialMovingTransform );
+      GetCompositeTransformFromParserOption<TComputeType, VImageDimension>( parser, initialMovingTransformOption,
+                                                                            isDerivedInitialMovingTransform );
 
     if( compositeTransform.IsNull() )
       {
@@ -135,7 +138,7 @@ DoRegistration(typename ParserType::Pointer & parser)
 
         typename RegistrationHelperType::CompositeTransformType::TransformTypePointer curTransform =
           compositeTransform->GetNthTransform( n );
-        itk::ants::WriteTransform<VImageDimension>( curTransform, curFileName.str() );
+        itk::ants::WriteTransform<TComputeType, VImageDimension>( curTransform, curFileName.str() );
         }
       }
     }
@@ -146,8 +149,8 @@ DoRegistration(typename ParserType::Pointer & parser)
     {
     std::vector<bool> isDerivedInitialFixedTransform;
     typename CompositeTransformType::Pointer compositeTransform =
-      GetCompositeTransformFromParserOption<VImageDimension>( parser, initialFixedTransformOption,
-                                                              isDerivedInitialFixedTransform );
+      GetCompositeTransformFromParserOption<TComputeType, VImageDimension>( parser, initialFixedTransformOption,
+                                                                            isDerivedInitialFixedTransform );
     if( compositeTransform.IsNull() )
       {
       return EXIT_FAILURE;
@@ -164,7 +167,7 @@ DoRegistration(typename ParserType::Pointer & parser)
 
         typename RegistrationHelperType::CompositeTransformType::TransformTypePointer curTransform =
           compositeTransform->GetNthTransform( n );
-        itk::ants::WriteTransform<VImageDimension>( curTransform, curFileName.str() );
+        itk::ants::WriteTransform<TComputeType, VImageDimension>( curTransform, curFileName.str() );
         }
       }
     }
@@ -188,9 +191,9 @@ DoRegistration(typename ParserType::Pointer & parser)
         }
       catch( itk::ExceptionObject & err )
         {
-        antscout << "Can't read specified mask image " << fname.c_str() << std::endl;
-        antscout << "Exception Object caught: " << std::endl;
-        antscout << err << std::endl;
+        std::cout << "Can't read specified mask image " << fname.c_str() << std::endl;
+        std::cout << "Exception Object caught: " << std::endl;
+        std::cout << err << std::endl;
         return EXIT_FAILURE;
         }
       if( m == 0 )
@@ -244,7 +247,7 @@ DoRegistration(typename ParserType::Pointer & parser)
       doHistogramMatch = true;
       }
     }
-  regHelper->SetUseHistogramMatching( doHistogramMatch);
+  regHelper->SetUseHistogramMatching( doHistogramMatch );
 
   bool doEstimateLearningRateAtEachIteration = true;
 
@@ -260,17 +263,31 @@ DoRegistration(typename ParserType::Pointer & parser)
     }
   regHelper->SetDoEstimateLearningRateAtEachIteration( doEstimateLearningRateAtEachIteration );
 
+  if( restrictDeformationOption && restrictDeformationOption->GetNumberOfFunctions() )
+    {
+    std::vector<RealType> restrictDeformationWeights =
+      parser->ConvertVector<RealType>( restrictDeformationOption->GetFunction( 0 )->GetName() );
+    if( restrictDeformationWeights.size() != VImageDimension )
+      {
+      std::cout << "The restrict deformation weights vector should be the same as the "
+                << "number of local parameters (=ImageDimension)." << std::endl;
+      return EXIT_FAILURE;
+      }
+
+    regHelper->SetRestrictDeformationOptimizerWeights( restrictDeformationWeights );
+    }
+
   // We find both the number of transforms and the number of metrics
 
   unsigned int numberOfTransforms = transformOption->GetNumberOfFunctions();
   if( transformOption.IsNull() || numberOfTransforms == 0 )
     {
-    antscout << "No transformations are specified." << std::endl;
+    std::cout << "No transformations are specified." << std::endl;
     return EXIT_FAILURE;
     }
 
   std::vector<std::vector<unsigned int> > iterationList;
-  std::vector<double>                     convergenceThresholdList;
+  std::vector<RealType>                   convergenceThresholdList;
   std::vector<unsigned int>               convergenceWindowSizeList;
   std::vector<std::vector<unsigned int> > shrinkFactorsList;
   std::vector<std::vector<float> >        smoothingSigmasList;
@@ -293,11 +310,12 @@ DoRegistration(typename ParserType::Pointer & parser)
   // in last out).
   for( int currentStage = numberOfTransforms - 1; currentStage >= 0; currentStage-- )
     {
-    // Get the number of iterations and use that information to specify the number of levels
 
+    // Get the number of iterations and use that information to specify the number of levels
     std::vector<unsigned int> iterations;
-    double                    convergenceThreshold = 1e-6;
+    RealType                  convergenceThreshold = 1e-6;
     unsigned int              convergenceWindowSize = 10;
+
     if( convergenceOption.IsNotNull() && convergenceOption->GetNumberOfFunctions() )
       {
       if( convergenceOption->GetFunction( currentStage )->GetNumberOfParameters() == 0 )
@@ -311,8 +329,8 @@ DoRegistration(typename ParserType::Pointer & parser)
         }
       if( convergenceOption->GetFunction( currentStage )->GetNumberOfParameters() > 1 )
         {
-        convergenceThreshold = parser->Convert<double>( convergenceOption->GetFunction( currentStage )->GetParameter(
-                                                          1 ) );
+        convergenceThreshold = parser->Convert<RealType>( convergenceOption->GetFunction( currentStage )->GetParameter(
+                                                            1 ) );
         }
       if( convergenceOption->GetFunction( currentStage )->GetNumberOfParameters() > 2 )
         {
@@ -322,14 +340,14 @@ DoRegistration(typename ParserType::Pointer & parser)
                                                                 // points for interpolation.
         if( convergenceWindowSize < minAllowedconvergenceWindowSize )
           {
-          antscout << "Convergence Window Size must be greater than or equal to " << minAllowedconvergenceWindowSize
-                   << std::endl;
+          std::cout << "Convergence Window Size must be greater than or equal to " << minAllowedconvergenceWindowSize
+                    << std::endl;
           }
         }
       }
     else
       {
-      antscout << "No convergence criteria are specified." << std::endl;
+      std::cout << "No convergence criteria are specified." << std::endl;
       return EXIT_FAILURE;
       }
 
@@ -338,10 +356,23 @@ DoRegistration(typename ParserType::Pointer & parser)
     convergenceWindowSizeList.push_back( convergenceWindowSize );
 
     unsigned int numberOfLevels = iterations.size();
-    antscout << "  number of levels = " << numberOfLevels << std::endl;
+    std::cout << "  number of levels = " << numberOfLevels << std::endl;
+
+    // Get the first metricOption for the currentStage (for use with the B-spline transforms)
+    unsigned int numberOfMetrics = metricOption->GetNumberOfFunctions();
+    std::string  fixedImageFileName;
+    for( int currentMetricNumber = numberOfMetrics - 1; currentMetricNumber >= 0; currentMetricNumber-- )
+      {
+      // Get the fixed filename to read later in the case of a B-spline transform
+      unsigned int stageID = metricOption->GetFunction( currentMetricNumber )->GetStageID();
+      if( stageID == static_cast<unsigned int>( currentStage ) )
+        {
+        fixedImageFileName = metricOption->GetFunction( currentMetricNumber )->GetParameter( 0 );
+        break;
+        }
+      }
 
     // Get shrink factors
-
     std::vector<unsigned int> factors =
       parser->ConvertVector<unsigned int>( shrinkFactorsOption->GetFunction( currentStage )->GetName() );
     shrinkFactorsList.push_back( factors );
@@ -422,14 +453,40 @@ DoRegistration(typename ParserType::Pointer & parser)
         break;
       case RegistrationHelperType::BSplineDisplacementField:
         {
+        unsigned int splineOrder = 3;
+        if( transformOption->GetFunction( currentStage )->GetNumberOfParameters() > 3 )
+          {
+          splineOrder =
+            parser->Convert<unsigned int>( transformOption->GetFunction( currentStage )->GetParameter( 3 ) );
+          }
+
         std::vector<unsigned int> meshSizeForTheUpdateField =
           parser->ConvertVector<unsigned int>( transformOption->GetFunction( currentStage )->GetParameter( 1 ) );
+
+        if( meshSizeForTheUpdateField.size() == 1 )
+          {
+          typename ImageType::Pointer fixedImage;
+          ReadImage<ImageType>( fixedImage, fixedImageFileName.c_str() );
+          fixedImage->DisconnectPipeline();
+
+          meshSizeForTheUpdateField = regHelper->CalculateMeshSizeForSpecifiedKnotSpacing(
+              fixedImage, meshSizeForTheUpdateField[0], splineOrder );
+          }
 
         std::vector<unsigned int> meshSizeForTheTotalField;
         if( transformOption->GetFunction( currentStage )->GetNumberOfParameters() > 2 )
           {
           meshSizeForTheTotalField =
             parser->ConvertVector<unsigned int>( transformOption->GetFunction( currentStage )->GetParameter( 2 ) );
+          if( meshSizeForTheTotalField.size() == 1 )
+            {
+            typename ImageType::Pointer fixedImage;
+            ReadImage<ImageType>( fixedImage, fixedImageFileName.c_str() );
+            fixedImage->DisconnectPipeline();
+
+            meshSizeForTheTotalField = regHelper->CalculateMeshSizeForSpecifiedKnotSpacing(
+                fixedImage, meshSizeForTheTotalField[0], splineOrder );
+            }
           }
         else
           {
@@ -437,13 +494,6 @@ DoRegistration(typename ParserType::Pointer & parser)
             {
             meshSizeForTheTotalField.push_back( 0 );
             }
-          }
-
-        unsigned int splineOrder = 3;
-        if( transformOption->GetFunction( currentStage )->GetNumberOfParameters() > 3 )
-          {
-          splineOrder =
-            parser->Convert<unsigned int>( transformOption->GetFunction( currentStage )->GetParameter( 3 ) );
           }
 
         regHelper->AddBSplineDisplacementFieldTransform( learningRate, meshSizeForTheUpdateField,
@@ -455,6 +505,15 @@ DoRegistration(typename ParserType::Pointer & parser)
         {
         std::vector<unsigned int> meshSizeAtBaseLevel =
           parser->ConvertVector<unsigned int>( transformOption->GetFunction( currentStage )->GetParameter( 1 ) );
+        if( meshSizeAtBaseLevel.size() == 1 )
+          {
+          typename ImageType::Pointer fixedImage;
+          ReadImage<ImageType>( fixedImage, fixedImageFileName.c_str() );
+          fixedImage->DisconnectPipeline();
+
+          meshSizeAtBaseLevel = regHelper->CalculateMeshSizeForSpecifiedKnotSpacing(
+              fixedImage, meshSizeAtBaseLevel[0], 3 );
+          }
         regHelper->AddBSplineTransform( learningRate, meshSizeAtBaseLevel );
         }
         break;
@@ -522,16 +581,46 @@ DoRegistration(typename ParserType::Pointer & parser)
         break;
       case RegistrationHelperType::BSplineSyN:
         {
-        std::vector<unsigned int> meshSizeForTheUpdateField =
-          parser->ConvertVector<unsigned int>( transformOption->GetFunction( currentStage )->GetParameter( 1 ) );
-        std::vector<unsigned int> meshSizeForTheTotalField =
-          parser->ConvertVector<unsigned int>( transformOption->GetFunction( currentStage )->GetParameter( 2 ) );
-
         unsigned int splineOrder = 3;
         if( transformOption->GetFunction( currentStage )->GetNumberOfParameters() > 3 )
           {
           splineOrder =
             parser->Convert<unsigned int>( transformOption->GetFunction( currentStage )->GetParameter( 3 ) );
+          }
+
+        std::vector<unsigned int> meshSizeForTheUpdateField =
+          parser->ConvertVector<unsigned int>( transformOption->GetFunction( currentStage )->GetParameter( 1 ) );
+        if( meshSizeForTheUpdateField.size() == 1 )
+          {
+          typename ImageType::Pointer fixedImage;
+          ReadImage<ImageType>( fixedImage, fixedImageFileName.c_str() );
+          fixedImage->DisconnectPipeline();
+
+          meshSizeForTheUpdateField = regHelper->CalculateMeshSizeForSpecifiedKnotSpacing(
+              fixedImage, meshSizeForTheUpdateField[0], splineOrder );
+          }
+
+        std::vector<unsigned int> meshSizeForTheTotalField;
+        if( transformOption->GetFunction( currentStage )->GetNumberOfParameters() > 2 )
+          {
+          meshSizeForTheTotalField =
+            parser->ConvertVector<unsigned int>( transformOption->GetFunction( currentStage )->GetParameter( 2 ) );
+          if( meshSizeForTheTotalField.size() == 1 )
+            {
+            typename ImageType::Pointer fixedImage;
+            ReadImage<ImageType>( fixedImage, fixedImageFileName.c_str() );
+            fixedImage->DisconnectPipeline();
+
+            meshSizeForTheTotalField = regHelper->CalculateMeshSizeForSpecifiedKnotSpacing(
+                fixedImage, meshSizeForTheTotalField[0], splineOrder );
+            }
+          }
+        else
+          {
+          for( unsigned int d = 0; d < VImageDimension; d++ )
+            {
+            meshSizeForTheTotalField.push_back( 0 );
+            }
           }
 
         regHelper->AddBSplineSyNTransform( learningRate, meshSizeForTheUpdateField,
@@ -558,14 +647,39 @@ DoRegistration(typename ParserType::Pointer & parser)
         break;
       case RegistrationHelperType::BSplineExponential:
         {
+        unsigned int splineOrder = 3;
+        if( transformOption->GetFunction( currentStage )->GetNumberOfParameters() > 4 )
+          {
+          splineOrder =
+            parser->Convert<unsigned int>( transformOption->GetFunction( currentStage )->GetParameter( 4 ) );
+          }
+
         std::vector<unsigned int> meshSizeForTheUpdateField =
           parser->ConvertVector<unsigned int>( transformOption->GetFunction( currentStage )->GetParameter( 1 ) );
+        if( meshSizeForTheUpdateField.size() == 1 )
+          {
+          typename ImageType::Pointer fixedImage;
+          ReadImage<ImageType>( fixedImage, fixedImageFileName.c_str() );
+          fixedImage->DisconnectPipeline();
+
+          meshSizeForTheUpdateField = regHelper->CalculateMeshSizeForSpecifiedKnotSpacing(
+              fixedImage, meshSizeForTheUpdateField[0], splineOrder );
+          }
 
         std::vector<unsigned int> meshSizeForTheVelocityField;
         if( transformOption->GetFunction( currentStage )->GetNumberOfParameters() > 2 )
           {
           meshSizeForTheVelocityField =
             parser->ConvertVector<unsigned int>( transformOption->GetFunction( currentStage )->GetParameter( 2 ) );
+          if( meshSizeForTheVelocityField.size() == 1 )
+            {
+            typename ImageType::Pointer fixedImage;
+            ReadImage<ImageType>( fixedImage, fixedImageFileName.c_str() );
+            fixedImage->DisconnectPipeline();
+
+            meshSizeForTheVelocityField = regHelper->CalculateMeshSizeForSpecifiedKnotSpacing(
+                fixedImage, meshSizeForTheVelocityField[0], splineOrder );
+            }
           }
         else
           {
@@ -583,13 +697,6 @@ DoRegistration(typename ParserType::Pointer & parser)
                                                                       currentStage )->GetParameter( 3 ) );
           }
 
-        unsigned int splineOrder = 3;
-        if( transformOption->GetFunction( currentStage )->GetNumberOfParameters() > 4 )
-          {
-          splineOrder =
-            parser->Convert<unsigned int>( transformOption->GetFunction( currentStage )->GetParameter( 4 ) );
-          }
-
         regHelper->AddBSplineExponentialTransform( learningRate, meshSizeForTheUpdateField,
                                                    meshSizeForTheVelocityField,
                                                    numberOfIntegrationSteps, splineOrder );
@@ -597,7 +704,7 @@ DoRegistration(typename ParserType::Pointer & parser)
         break;
       default:
         {
-        antscout << "Unknown registration method " << "\"" << whichTransform << "\"" << std::endl;
+        std::cout << "Unknown registration method " << "\"" << whichTransform << "\"" << std::endl;
         }
         break;
       }
@@ -623,8 +730,8 @@ DoRegistration(typename ParserType::Pointer & parser)
 
     std::string fixedImageFileName = metricOption->GetFunction( currentMetricNumber )->GetParameter( 0 );
     std::string movingImageFileName = metricOption->GetFunction( currentMetricNumber )->GetParameter( 1 );
-    antscout << "  fixed image: " << fixedImageFileName << std::endl;
-    antscout << "  moving image: " << movingImageFileName << std::endl;
+    std::cout << "  fixed image: " << fixedImageFileName << std::endl;
+    std::cout << "  moving image: " << movingImageFileName << std::endl;
 
     typename ImageType::Pointer fixedImage;
     typename ImageType::Pointer movingImage;
@@ -643,10 +750,10 @@ DoRegistration(typename ParserType::Pointer & parser)
       {
       if( stageID != numberOfTransforms - 1 )
         {
-        ::ants::antscout << "\n\n\n"
-                         << "Error:  The number of stages does not match up with the metrics." << std::endl
-                         << "The number of transforms is " << numberOfTransforms << " and the last stage ID "
-                         << " as determined by the metrics is " << stageID << "." << std::endl;
+        std::cout << "\n\n\n"
+                  << "Error:  The number of stages does not match up with the metrics." << std::endl
+                  << "The number of transforms is " << numberOfTransforms << " and the last stage ID "
+                  << " as determined by the metrics is " << stageID << "." << std::endl;
         return EXIT_FAILURE;
         }
       }
@@ -745,7 +852,7 @@ DoRegistration(typename ParserType::Pointer & parser)
         }
         break;
       default:
-        antscout << "ERROR: Unrecognized image metric: " << whichMetric << std::endl;
+        std::cout << "ERROR: Unrecognized image metric: " << whichMetric << std::endl;
         return EXIT_FAILURE;
       }
     }
@@ -767,14 +874,14 @@ DoRegistration(typename ParserType::Pointer & parser)
 
     typename RegistrationHelperType::CompositeTransformType::TransformTypePointer compositeTransform =
       resultTransform.GetPointer();
-    itk::ants::WriteTransform<VImageDimension>( compositeTransform, compositeTransformFileName.c_str() );
+    itk::ants::WriteTransform<TComputeType, VImageDimension>( compositeTransform, compositeTransformFileName.c_str() );
 
     typename RegistrationHelperType::CompositeTransformType::TransformTypePointer inverseCompositeTransform =
       compositeTransform->GetInverseTransform();
     if( inverseCompositeTransform.IsNotNull() )
       {
-      itk::ants::WriteTransform<VImageDimension>( inverseCompositeTransform,
-                                                  inverseCompositeTransformFileName.c_str() );
+      itk::ants::WriteTransform<TComputeType, VImageDimension>( inverseCompositeTransform,
+                                                                inverseCompositeTransformFileName.c_str() );
       }
     }
   unsigned int numTransforms = resultTransform->GetNumberOfTransforms();
@@ -856,9 +963,8 @@ DoRegistration(typename ParserType::Pointer & parser)
     // WriteTransform will spit all sorts of error messages if it
     // fails, and we want to keep going even if it does so ignore its
     // return value.
-    itk::ants::WriteTransform<VImageDimension>( curTransform, curFileName.str() );
+    itk::ants::WriteTransform<TComputeType, VImageDimension>( curTransform, curFileName.str() );
 
-    typedef typename RegistrationHelperType::DisplacementFieldTransformType DisplacementFieldTransformType;
     typedef typename DisplacementFieldTransformType::DisplacementFieldType  DisplacementFieldType;
     typename DisplacementFieldTransformType::Pointer dispTransform =
       dynamic_cast<DisplacementFieldTransformType *>(curTransform.GetPointer() );
@@ -880,9 +986,9 @@ DoRegistration(typename ParserType::Pointer & parser)
           }
         catch( itk::ExceptionObject & err )
           {
-          antscout << "Can't write transform file " << curInverseFileName.str().c_str() << std::endl;
-          antscout << "Exception Object caught: " << std::endl;
-          antscout << err << std::endl;
+          std::cout << "Can't write transform file " << curInverseFileName.str().c_str() << std::endl;
+          std::cout << "Exception Object caught: " << std::endl;
+          std::cout << err << std::endl;
           }
         }
       }
@@ -892,7 +998,7 @@ DoRegistration(typename ParserType::Pointer & parser)
       typedef typename RegistrationHelperType::TimeVaryingVelocityFieldTransformType
         VelocityFieldTransformType;
 
-      typedef itk::Image<itk::Vector<double, VImageDimension>, VImageDimension + 1> VelocityFieldType;
+      typedef itk::Image<itk::Vector<TComputeType, VImageDimension>, VImageDimension + 1> VelocityFieldType;
       typename VelocityFieldTransformType::Pointer velocityFieldTransform =
         dynamic_cast<VelocityFieldTransformType *>(curTransform.GetPointer() );
       if( !velocityFieldTransform.IsNull() )
@@ -910,16 +1016,15 @@ DoRegistration(typename ParserType::Pointer & parser)
           }
         catch( itk::ExceptionObject & err )
           {
-          antscout << "Can't write velocity field transform file " << curVelocityFieldFileName.str().c_str()
-                   << std::endl;
-          antscout << "Exception Object caught: " << std::endl;
-          antscout << err << std::endl;
+          std::cout << "Can't write velocity field transform file " << curVelocityFieldFileName.str().c_str()
+                    << std::endl;
+          std::cout << "Exception Object caught: " << std::endl;
+          std::cout << err << std::endl;
           }
         }
       }
     }
 
-  typedef double RealType;
   std::string whichInterpolator( "linear" );
   typename itk::ants::CommandLineParser::OptionType::Pointer interpolationOption = parser->GetOption( "interpolation" );
   if( interpolationOption && interpolationOption->GetNumberOfFunctions() )
@@ -972,8 +1077,13 @@ DoRegistration(typename ParserType::Pointer & parser)
 }
 
 extern int antsRegistration2DDouble(ParserType::Pointer & parser);
+
 extern int antsRegistration3DDouble(ParserType::Pointer & parser);
 
-} //End namespace
+extern int antsRegistration2DFloat(ParserType::Pointer & parser);
+
+extern int antsRegistration3DFloat(ParserType::Pointer & parser);
+
+} // End namespace
 
 #endif // __ANTSREGISTRATIONTEMPLATEHEADER_H__
