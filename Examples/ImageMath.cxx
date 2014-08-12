@@ -39,6 +39,7 @@
 #include "itkCompositeValleyFunction.h"
 #include "itkConnectedComponentImageFilter.h"
 #include "itkConstNeighborhoodIterator.h"
+#include "itkConvolutionImageFilter.h"
 #include "itkCorrelationImageToImageMetricv4.h"
 #include "itkDiffusionTensor3D.h"
 #include "itkDiscreteGaussianImageFilter.h"
@@ -78,6 +79,8 @@
 #include "itkLaplacianSharpeningImageFilter.h"
 #include "itkListSample.h"
 #include "itkMattesMutualInformationImageToImageMetricv4.h"
+#include "itkMaximumProjectionImageFilter.h"
+#include "itkMinimumProjectionImageFilter.h"
 #include "itkMRFImageFilter.h"
 #include "itkMRIBiasFieldCorrectionFilter.h"
 #include "itkMaskImageFilter.h"
@@ -108,9 +111,8 @@
 #include "itkSTAPLEImageFilter.h"
 #include "itkSubtractImageFilter.h"
 #include "itkSumProjectionImageFilter.h"
-#include "itkMaximumProjectionImageFilter.h"
-#include "itkMinimumProjectionImageFilter.h"
 #include "itkTDistribution.h"
+#include "itkTileImageFilter.h"
 #include "itkTimeProbe.h"
 #include "itkTranslationTransform.h"
 #include "itkVariableSizeMatrix.h"
@@ -128,7 +130,7 @@
 #include <sstream>
 #include <string>
 
-#include "ReadWriteImage.h"
+#include "ReadWriteData.h"
 #include "TensorFunctions.h"
 #include "antsMatrixUtilities.h"
 #include "antsFastMarchingImageFilter.h"
@@ -250,6 +252,59 @@ int FrobeniusNormOfMatrixDifference(int argc, char *argv[])
   std::cout << diffmat.frobenius_norm() << std::endl;
   return 0;
 }
+
+template <unsigned int ImageDimension>
+void ClosestSimplifiedHeaderMatrix(int argc, char *argv[])
+{
+  if( argc < 4 )
+    {
+    std::cout << " need more args -- see usage   " << std::endl;
+    }
+  typedef float                                        PixelType;
+  typedef itk::Vector<float, ImageDimension>           VectorType;
+  typedef itk::Image<VectorType, ImageDimension>       FieldType;
+  typedef itk::Image<PixelType, ImageDimension>        ImageType;
+  typedef itk::ImageFileReader<ImageType>              readertype;
+  typedef itk::ImageFileWriter<ImageType>              writertype;
+  typedef typename ImageType::IndexType                IndexType;
+  typedef typename ImageType::SizeType                 SizeType;
+  typedef typename ImageType::SpacingType              SpacingType;
+  typedef itk::AffineTransform<double, ImageDimension> AffineTransformType;
+  typedef double RealType;
+  typedef itk::Matrix<RealType, ImageDimension, ImageDimension>                           MatrixType;
+  int               argct = 2;
+  const std::string outname = std::string(argv[argct]);
+  argct += 2;
+  std::string  fn1 = std::string(argv[argct]);   argct++;
+  typename ImageType::Pointer image1 = NULL;
+  ReadImage<ImageType>( image1, fn1.c_str() );
+  MatrixType A_solution = image1->GetDirection();
+  //  vnl_svd<RealType>    nearestorth( image1->GetDirection().GetVnlMatrix() );
+  //  vnl_matrix<RealType> A_solution = nearestorth.V() * nearestorth.U().transpose();
+  MatrixType mydir;
+  for ( unsigned int d = 0; d < ImageDimension; d++ )
+    for ( unsigned int dd = 0; dd < ImageDimension; dd++ )
+      {
+      RealType v = A_solution(d,dd);
+      long vlong = static_cast<long>( vnl_math_abs( v ) + 0.5 );
+      if ( v < 0 ) vlong = vlong * (-1);
+      mydir(d,dd) = static_cast<RealType>( vlong );
+      }
+  image1->SetDirection( mydir );
+  // also do the origin 
+  typename ImageType::PointType origin = image1->GetOrigin();
+  for ( unsigned int d = 0; d < ImageDimension; d++ )
+    {
+    RealType rndflt = origin[d] * 100.0;
+    int rndflti = static_cast<int>( rndflt + 0.5 );
+    rndflt = static_cast<RealType>( rndflti ) / 100.0;
+    origin[d] = rndflt;
+    }
+  image1->SetOrigin( origin );
+  WriteImage<ImageType>( image1, outname.c_str() );
+  return;
+}
+
 
 template <unsigned int ImageDimension>
 void ReflectionMatrix(int argc, char *argv[])
@@ -2077,6 +2132,63 @@ int CenterImage2inImage1(int argc, char *argv[])
 }
 
 template <unsigned int ImageDimension>
+int TimeSeriesMask( int argc, char *argv[] )
+{
+
+  if ( argc <= 5 )
+    {
+    std::cout << " too few options " << std::endl;
+    return 1;
+    }
+
+  typedef float                                            PixelType;
+  typedef itk::Image<PixelType, ImageDimension>            ImageType;
+  typedef itk::Image<PixelType, ImageDimension - 1>        MaskImageType;
+  typedef itk::ImageRegionIteratorWithIndex<ImageType>     TimeIterator;
+  typedef itk::ImageRegionIteratorWithIndex<MaskImageType> Iterator;
+
+  int               argct = 2;
+  const std::string outname = std::string(argv[argct]);
+  argct += 2;
+  std::string fn1 = std::string(argv[argct]);   argct++;
+  std::string fn2 = std::string(argv[argct]);   argct++;
+  
+  typename ImageType::Pointer timeseries = ImageType::New();
+  ReadImage<ImageType>( timeseries, fn1.c_str() );
+
+  typename MaskImageType::Pointer mask = MaskImageType::New();
+  ReadImage<MaskImageType>( mask, fn2.c_str() );
+
+  Iterator it( mask, mask->GetLargestPossibleRegion() );
+  while ( ! it.IsAtEnd() ) 
+    {
+    if ( it.Value() == 0 ) 
+      {
+      typename MaskImageType::IndexType maskIdx = it.GetIndex();
+      typename ImageType::IndexType timeIdx;
+
+      for (unsigned int i=0; i<(ImageDimension-1); i++) 
+        {
+        timeIdx[i] = maskIdx[i];
+        }
+
+      for (unsigned int t=0; t<timeseries->GetLargestPossibleRegion().GetSize()[ImageDimension-1]; t++)
+        {
+        timeIdx[ImageDimension-1] = t;
+        timeseries->SetPixel(timeIdx, 0);
+        }
+      
+      }
+  
+    ++it;
+    }
+
+  WriteImage<ImageType>(timeseries, outname.c_str());
+  return 0;
+
+}
+
+template <unsigned int ImageDimension>
 int TimeSeriesDisassemble(int argc, char *argv[])
 {
   if( argc <= 4 )
@@ -3330,6 +3442,7 @@ int TimeSeriesToMatrix(int argc, char *argv[])
   typedef itk::Vector<float, ImageDimension>           VectorType;
   typedef itk::Image<VectorType, ImageDimension>       FieldType;
   typedef itk::Image<PixelType, ImageDimension>        ImageType;
+  typedef itk::Image<PixelType, 2>                     MatrixImageType;
   typedef itk::Image<PixelType, ImageDimension - 1>    OutImageType;
   typedef typename OutImageType::IndexType             OutIndexType;
   typedef itk::ImageFileReader<ImageType>              readertype;
@@ -3343,19 +3456,22 @@ int TimeSeriesToMatrix(int argc, char *argv[])
   typedef itk::ants::antsMatrixUtilities<ImageType, Scalar> matrixOpType;
   typename matrixOpType::Pointer matrixOps = matrixOpType::New();
 
+  bool tomha = true;
   int               argct = 2;
   const std::string outname = std::string(argv[argct]); argct++;
   std::string       ext = itksys::SystemTools::GetFilenameExtension( outname );
-  if( strcmp(ext.c_str(), ".csv") != 0 )
+  if( ( strcmp(ext.c_str(), ".csv") != 0 ) && (  strcmp(ext.c_str(), ".mha") != 0 )  )
     {
-    std::cout << " must use .csv as output file extension " << std::endl;
+    std::cout << " must use .csv or .mha as output file extension " << std::endl;
     return EXIT_FAILURE;
     }
+  if( ( strcmp(ext.c_str(), ".csv") == 0 )  ) tomha = false;
   argct++;
   std::string fn1 = std::string(argv[argct]);   argct++;
   std::string maskfn = std::string(argv[argct]);   argct++;
   typename ImageType::Pointer image1 = NULL;
   typename OutImageType::Pointer mask = NULL;
+  typename MatrixImageType::Pointer matriximage = NULL;
   if( fn1.length() > 3 )
     {
     ReadImage<ImageType>(image1, fn1.c_str() );
@@ -3384,6 +3500,13 @@ int TimeSeriesToMatrix(int argc, char *argv[])
       voxct++;
       }
     }
+  // allocate the matrix image 
+  typename MatrixImageType::SizeType size;
+  size[0] = timedims;
+  size[1] = voxct;
+  typename MatrixImageType::RegionType newregion;
+  newregion.SetSize(size);
+  if ( tomha ) matriximage = AllocImage<MatrixImageType>(newregion, 0); 
 
   typename ImageType::RegionType extractRegion = image1->GetLargestPossibleRegion();
   extractRegion.SetSize(ImageDimension - 1, 0);
@@ -3405,10 +3528,16 @@ int TimeSeriesToMatrix(int argc, char *argv[])
   timeVectorType mSample(timedims, 0);
   typedef itk::Array2D<double> MatrixType;
   std::vector<std::string> ColumnHeaders;
-  MatrixType               matrix(timedims, voxct);
-  matrix.Fill(0);
+  MatrixType               matrix;
+  if ( ! tomha ) 
+    {
+    matrix.set_size(timedims, voxct);
+    matrix.Fill(0);
+    }
   SliceIt vfIter2( outimage, outimage->GetLargestPossibleRegion() );
   voxct = 0;
+  PixelType meanval = 0;
+  unsigned long fullct = 0;
   for(  vfIter2.GoToBegin(); !vfIter2.IsAtEnd(); ++vfIter2 )
     {
     OutIndexType ind = vfIter2.GetIndex();
@@ -3422,34 +3551,50 @@ int TimeSeriesToMatrix(int argc, char *argv[])
         }
       for( unsigned int t = 0; t < timedims; t++ )
         {
+	typename MatrixImageType::IndexType matind;
+	matind.Fill(0);
+	matind[1] = t;
+	matind[2] = voxct;
         tind[ImageDimension - 1] = t;
         Scalar pix = image1->GetPixel(tind);
         mSample(t) = pix;
-        matrix[t][voxct] = pix;
+        if ( ! tomha ) matrix[t][voxct] = pix;
+        if ( tomha ) 
+          {
+	  matriximage->SetPixel( matind, pix );
+	  }
+	meanval += pix;
+	fullct++;
         }
       std::string colname = std::string("V") + ants_to_string<unsigned int>(voxct);
       ColumnHeaders.push_back( colname );
       voxct++;
       } // check mask
     }
-
-  // write out the array2D object
-  typedef itk::CSVNumericObjectFileWriter<double, 1, 1> WriterType;
-  WriterType::Pointer writer = WriterType::New();
-  writer->SetFileName( outname );
-  writer->SetInput( &matrix );
-  writer->SetColumnHeaders( ColumnHeaders );
-  try
+  //  std::cout << " Mean " << meanval / fullct << std::endl;
+  if ( ! tomha ) 
     {
-    writer->Write();
+    // write out the array2D object
+    typedef itk::CSVNumericObjectFileWriter<double, 1, 1> WriterType;
+    WriterType::Pointer writer = WriterType::New();
+    writer->SetFileName( outname );
+    writer->SetInput( &matrix );
+    writer->SetColumnHeaders( ColumnHeaders );
+    try
+      {
+      writer->Write();
+      } 
+    catch( itk::ExceptionObject& exp )
+      {
+      std::cout << "Exception caught!" << std::endl;
+      std::cout << exp << std::endl;
+      return EXIT_FAILURE;
+      }
     }
-  catch( itk::ExceptionObject& exp )
+  if ( tomha ) 
     {
-    std::cout << "Exception caught!" << std::endl;
-    std::cout << exp << std::endl;
-    return EXIT_FAILURE;
+    WriteImage<MatrixImageType>( matriximage , outname.c_str() );
     }
-
   return 0;
 }
 
@@ -4621,13 +4766,11 @@ int StackImage(int argc, char *argv[])
     }
 
   typename ImageType::PointType origin2 = image1->GetOrigin();
-  typename ImageType::SizeType size = image1->GetLargestPossibleRegion().GetSize();
   typename ImageType::SizeType newsize = image1->GetLargestPossibleRegion().GetSize();
   typename ImageType::RegionType newregion;
   newsize[ImageDimension - 1] = nSlices * image1->GetLargestPossibleRegion().GetSize()[ImageDimension - 1];
   unsigned int constantPad = image1->GetLargestPossibleRegion().GetSize()[ImageDimension - 1];
 
-  std::cout << " oldsize " << size <<  " newsize " << newsize << std::endl;
   newregion.SetSize(newsize);
   newregion.SetIndex(image1->GetLargestPossibleRegion().GetIndex() );
 
@@ -4665,12 +4808,10 @@ int StackImage(int argc, char *argv[])
     Iterator iter( image1,  image1->GetLargestPossibleRegion() );
     for( iter.GoToBegin(); !iter.IsAtEnd(); ++iter )
       {
-
       typename ImageType::IndexType oindex = iter.GetIndex();
       typename ImageType::IndexType padindex = iter.GetIndex();
       padindex[ImageDimension - 1] = padindex[ImageDimension - 1] + offset;
       padimage->SetPixel(padindex, image1->GetPixel(oindex) );
-
       }
 
     offset += constantPad;
@@ -4681,6 +4822,66 @@ int StackImage(int argc, char *argv[])
 
   return 0;
 }
+
+template <unsigned int ImageDimension>
+int Stack2Images(int argc, char *argv[])
+{
+  if( argc <= 2 )
+    {
+    std::cout << " too few options " << std::endl;
+    return 1;
+    }
+  typedef float                                                           PixelType;
+  typedef itk::Vector<float, ImageDimension>                              VectorType;
+  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
+  typedef itk::Image<PixelType, ImageDimension>                           ImageType;
+  typedef itk::ImageFileReader<ImageType>                                 readertype;
+  typedef itk::ImageFileWriter<ImageType>                                 writertype;
+  typedef typename ImageType::IndexType                                   IndexType;
+  typedef typename ImageType::SizeType                                    SizeType;
+  typedef typename ImageType::SpacingType                                 SpacingType;
+  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
+  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
+  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
+  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
+
+  int               argct = 2;
+  const std::string outname = std::string(argv[argct]);
+  argct += 2;
+  std::string fn1 = std::string(argv[argct]);  argct++;
+  std::string fn2 = std::string(argv[argct]);  argct++;
+  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image2 = NULL;
+  typename ImageType::Pointer tiledimage = NULL;
+  if( fn1.length() > 3 )
+    {
+    ReadImage<ImageType>(image1, fn1.c_str() );
+    }
+  if( fn2.length() > 3 )
+    {
+    ReadImage<ImageType>(image2, fn2.c_str() );
+    }
+
+  itk::FixedArray< unsigned int, ImageDimension > layout;
+  for ( unsigned int i = 0; i < (ImageDimension-1); i++ )
+    {
+    layout[i]=1;
+    }
+  layout[ ImageDimension - 1 ] = 0;
+  typedef itk::TileImageFilter <ImageType, ImageType >
+    TileImageFilterType;
+  typename TileImageFilterType::Pointer tileFilter
+    = TileImageFilterType::New ();
+  tileFilter->SetLayout( layout );
+  unsigned int inputImageNumber = 0;
+  tileFilter->SetInput( inputImageNumber++, image1 ); 
+  tileFilter->SetInput( inputImageNumber++, image2 ); 
+  tileFilter->SetDefaultPixelValue( 0 );
+  tiledimage = tileFilter->GetOutput();
+  WriteImage<ImageType>(tiledimage, outname.c_str() );
+  return 0;
+}
+
 
 template <unsigned int ImageDimension>
 int MakeImage(int argc, char *argv[])
@@ -4709,20 +4910,29 @@ int MakeImage(int argc, char *argv[])
     sizevaly = atoi(argv[argct]); argct++;
     }
   unsigned int sizevalz = 0;
-  if( argc > argct && ImageDimension == 3 )
+  if( argc > argct && ImageDimension > 2 )
     {
     sizevalz = atoi(argv[argct]); argct++;
+    }
+
+  unsigned int sizevalt = 0;
+  if( argc > argct && ImageDimension > 3 )
+    {
+    sizevalt = atoi(argv[argct]); argct++;
     }
 
   typename ImageType::SizeType size;
   size[0] = sizevalx;
   size[1] = sizevaly;
-  if( ImageDimension == 3 )
+  if( ImageDimension > 2 )
     {
     size[2] = sizevalz;
     }
+  if( ImageDimension > 3 )
+    {
+    size[3] = sizevalt;
+    }
   typename ImageType::RegionType newregion;
-  std::cout << " size " << size << std::endl;
   newregion.SetSize(size);
 
   typename ImageType::Pointer padimage = AllocImage<ImageType>(newregion, 0);
@@ -5473,6 +5683,7 @@ int TensorFunctions(int argc, char *argv[])
   std::string       operation = std::string(argv[argct]);  argct++;
   std::string       fn1 = std::string(argv[argct]);   argct++;
   std::string       fn2 = ""; // used for whichvec and mask file name below
+  float             backgroundMD = 0.0; // mean diffusivity of isotropic background voxels 
 
   typename TensorImageType::Pointer timage = NULL;    // input tensor image
   typename ImageType::Pointer       vimage = NULL;    // output scalar image
@@ -5691,6 +5902,11 @@ int TensorFunctions(int argc, char *argv[])
     whichvec = atoi(fn2.c_str() );
     argct++;
     }
+  if ( argc > argct )
+    {
+    backgroundMD = atof( std::string(argv[argct]).c_str() );
+    argct++;
+    }
 
   ReadTensorImage<TensorImageType>(timage, fn1.c_str(), false);
 
@@ -5717,7 +5933,6 @@ int TensorFunctions(int argc, char *argv[])
   else if( strcmp(operation.c_str(), "TensorMask") == 0 )
     {
     std::cout << "Using mask image: " << fn2 << std::endl;
-
     ReadImage<ImageType>(mimage, fn2.c_str() );
 
     typename TensorImageType::PixelType zero;
@@ -5744,11 +5959,20 @@ int TensorFunctions(int argc, char *argv[])
     vimage = AllocImage<ImageType>(timage);
     }
 
-  TensorType zeroTensor;  // for masking background tensors
+  TensorType backgroundTensor;  // for masking background tensors
   for( unsigned int i = 0; i < 6; i++ )
     {
-    zeroTensor[i] = 0.0;
+    backgroundTensor[i] = 0.0;
     }
+  
+  if ( backgroundMD > 0.0 ) 
+    {
+    std::cout << "Setting background voxels to isotropic tensors with mean diffusivity " << backgroundMD << std::endl;
+    backgroundTensor[0] = backgroundMD;
+    backgroundTensor[3] = backgroundMD;
+    backgroundTensor[5] = backgroundMD;
+    }
+
 
   RGBType rgbZero;
 
@@ -5854,7 +6078,7 @@ int TensorFunctions(int argc, char *argv[])
         }
       else
         {
-        toimage->SetPixel( ind, zeroTensor );
+        toimage->SetPixel( ind, backgroundTensor );
         }
 
       }
@@ -7377,10 +7601,11 @@ int SmoothImage(int argc, char *argv[])
   const std::string outname = std::string(argv[argct]);
   argct += 2;
   std::string fn1 = std::string(argv[argct]);   argct++;
-  float       sigma = 1.0;
+
+  std::vector<float> sigmaVector;
   if( argc > argct )
     {
-    sigma = atof(argv[argct]);
+    sigmaVector = ConvertVector<float>( argv[argct] );
     }
 
   typename ImageType::Pointer image1 = NULL;
@@ -7389,7 +7614,24 @@ int SmoothImage(int argc, char *argv[])
 
   typedef itk::DiscreteGaussianImageFilter<ImageType, ImageType> dgf;
   typename dgf::Pointer filter = dgf::New();
-  filter->SetVariance(sigma * sigma);
+
+  if( sigmaVector.size() == 1 )
+    {
+    filter->SetVariance( vnl_math_sqr( sigmaVector[0] ) );
+    }
+  else if( sigmaVector.size() == ImageDimension )
+    {
+    typename dgf::ArrayType varianceArray;
+    for( unsigned int d = 0; d < ImageDimension; d++ )
+      {
+      varianceArray[d] = vnl_math_sqr( sigmaVector[d] );
+      }
+    filter->SetVariance( varianceArray );
+    }
+  else
+    {
+    std::cerr << "Incorrect sigma vector size.  Must either be of size 1 or ImageDimension." << std::endl;
+    }
   bool usespacing = true;
   if( !usespacing )
     {
@@ -9626,7 +9868,7 @@ int LabelStats(      int argc, char *argv[])
 
   std::ofstream logfile;
   logfile.open(outname.c_str() );
-  logfile << "x,y,z,t,label" << std::endl;
+  logfile << "x,y,z,t,label,mass,volume,count" << std::endl;
 
   std::sort(myLabelSet.begin(), myLabelSet.end() );
   typename LabelSetType::const_iterator it;
@@ -9698,17 +9940,16 @@ int LabelStats(      int argc, char *argv[])
     squareimage->GetBufferPointer()[labelcount] = totalmass / totalct;
     if( ImageDimension == 2 )
       {
-      logfile << myCenterOfMass[0] << "," << myCenterOfMass[1] << ",0,0," << currentlabel << std::endl;
+      logfile << myCenterOfMass[0] << "," << myCenterOfMass[1] << ",0,0," << currentlabel << "," << totalmass << "," << totalvolume << "," << totalct << std::endl;
       }
     if( ImageDimension == 3 )
       {
-      logfile << myCenterOfMass[0] << "," << myCenterOfMass[1] << "," << myCenterOfMass[2] << ",0," << currentlabel
-              << std::endl;
+      logfile << myCenterOfMass[0] << "," << myCenterOfMass[1] << "," << myCenterOfMass[2] << ",0," << currentlabel << "," << totalmass << "," << totalvolume << "," << totalct << std::endl;
       }
     if( ImageDimension == 4 )
       {
       logfile << myCenterOfMass[0] << "," << myCenterOfMass[1] << "," << myCenterOfMass[2] << ","
-              << myCenterOfMass[3] << "," << currentlabel << std::endl;
+              << myCenterOfMass[3] << "," << currentlabel << "," << totalmass << "," << totalvolume << "," << totalct << std::endl;
       }
     labelcount++;
     }
@@ -12163,7 +12404,12 @@ int PMSmoothImage(int argc, char *argv[])
   float       sigma = 1.0;
   if( argc > argct )
     {
-    sigma = atof(argv[argct]);
+    sigma = atof(argv[argct]); argct++;
+    }
+  float       conductance = 0.25;
+  if( argc > argct )
+    {
+    conductance = atof(argv[argct]); argct++;
     }
   typename ImageType::Pointer image1 = NULL;
   typename ImageType::Pointer varimage = NULL;
@@ -12181,15 +12427,264 @@ int PMSmoothImage(int argc, char *argv[])
   filter->SetInput( image1 );
   filter->SetNumberOfIterations( sigma );
   PixelType mytimestep = spacingsize / vcl_pow( 2.0 , static_cast<double>(ImageDimension+1) );
-  PixelType reftimestep = 0.9 / vcl_pow( 2.0 , static_cast<double>(ImageDimension+1) );
+  PixelType reftimestep = 0.4 / vcl_pow( 2.0 , static_cast<double>(ImageDimension+1) );
   if ( mytimestep > reftimestep ) mytimestep = reftimestep;
   filter->SetTimeStep( mytimestep );
-  filter->SetConductanceParameter( 1.0 ); // might need to change this
+  filter->SetConductanceParameter( conductance ); // might need to change this
   filter->Update();
   varimage = filter->GetOutput();
   WriteImage<ImageType>( varimage, outname.c_str() );
   return EXIT_SUCCESS;
 }
+
+
+template <unsigned int ImageDimension>
+int InPaint(int argc, char *argv[])
+{
+  typedef float                                                           PixelType;
+  typedef itk::Vector<float, ImageDimension>                              VectorType;
+  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
+  typedef itk::Image<PixelType, ImageDimension>                           ImageType;
+  typedef itk::ImageFileReader<ImageType>                                 readertype;
+  typedef itk::ImageFileWriter<ImageType>                                 writertype;
+  typedef  typename ImageType::IndexType                                  IndexType;
+  typedef  typename ImageType::SizeType                                   SizeType;
+  typedef  typename ImageType::SpacingType                                SpacingType;
+  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
+  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
+  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
+  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
+  int               argct = 2;
+  const std::string outname = std::string(argv[argct]);
+  argct += 2;
+  std::string fn1 = std::string(argv[argct]);   argct++;
+  float       sigma = 1.0;
+  if( argc > argct )
+    {
+    sigma = atof(argv[argct]); argct++;
+    }
+  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer varimage = NULL;
+  ReadImage<ImageType>(image1, fn1.c_str() );
+  PixelType     spacingsize = 0;
+  PixelType     minsp = image1->GetSpacing()[0];
+  for( unsigned int d = 0; d < ImageDimension; d++ )
+    {
+    PixelType sp = image1->GetSpacing()[d];
+    if ( sp < minsp ) minsp = sp;
+    spacingsize += sp * sp;
+    }
+  spacingsize = sqrt( spacingsize );
+  float       inpow = spacingsize * 2.0;
+  if( argc > argct )
+    {
+    inpow = atof(argv[argct]); argct++;
+    }
+  // # 1 job - create a kernel
+  typename ImageType::Pointer kernel = ImageType::New();
+  typename ImageType::IndexType start;
+  typename ImageType::SizeType size;
+  typename ImageType::RegionType region;
+  start.Fill(0);
+  size.Fill(3);
+  region.SetSize(size);
+  region.SetIndex(start);
+  kernel->SetRegions(region);
+  kernel->Allocate();
+  kernel->SetSpacing( image1->GetSpacing() );
+  unsigned long kernelsize = region.GetNumberOfPixels();
+  itk::ImageRegionIterator<ImageType> imageIterator(kernel, region);
+  unsigned int ct = 0;
+  typename ImageType::PointType centerPoint;
+  centerPoint.Fill( 0 );
+  typename ImageType::PointType locPoint;
+  locPoint.Fill( 0 );
+  while(!imageIterator.IsAtEnd())
+    {
+    if ( ct == static_cast<unsigned int>( vcl_floor( (PixelType) kernelsize / 2.0 ) ) )
+      {
+      kernel->TransformIndexToPhysicalPoint(  imageIterator.GetIndex(), centerPoint );
+      }
+    ++ct;
+    ++imageIterator;
+    }
+  unsigned int ct2 = 0;
+  PixelType totalval = 0;
+  imageIterator.GoToBegin();
+  while(!imageIterator.IsAtEnd())
+    {
+    kernel->TransformIndexToPhysicalPoint(  imageIterator.GetIndex(), locPoint );
+    PixelType val = 0;
+    for ( unsigned int d = 0; d < ImageDimension; d++ )
+      {
+      PixelType delt = ( locPoint[d] - centerPoint[d] );
+      val += delt * delt;
+      }
+    PixelType distval = sqrt( val );
+    if ( distval > inpow ) val = 1.e8;
+    if ( val > 0 )
+      {
+      imageIterator.Set( 1.0 / val );
+      totalval += imageIterator.Get( );
+      }
+    if ( ct2 == static_cast<unsigned int>( vcl_floor( (PixelType) ct / 2.0 ) ) ) imageIterator.Set( 1.e-8 );
+    ++ct2;
+    ++imageIterator;
+    }
+  imageIterator.GoToBegin();
+  while(!imageIterator.IsAtEnd())
+    {
+    imageIterator.Set( imageIterator.Get() / totalval );
+    ++imageIterator;
+    }
+  typedef itk::ImageDuplicator<ImageType> DuplicatorType;
+  typename DuplicatorType::Pointer duplicator = DuplicatorType::New();
+  duplicator->SetInputImage( image1 );
+  duplicator->Update();
+  varimage =  duplicator->GetOutput();
+  for ( unsigned int i = 0; i < sigma; i++ )
+    {
+    typedef itk::ConvolutionImageFilter< ImageType, ImageType > FilterType;
+    typename FilterType::Pointer filter = FilterType::New();
+    filter->SetInput( varimage );
+    filter->SetKernelImage(kernel);
+    filter->Update();
+    varimage = filter->GetOutput();
+    Iterator vfIter( varimage,  varimage->GetLargestPossibleRegion() );
+    for(  vfIter.GoToBegin(); !vfIter.IsAtEnd(); ++vfIter )
+      {
+      PixelType pixval = image1->GetPixel( vfIter.GetIndex() );
+      if ( pixval > 0 ) vfIter.Set( pixval );
+      }
+    }
+  WriteImage<ImageType>( varimage, outname.c_str() );
+  return EXIT_SUCCESS;
+}
+
+
+
+template <unsigned int ImageDimension>
+int InPaint2(int argc, char *argv[])
+{
+  //  I_t = \nabla ( \Delta I ) \cdot N   where N is \perpto the normal direction
+  typedef float                                                           PixelType;
+  typedef itk::Vector<float, ImageDimension>                              VectorType;
+  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
+  typedef itk::Image<PixelType, ImageDimension>                           ImageType;
+  typedef itk::ImageFileReader<ImageType>                                 readertype;
+  typedef itk::ImageFileWriter<ImageType>                                 writertype;
+  typedef  typename ImageType::IndexType                                  IndexType;
+  typedef  typename ImageType::SizeType                                   SizeType;
+  typedef  typename ImageType::SpacingType                                SpacingType;
+  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
+  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
+  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
+  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
+  int               argct = 2;
+  const std::string outname = std::string(argv[argct]);
+  argct += 2;
+  std::string fn1 = std::string(argv[argct]);   argct++;
+  float       sigma = 1.0;
+  if( argc > argct )
+    {
+    sigma = atof(argv[argct]); argct++;
+    }
+  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer varimage = NULL;
+  ReadImage<ImageType>(image1, fn1.c_str() );
+  PixelType     spacingsize = 0;
+  PixelType     minsp = image1->GetSpacing()[0];
+  for( unsigned int d = 0; d < ImageDimension; d++ )
+    {
+    PixelType sp = image1->GetSpacing()[d];
+    if ( sp < minsp ) minsp = sp;
+    spacingsize += sp * sp;
+    }
+  spacingsize = sqrt( spacingsize );
+  float       inpow = spacingsize * 2.0;
+  if( argc > argct )
+    {
+    inpow = atof(argv[argct]); argct++;
+    }
+  // # 1 job - create a kernel
+  typename ImageType::Pointer kernel = ImageType::New();
+  typename ImageType::IndexType start;
+  typename ImageType::SizeType size;
+  typename ImageType::RegionType region;
+  start.Fill(0);
+  size.Fill(3);
+  region.SetSize(size);
+  region.SetIndex(start);
+  kernel->SetRegions(region);
+  kernel->Allocate();
+  kernel->SetSpacing( image1->GetSpacing() );
+  unsigned long kernelsize = region.GetNumberOfPixels();
+  itk::ImageRegionIterator<ImageType> imageIterator(kernel, region);
+  unsigned int ct = 0;
+  typename ImageType::PointType centerPoint;
+  typename ImageType::PointType locPoint;
+  while(!imageIterator.IsAtEnd())
+    {
+    if ( ct == static_cast<unsigned int>( vcl_floor( (PixelType) kernelsize / 2.0 ) ) )
+      {
+      kernel->TransformIndexToPhysicalPoint(  imageIterator.GetIndex(), centerPoint );
+      }
+    ++ct;
+    ++imageIterator;
+    }
+  unsigned int ct2 = 0;
+  PixelType totalval = 0;
+  imageIterator.GoToBegin();
+  while(!imageIterator.IsAtEnd())
+    {
+    kernel->TransformIndexToPhysicalPoint(  imageIterator.GetIndex(), locPoint );
+    PixelType val = 0;
+    for ( unsigned int d = 0; d < ImageDimension; d++ )
+      {
+      PixelType delt = ( locPoint[d] - centerPoint[d] );
+      val += delt * delt;
+      }
+    PixelType distval = sqrt( val );
+    if ( distval > inpow ) val = 1.e8;
+    if ( val > 0 )
+      {
+      imageIterator.Set( 1.0 / val );
+      totalval += imageIterator.Get( );
+      }
+    if ( ct2 == static_cast<unsigned int>( vcl_floor( (PixelType) ct / 2.0 ) ) ) imageIterator.Set( 1.e-8 );
+    ++ct2;
+    ++imageIterator;
+    }
+  imageIterator.GoToBegin();
+  while(!imageIterator.IsAtEnd())
+    {
+    imageIterator.Set( imageIterator.Get() / totalval );
+    ++imageIterator;
+    }
+  typedef itk::ImageDuplicator<ImageType> DuplicatorType;
+  typename DuplicatorType::Pointer duplicator = DuplicatorType::New();
+  duplicator->SetInputImage( image1 );
+  duplicator->Update();
+  varimage =  duplicator->GetOutput();
+  for ( unsigned int i = 0; i < sigma; i++ )
+    {
+    typedef itk::ConvolutionImageFilter< ImageType, ImageType > FilterType;
+    typename FilterType::Pointer filter = FilterType::New();
+    filter->SetInput( varimage );
+    filter->SetKernelImage(kernel);
+    filter->Update();
+    varimage = filter->GetOutput();
+    Iterator vfIter( varimage,  varimage->GetLargestPossibleRegion() );
+    for(  vfIter.GoToBegin(); !vfIter.IsAtEnd(); ++vfIter )
+      {
+      PixelType pixval = image1->GetPixel( vfIter.GetIndex() );
+      if ( pixval > 0 ) vfIter.Set( pixval );
+      }
+    }
+  WriteImage<ImageType>( varimage, outname.c_str() );
+  return EXIT_SUCCESS;
+}
+
 
 
 template <unsigned int ImageDimension>
@@ -12566,8 +13061,8 @@ int BlobDetector( int argc, char *argv[] )
   // sensitive parameters are set here - begin
   RealType     gradsig = 1.0;      // sigma for gradient filter
   unsigned int stepsperoctave = 4; // number of steps between doubling of scale
-  RealType     minscale = vcl_pow( 1.0, 1 );
-  RealType     maxscale = vcl_pow( 2.0, 8 );
+  RealType     minscale = vcl_pow( 1.0, 1.0 );
+  RealType     maxscale = vcl_pow( 2.0, 8.0 );
   RealType     uniqfeat_thresh = 0.01;
   RealType     smallval = 1.e-2; // assumes images are normalizes in [ 0, 1 ]
   bool         dosinkhorn = false;
@@ -13057,6 +13552,830 @@ int MatchBlobs( int argc, char *argv[] )
   return EXIT_SUCCESS;
 }
 
+//
+// ImageMath was a gigantic switch statement that had 3 duplicated
+// lists of 'if (operation == <op>)' clauses for 2d, 3d, and 4d. I
+// figured out which functions were 2D only, 3D only and 4D Only,
+// which were valid for all dimensions,  which were 2d and 3d, and
+// which were 3d and 4d.
+// So there's a template method for each case, and they're assembled
+// for each dimension in an Explicit Template Function below.
+template<unsigned DIM>
+int
+ImageMathHelper2DOnly(int argc, char **argv)
+{
+  std::string operation = std::string(argv[3]);
+  if( operation == "TileImages" )
+    {
+    TileImages<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TimeSeriesRegionCorr" )
+    {
+    TimeSeriesRegionCorr<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TimeSeriesRegionSCCA" )
+    {
+    TimeSeriesRegionSCCA<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  return EXIT_FAILURE;
+}
+
+template <unsigned DIM>
+int
+ImageMathHelper2DOr3D(int argc, char **argv)
+{
+  std::string operation = std::string(argv[3]);
+  if( operation == "AverageLabels" )
+    {
+    AverageLabels<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "Check3TissueLabeling" )
+    {
+    Check3TissueLabeling<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "oldPropagateLabelsThroughMask" )
+    {
+    PropagateLabelsThroughMask<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "SetOrGetPixel" )
+    {
+    SetOrGetPixel<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "STAPLE" )
+    {
+    STAPLE<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  return EXIT_FAILURE;
+}
+
+template <unsigned DIM>
+int
+ImageMathHelper3DOr4D(int argc, char **argv)
+{
+  std::string operation = std::string(argv[3]);
+  if( operation == "ConvertLandmarkFile" )
+    {
+    ConvertLandmarkFile<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "FitSphere" )
+    {
+    FitSphere<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "PASLQuantifyCBF" )
+    {
+    PASLQuantifyCBF<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "PASL" )
+    {
+    PASL<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "pCASL" )
+    {
+    pCASL<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TriPlanarView" )
+    {
+    TriPlanarView<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  return EXIT_FAILURE;
+}
+
+template <unsigned DIM>
+int
+ImageMathHelper3DOnly(int argc, char **argv)
+{
+  std::string operation = std::string(argv[3]);
+  if( operation == "4DTensorTo3DTensor" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ComponentTo3DTensor" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ExtractComponentFrom3DTensor" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "MTR" )
+    {
+    MTR<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "SmoothTensorImage" )
+    {
+    SmoothTensorImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TensorAxialDiffusion" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TensorColor" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TensorEigenvalue" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TensorFA" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TensorFANumerator" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TensorFADenominator" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TensorIOTest" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TensorMask" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TensorMeanDiffusion" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TensorRadialDiffusion" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TensorToLocalSpace" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TensorToPhysicalSpace" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TensorToVectorComponent" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TensorToVector" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ValidTensor" )
+    {
+    TensorFunctions<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  return EXIT_FAILURE;
+}
+
+template <unsigned DIM>
+int
+ImageMathHelper4DOnly(int argc, char **argv)
+{
+  std::string operation = std::string(argv[3]);
+  if( operation == "AverageOverDimension" )
+    {
+    AverageOverDimension<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "CompCorrAuto" )
+    {
+    CompCorrAuto<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ComputeTimeSeriesLeverage" )
+    {
+    ComputeTimeSeriesLeverage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "nvols" )
+    {
+    PrintHeader<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "PCASLQuantifyCBF" )
+    {
+    // PCASLQuantifyCBF<4>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "SliceTimingCorrection" )
+    {
+    SliceTimingCorrection<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "SplitAlternatingTimeSeries" )
+    {
+    SplitAlternatingTimeSeries<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ThreeTissueConfounds" )
+    {
+    ThreeTissueConfounds<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TimeSeriesMask" )
+    {
+    TimeSeriesMask<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TimeSeriesAssemble" )
+    {
+    TimeSeriesAssemble<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TimeSeriesDisassemble" )
+    {
+    TimeSeriesDisassemble<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TimeSeriesInterpolationSubtraction" )
+    {
+    TimeSeriesInterpolationSubtraction<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TimeSeriesSimpleSubtraction" )
+    {
+    TimeSeriesSimpleSubtraction<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TimeSeriesSubset" )
+    {
+    TimeSeriesSubset<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TimeSeriesToMatrix" )
+    {
+    TimeSeriesToMatrix<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  return EXIT_FAILURE;
+}
+
+template <unsigned DIM>
+int
+ImageMathHelperAll(int argc, char **argv)
+{
+  std::string operation = std::string(argv[3]);
+  if( operation == "m")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "mresample")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "+")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "-")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "vm")
+    {
+    VImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "vmresample")
+    {
+    VImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "v+")
+    {
+    VImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "v-")
+    {
+    VImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "/")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "^")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "exp")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "max")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "abs")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "addtozero")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "overadd")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "total")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "vtotal")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "mean")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "Decision")
+    {
+    ImageMath<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "Neg")
+    {
+    NegativeImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "G")
+    {
+    SmoothImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "PeronaMalik")
+    {
+    PMSmoothImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "InPaint")
+    {
+    InPaint<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "MD" || operation == "ME" )
+    {
+    MorphImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "MO" || operation == "MC" )
+    {
+    MorphImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "GD" || operation == "GE" )
+    {
+    MorphImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "GO" || operation == "GC" )
+    {
+    MorphImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "D" )
+    {
+    DistanceMap<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "MaurerDistance"  )
+    {
+    GenerateMaurerDistanceImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "Normalize" )
+    {
+    NormalizeImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "Grad" )
+    {
+    GradientImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "Laplacian" )
+    {
+    LaplacianImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "PH" )
+    {
+    PrintHeader<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "CenterImage2inImage1" )
+    {
+    CenterImage2inImage1<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "Byte" )
+    {
+    ByteImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ReflectionMatrix" )
+    {
+    ReflectionMatrix<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ClosestSimplifiedHeaderMatrix" )
+    {
+    ClosestSimplifiedHeaderMatrix<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "LabelStats" )
+    {
+    LabelStats<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ROIStatistics" )
+    {
+    ROIStatistics<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "LabelThickness" )
+    {
+    LabelThickness<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "LabelThickness2" )
+    {
+    LabelThickness2<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "DiceAndMinDistSum" )
+    {
+    DiceAndMinDistSum<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "Lipschitz" )
+    {
+    Lipschitz<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "InvId" )
+    {
+    InvId<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "GetLargestComponent" )
+    {
+    GetLargestComponent<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ExtractVectorComponent" )
+    {
+    ExtractVectorComponent<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ThresholdAtMean" )
+    {
+    ThresholdAtMean<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "FlattenImage" )
+    {
+    FlattenImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "CorruptImage" )
+    {
+    CorruptImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "Where" )
+    {
+    Where<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if(  operation == "Finite" )
+    {
+    Finite<DIM>( argc, argv );
+    return EXIT_SUCCESS;
+    }
+  if( operation == "FillHoles" )
+    {
+    FillHoles<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "HistogramMatch" )
+    {
+    HistogramMatching<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "RescaleImage" )
+    {
+    RescaleImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "NeighborhoodStats" )
+    {
+    NeighborhoodStats<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "PadImage" )
+    {
+    PadImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "SigmoidImage" )
+    {
+    SigmoidImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "Sharpen" )
+    {
+    SharpenImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "MakeImage" )
+    {
+    MakeImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "stack" )
+    {
+    StackImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "stack2" )
+    {
+    Stack2Images<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "CompareHeadersAndImages" )
+    {
+    CompareHeadersAndImages<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "CountVoxelDifference" )
+    {
+    CountVoxelDifference<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "RemoveLabelInterfaces" )
+    {
+    RemoveLabelInterfaces<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ReplaceVoxelValue" )
+    {
+    ReplaceVoxelValue<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "PoissonDiffusion" )
+    {
+    PoissonDiffusion<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "EnumerateLabelInterfaces" )
+    {
+    EnumerateLabelInterfaces<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ConvertImageToFile" )
+    {
+    ConvertImageToFile<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "PValueImage" )
+    {
+    PValueImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "CorrelationUpdate" )
+    {
+    CorrelationUpdate<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ConvertImageSetToMatrix" )
+    {
+    ConvertImageSetToMatrix<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "RandomlySampleImageSetToCSV" )
+    {
+    RandomlySampleImageSetToCSV<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ConvertImageSetToEigenvectors" )
+    {
+    ConvertImageSetToEigenvectors<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ConvertVectorToImage" )
+    {
+    ConvertVectorToImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "PropagateLabelsThroughMask" )
+    {
+    itkPropagateLabelsThroughMask<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "FastMarchingSegmentation" )
+    {
+    FastMarchingSegmentation<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "TruncateImageIntensity" )
+    {
+    TruncateImageIntensity<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ExtractSlice" )
+    {
+    ExtractSlice<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ClusterThresholdVariate" )
+    {
+    ClusterThresholdVariate<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "MajorityVoting" )
+    {
+    MajorityVoting<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "MostLikely" )
+    {
+    MostLikely<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "CorrelationVoting" )
+    {
+    CorrelationVoting<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "PearsonCorrelation" )
+    {
+    PearsonCorrelation<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "Translate" )
+    {
+    Translate<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "NeighborhoodCorrelation" )
+    {
+    ImageMetrics<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "NormalizedCorrelation" )
+    {
+    ImageMetrics<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "Demons" )
+    {
+    ImageMetrics<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "Mattes" )
+    {
+    return ImageMetrics<DIM>(argc, argv);
+    }
+  if( operation == "MinMaxMean" )
+    {
+    MinMaxMean<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "PureTissueN4WeightMask" )
+    {
+    PureTissueN4WeightMask<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "BlobDetector" )
+    {
+    BlobDetector<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "MatchBlobs" )
+    {
+    MatchBlobs<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "Project" )
+    {
+    Project<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  return EXIT_FAILURE;
+}
+
+template <unsigned DIM>
+int
+ImageMathHelper(int argc, char **argv)
+{
+  return 1;
+}
+
+template <>
+int
+ImageMathHelper<2>(int argc, char **argv)
+{
+  int returnval = ImageMathHelperAll<2>(argc,argv);
+  if(returnval == EXIT_FAILURE)
+    {
+    returnval = ImageMathHelper2DOnly<2>(argc,argv);
+    }
+  if(returnval == EXIT_FAILURE)
+    {
+    returnval = ImageMathHelper2DOr3D<2>(argc,argv);
+    }
+  return returnval;
+}
+
+template <>
+int
+ImageMathHelper<3>(int argc, char **argv)
+{
+  int returnval = ImageMathHelperAll<3>(argc,argv);
+  if(returnval == EXIT_FAILURE)
+    {
+    returnval = ImageMathHelper3DOnly<3>(argc,argv);
+    }
+  if(returnval == EXIT_FAILURE)
+    {
+    returnval = ImageMathHelper2DOr3D<3>(argc,argv);
+    }
+  if(returnval == EXIT_FAILURE)
+    {
+    returnval = ImageMathHelper3DOr4D<3>(argc,argv);
+    }
+  return returnval;
+}
+
+template <>
+int
+ImageMathHelper<4>(int argc, char **argv)
+{
+  int returnval = ImageMathHelperAll<4>(argc,argv);
+  if(returnval == EXIT_FAILURE)
+    {
+    returnval = ImageMathHelper4DOnly<4>(argc,argv);
+    }
+  if(returnval == EXIT_FAILURE)
+    {
+    returnval = ImageMathHelper3DOr4D<4>(argc,argv);
+    }
+  return returnval;
+}
+
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
 // 'main()'
 int ImageMath( std::vector<std::string> args, std::ostream * itkNotUsed( out_stream ) )
@@ -13141,7 +14460,7 @@ private:
     std::cout << "  Neg            : Produce image negative" << std::endl;
 
     std::cout << "\nSpatial Filtering:" <<  std::endl;
-    std::cout << "  Project Image1.ext a    : Project an image along axis a" << std::endl;
+    std::cout << "  Project Image1.ext axis-a which-projection   : Project an image along axis a, which-projection=0(sum, 1=max, 2=min)" << std::endl;
     std::cout << "  G Image1.ext s    : Smooth with Gaussian of sigma = s" << std::endl;
     std::cout << "  MD Image1.ext s    : Morphological Dilation with radius s" << std::endl;
     std::cout << "  ME Image1.ext s    : Morphological Erosion with radius s" << std::endl;
@@ -13290,8 +14609,8 @@ private:
       "  TensorToVectorComponent: 0 => 2 produces component of the principal vector field (largest eigenvalue). 3 = 8 => gets values from the tensor "
       << std::endl;
     std::cout << "    Usage        : TensorToVectorComponent DTImage.ext WhichVec" << std::endl;
-    std::cout << "  TensorMask     : Mask a tensor image, sets background tensors to zero " << std::endl;
-    std::cout << "    Usage        : TensorMask DTImage.ext mask.ext" << std::endl;
+    std::cout << "  TensorMask     : Mask a tensor image, sets background tensors to zero or to isotropic tensors with specified mean diffusivity " << std::endl;
+    std::cout << "    Usage        : TensorMask DTImage.ext mask.ext [ backgroundMD = 0 ] " << std::endl;
 
     std::cout << "\nLabel Fusion:" << std::endl;
     std::cout << "  MajorityVoting : Select label with most votes from candidates" << std::endl;
@@ -13325,6 +14644,8 @@ private:
 
     std::cout << "  ReflectionMatrix : Create a reflection matrix about an axis" << std::endl;
     std::cout << " out.mat ReflectionMatrix axis " << std::endl << std::endl;
+
+    std::cout << "  ClosestSimplifiedHeaderMatrix : does what it says ... image-in, image-out" << std::endl;
 
     std::cout << "  Byte            : Convert to Byte image in [0,255]" << std::endl;
 
@@ -13428,6 +14749,12 @@ private:
     std::cout << "                Parameter = 1 is a definite hole bounded by object only, 0.99 is close" << std::endl;
     std::cout << "                Default of parameter > 1 will fill all holes" << std::endl;
     std::cout << "      Usage        : FillHoles Image.ext parameter" << std::endl;
+
+    std::cout << "\n  InPaint        : very simple inpainting --- assumes zero values should be inpainted  " << std::endl;
+    std::cout << "      Usage        : InPaint #iterations" << std::endl;
+
+    std::cout << "\n  PeronaMalik       : anisotropic diffusion w/varying conductance param (0.25 in example below)" << std::endl;
+    std::cout << "      Usage        : PeronaMalik image #iterations conductance " << std::endl;
 
     std::cout << "  Finite            : replace non-finite values with finite-value (default = 0)" << std::endl;
     std::cout << "      Usage        : Finite Image.exdt {replace-value=0}" << std::endl;
@@ -13598,1362 +14925,29 @@ private:
 
   std::string operation = std::string(argv[3]);
 
-  switch( atoi(argv[1]) )
+  unsigned int imageDimension = atoi(argv[1]);
+
+  switch( imageDimension )
     {
     case 2:
-      {
-      if( strcmp(operation.c_str(), "m") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "mresample") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "+") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "-") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "vm") == 0 )
-        {
-        VImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "vmresample") == 0 )
-        {
-        VImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "v+") == 0 )
-        {
-        VImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "v-") == 0 )
-        {
-        VImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "/") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "^") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "exp") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "max") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "abs") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "addtozero") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "overadd") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "total") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "vtotal") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "mean") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Decision") == 0 )
-        {
-        ImageMath<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Neg") == 0 )
-        {
-        NegativeImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "G") == 0 )
-        {
-        SmoothImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PeronaMalik") == 0 )
-        {
-        PMSmoothImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MD") == 0 || strcmp(operation.c_str(), "ME") == 0 )
-        {
-        MorphImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MO") == 0 || strcmp(operation.c_str(), "MC") == 0 )
-        {
-        MorphImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "GD") == 0 || strcmp(operation.c_str(), "GE") == 0 )
-        {
-        MorphImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "GO") == 0 || strcmp(operation.c_str(), "GC") == 0 )
-        {
-        MorphImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "D") == 0 )
-        {
-        DistanceMap<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MaurerDistance" ) == 0 )
-        {
-        GenerateMaurerDistanceImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Normalize") == 0 )
-        {
-        NormalizeImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Grad") == 0 )
-        {
-        GradientImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Laplacian") == 0 )
-        {
-        LaplacianImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PH") == 0 )
-        {
-        PrintHeader<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CenterImage2inImage1") == 0 )
-        {
-        CenterImage2inImage1<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Byte") == 0 )
-        {
-        ByteImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ReflectionMatrix") == 0 )
-        {
-        ReflectionMatrix<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "LabelStats") == 0 )
-        {
-        LabelStats<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ROIStatistics") == 0 )
-        {
-        ROIStatistics<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "LabelThickness") == 0 )
-        {
-        LabelThickness<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "LabelThickness2") == 0 )
-        {
-        LabelThickness2<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "DiceAndMinDistSum") == 0 )
-        {
-        DiceAndMinDistSum<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Lipschitz") == 0 )
-        {
-        Lipschitz<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "InvId") == 0 )
-        {
-        InvId<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "GetLargestComponent") == 0 )
-        {
-        GetLargestComponent<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ExtractVectorComponent") == 0 )
-        {
-        ExtractVectorComponent<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ThresholdAtMean") == 0 )
-        {
-        ThresholdAtMean<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "FlattenImage") == 0 )
-        {
-        FlattenImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CorruptImage") == 0 )
-        {
-        CorruptImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TileImages") == 0 )
-        {
-        TileImages<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Where") == 0 )
-        {
-        Where<2>(argc, argv);
-        }
-      else if( strcmp( operation.c_str(), "Finite") == 0 )
-        {
-        Finite<2>( argc, argv );
-        }
-      else if( strcmp(operation.c_str(), "FillHoles") == 0 )
-        {
-        FillHoles<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "HistogramMatch") == 0 )
-        {
-        HistogramMatching<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "RescaleImage") == 0 )
-        {
-        RescaleImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "NeighborhoodStats") == 0 )
-        {
-        NeighborhoodStats<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PadImage") == 0 )
-        {
-        PadImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "SigmoidImage") == 0 )
-        {
-        SigmoidImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Sharpen") == 0 )
-        {
-        SharpenImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "SetOrGetPixel") == 0 )
-        {
-        SetOrGetPixel<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MakeImage") == 0 )
-        {
-        MakeImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "stack") == 0 )
-        {
-        StackImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CompareHeadersAndImages") == 0 )
-        {
-        CompareHeadersAndImages<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CountVoxelDifference") == 0 )
-        {
-        CountVoxelDifference<2>(argc, argv);
-        }
-      //     else if (strcmp(operation.c_str(),"AddToZero") == 0 )  AddToZero<2>(argc,argv);
-      else if( strcmp(operation.c_str(), "RemoveLabelInterfaces") == 0 )
-        {
-        RemoveLabelInterfaces<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ReplaceVoxelValue") == 0 )
-        {
-        ReplaceVoxelValue<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PoissonDiffusion") == 0 )
-        {
-        PoissonDiffusion<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "EnumerateLabelInterfaces") == 0 )
-        {
-        EnumerateLabelInterfaces<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ConvertImageToFile") == 0 )
-        {
-        ConvertImageToFile<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PValueImage") == 0 )
-        {
-        PValueImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CorrelationUpdate") == 0 )
-        {
-        CorrelationUpdate<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ConvertImageSetToMatrix") == 0 )
-        {
-        ConvertImageSetToMatrix<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "RandomlySampleImageSetToCSV") == 0 )
-        {
-        RandomlySampleImageSetToCSV<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ConvertImageSetToEigenvectors") == 0 )
-        {
-        ConvertImageSetToEigenvectors<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ConvertVectorToImage") == 0 )
-        {
-        ConvertVectorToImage<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "oldPropagateLabelsThroughMask") == 0 )
-        {
-        PropagateLabelsThroughMask<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PropagateLabelsThroughMask") == 0 )
-        {
-        itkPropagateLabelsThroughMask<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "FastMarchingSegmentation") == 0 )
-        {
-        FastMarchingSegmentation<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TruncateImageIntensity") == 0 )
-        {
-        TruncateImageIntensity<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ExtractSlice") == 0 )
-        {
-        ExtractSlice<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ClusterThresholdVariate") == 0 )
-        {
-        ClusterThresholdVariate<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "STAPLE") == 0 )
-        {
-        STAPLE<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "AverageLabels") == 0 )
-        {
-        AverageLabels<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MajorityVoting") == 0 )
-        {
-        MajorityVoting<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MostLikely") == 0 )
-        {
-        MostLikely<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CorrelationVoting") == 0 )
-        {
-        CorrelationVoting<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PearsonCorrelation") == 0 )
-        {
-        PearsonCorrelation<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Translate") == 0 )
-        {
-        Translate<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "NeighborhoodCorrelation") == 0 )
-        {
-        ImageMetrics<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "NormalizedCorrelation") == 0 )
-        {
-        ImageMetrics<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Demons") == 0 )
-        {
-        ImageMetrics<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Mattes") == 0 )
-        {
-        returnvalue = ImageMetrics<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MinMaxMean") == 0 )
-        {
-        MinMaxMean<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Check3TissueLabeling") == 0 )
-        {
-        Check3TissueLabeling<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PureTissueN4WeightMask") == 0 )
-        {
-        PureTissueN4WeightMask<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "BlobDetector") == 0 )
-        {
-        BlobDetector<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MatchBlobs") == 0 )
-        {
-        MatchBlobs<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TimeSeriesRegionSCCA") == 0 )
-        {
-        TimeSeriesRegionSCCA<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TimeSeriesRegionCorr") == 0 )
-        {
-        TimeSeriesRegionCorr<2>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Project") == 0 )
-        {
-        Project<2>(argc, argv);
-        }
-      //     else if (strcmp(operation.c_str(),"ConvertLandmarkFile") == 0)  ConvertLandmarkFile<2>(argc,argv);
-      else
-        {
-        std::cout << " cannot find operation : " << operation << std::endl;
-        }
-      }
+      returnvalue = ImageMathHelper<2>(argc,argv);
       break;
     case 3:
-      {
-      if( strcmp(operation.c_str(), "m") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "mresample") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "+") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "-") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "vm") == 0 )
-        {
-        VImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "vmresample") == 0 )
-        {
-        VImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "v+") == 0 )
-        {
-        VImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "v-") == 0 )
-        {
-        VImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "/") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "^") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "exp") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "max") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "abs") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "addtozero") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "overadd") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "total") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "vtotal") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "mean") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Decision") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Neg") == 0 )
-        {
-        NegativeImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "G") == 0 )
-        {
-        SmoothImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PeronaMalik") == 0 )
-        {
-        PMSmoothImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MD") == 0 || strcmp(operation.c_str(), "ME") == 0 )
-        {
-        MorphImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MO") == 0 || strcmp(operation.c_str(), "MC") == 0 )
-        {
-        MorphImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "GD") == 0 || strcmp(operation.c_str(), "GE") == 0 )
-        {
-        MorphImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "GO") == 0 || strcmp(operation.c_str(), "GC") == 0 )
-        {
-        MorphImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "D") == 0 )
-        {
-        DistanceMap<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MaurerDistance" ) == 0 )
-        {
-        GenerateMaurerDistanceImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Normalize") == 0 )
-        {
-        NormalizeImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Grad") == 0 )
-        {
-        GradientImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Laplacian") == 0 )
-        {
-        LaplacianImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PH") == 0 )
-        {
-        PrintHeader<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CenterImage2inImage1") == 0 )
-        {
-        CenterImage2inImage1<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Byte") == 0 )
-        {
-        ByteImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ReflectionMatrix") == 0 )
-        {
-        ReflectionMatrix<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "LabelStats") == 0 )
-        {
-        LabelStats<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ROIStatistics") == 0 )
-        {
-        ROIStatistics<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "LabelThickness") == 0 )
-        {
-        LabelThickness<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "LabelThickness2") == 0 )
-        {
-        LabelThickness2<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "DiceAndMinDistSum") == 0 )
-        {
-        DiceAndMinDistSum<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Lipschitz") == 0 )
-        {
-        Lipschitz<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "InvId") == 0 )
-        {
-        InvId<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "GetLargestComponent") == 0 )
-        {
-        GetLargestComponent<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ExtractVectorComponent") == 0 )
-        {
-        ExtractVectorComponent<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ThresholdAtMean") == 0 )
-        {
-        ThresholdAtMean<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "FlattenImage") == 0 )
-        {
-        FlattenImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CorruptImage") == 0 )
-        {
-        CorruptImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "RemoveLabelInterfaces") == 0 )
-        {
-        RemoveLabelInterfaces<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ReplaceVoxelValue") == 0 )
-        {
-        ReplaceVoxelValue<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "EnumerateLabelInterfaces") == 0 )
-        {
-        EnumerateLabelInterfaces<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "FitSphere") == 0 )
-        {
-        FitSphere<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Where") == 0 )
-        {
-        Where<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "SmoothTensorImage") == 0 )
-        {
-        SmoothTensorImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TensorFA") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TensorFANumerator") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TensorFADenominator") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "4DTensorTo3DTensor") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ComponentTo3DTensor") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ExtractComponentFrom3DTensor") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TensorIOTest") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TensorMeanDiffusion") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TensorRadialDiffusion") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TensorAxialDiffusion") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TensorEigenvalue") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TensorColor") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TensorMask") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TensorToVector") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TensorToPhysicalSpace") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TensorToLocalSpace") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ValidTensor") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TensorToVectorComponent") == 0 )
-        {
-        TensorFunctions<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PASLQuantifyCBF") == 0 )
-        {
-        PASLQuantifyCBF<3>(argc, argv);
-        }
-      else if( strcmp( operation.c_str(), "Finite") == 0 )
-        {
-        Finite<3>( argc, argv );
-        }
-      else if( strcmp(operation.c_str(), "FillHoles") == 0 )
-        {
-        FillHoles<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "HistogramMatch") == 0 )
-        {
-        HistogramMatching<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "RescaleImage") == 0 )
-        {
-        RescaleImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "NeighborhoodStats") == 0 )
-        {
-        NeighborhoodStats<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PadImage") == 0 )
-        {
-        PadImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "SigmoidImage") == 0 )
-        {
-        SigmoidImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Sharpen") == 0 )
-        {
-        SharpenImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "SetOrGetPixel") == 0 )
-        {
-        SetOrGetPixel<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MakeImage") == 0 )
-        {
-        MakeImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "stack") == 0 )
-        {
-        StackImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CompareHeadersAndImages") == 0 )
-        {
-        CompareHeadersAndImages<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CountVoxelDifference") == 0 )
-        {
-        CountVoxelDifference<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ConvertImageToFile") == 0 )
-        {
-        ConvertImageToFile<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PValueImage") == 0 )
-        {
-        PValueImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CorrelationUpdate") == 0 )
-        {
-        CorrelationUpdate<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PoissonDiffusion") == 0 )
-        {
-        PoissonDiffusion<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ConvertImageSetToMatrix") == 0 )
-        {
-        ConvertImageSetToMatrix<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "RandomlySampleImageSetToCSV") == 0 )
-        {
-        RandomlySampleImageSetToCSV<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ConvertImageSetToEigenvectors") == 0 )
-        {
-        ConvertImageSetToEigenvectors<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ConvertVectorToImage") == 0 )
-        {
-        ConvertVectorToImage<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "oldPropagateLabelsThroughMask") == 0 )
-        {
-        PropagateLabelsThroughMask<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PropagateLabelsThroughMask") == 0 )
-        {
-        itkPropagateLabelsThroughMask<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "FastMarchingSegmentation") == 0 )
-        {
-        FastMarchingSegmentation<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TriPlanarView") == 0 )
-        {
-        TriPlanarView<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TruncateImageIntensity") == 0 )
-        {
-        TruncateImageIntensity<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ExtractSlice") == 0 )
-        {
-        ExtractSlice<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ClusterThresholdVariate") == 0 )
-        {
-        ClusterThresholdVariate<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ConvertLandmarkFile") == 0 )
-        {
-        ConvertLandmarkFile<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PASL") == 0 )
-        {
-        PASL<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "pCASL") == 0 )
-        {
-        pCASL<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MTR") == 0 )
-        {
-        MTR<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MajorityVoting") == 0 )
-        {
-        MajorityVoting<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MostLikely") == 0 )
-        {
-        MostLikely<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CorrelationVoting") == 0 )
-        {
-        CorrelationVoting<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "STAPLE") == 0 )
-        {
-        STAPLE<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "AverageLabels") == 0 )
-        {
-        AverageLabels<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PearsonCorrelation") == 0 )
-        {
-        PearsonCorrelation<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Translate") == 0 )
-        {
-        Translate<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "NeighborhoodCorrelation") == 0 )
-        {
-        ImageMetrics<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "NormalizedCorrelation") == 0 )
-        {
-        ImageMetrics<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Demons") == 0 )
-        {
-        ImageMetrics<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Mattes") == 0 )
-        {
-        returnvalue = ImageMetrics<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MinMaxMean") == 0 )
-        {
-        MinMaxMean<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "BlobDetector") == 0 )
-        {
-        BlobDetector<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MatchBlobs") == 0 )
-        {
-        MatchBlobs<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Check3TissueLabeling") == 0 )
-        {
-        Check3TissueLabeling<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PureTissueN4WeightMask") == 0 )
-        {
-        PureTissueN4WeightMask<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Project") == 0 )
-        {
-        Project<3>(argc, argv);
-        }
-      else
-        {
-        std::cout << " cannot find operation : " << operation << std::endl;
-        }
-      }
+      returnvalue = ImageMathHelper<3>(argc,argv);
       break;
     case 4:
-      {
-      if( strcmp(operation.c_str(), "m") == 0 )
-        {
-        ImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "mresample") == 0 )
-        {
-        ImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "+") == 0 )
-        {
-        ImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "-") == 0 )
-        {
-        ImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "vm") == 0 )
-        {
-        VImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "vmresample") == 0 )
-        {
-        VImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "v+") == 0 )
-        {
-        VImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "v-") == 0 )
-        {
-        VImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "/") == 0 )
-        {
-        ImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "^") == 0 )
-        {
-        ImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "exp") == 0 )
-        {
-        ImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "max") == 0 )
-        {
-        ImageMath<3>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "abs") == 0 )
-        {
-        ImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "addtozero") == 0 )
-        {
-        ImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "overadd") == 0 )
-        {
-        ImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "total") == 0 )
-        {
-        ImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "vtotal") == 0 )
-        {
-        ImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "mean") == 0 )
-        {
-        ImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Decision") == 0 )
-        {
-        ImageMath<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Neg") == 0 )
-        {
-        NegativeImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "G") == 0 )
-        {
-        SmoothImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PeronaMalik") == 0 )
-        {
-        PMSmoothImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MD") == 0 || strcmp(operation.c_str(), "ME") == 0 )
-        {
-        MorphImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MO") == 0 || strcmp(operation.c_str(), "MC") == 0 )
-        {
-        MorphImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "GD") == 0 || strcmp(operation.c_str(), "GE") == 0 )
-        {
-        MorphImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "GO") == 0 || strcmp(operation.c_str(), "GC") == 0 )
-        {
-        MorphImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "D") == 0 )
-        {
-        DistanceMap<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MaurerDistance" ) == 0 )
-        {
-        GenerateMaurerDistanceImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Normalize") == 0 )
-        {
-        NormalizeImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Grad") == 0 )
-        {
-        GradientImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Laplacian") == 0 )
-        {
-        LaplacianImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PH") == 0 )
-        {
-        PrintHeader<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "nvols") == 0 )
-        {
-        PrintHeader<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CenterImage2inImage1") == 0 )
-        {
-        CenterImage2inImage1<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Byte") == 0 )
-        {
-        ByteImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ReflectionMatrix") == 0 )
-        {
-        ReflectionMatrix<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "LabelStats") == 0 )
-        {
-        LabelStats<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ROIStatistics") == 0 )
-        {
-        ROIStatistics<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "LabelThickness") == 0 )
-        {
-        LabelThickness<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "LabelThickness2") == 0 )
-        {
-        LabelThickness2<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "DiceAndMinDistSum") == 0 )
-        {
-        DiceAndMinDistSum<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Lipschitz") == 0 )
-        {
-        Lipschitz<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "InvId") == 0 )
-        {
-        InvId<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "GetLargestComponent") == 0 )
-        {
-        GetLargestComponent<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ExtractVectorComponent") == 0 )
-        {
-        ExtractVectorComponent<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ThresholdAtMean") == 0 )
-        {
-        ThresholdAtMean<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "FlattenImage") == 0 )
-        {
-        FlattenImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CorruptImage") == 0 )
-        {
-        CorruptImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "RemoveLabelInterfaces") == 0 )
-        {
-        RemoveLabelInterfaces<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ReplaceVoxelValue") == 0 )
-        {
-        ReplaceVoxelValue<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "EnumerateLabelInterfaces") == 0 )
-        {
-        EnumerateLabelInterfaces<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "FitSphere") == 0 )
-        {
-        FitSphere<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Where") == 0 )
-        {
-        Where<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PureTissueN4WeightMask") == 0 )
-        {
-        PureTissueN4WeightMask<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "BlobDetector") == 0 )
-        {
-        BlobDetector<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MatchBlobs") == 0 )
-        {
-        MatchBlobs<4>(argc, argv);
-        }
-      //    else if (strcmp(operation.c_str(),"TensorFA") == 0 )  TensorFunctions<4>(argc,argv);
-      // else if (strcmp(operation.c_str(),"TensorIOTest") == 0 )  TensorFunctions<4>(argc,argv);
-      // else if (strcmp(operation.c_str(),"TensorMeanDiffusion") == 0 )  TensorFunctions<4>(argc,argv);
-      // else if (strcmp(operation.c_str(),"TensorColor") == 0) TensorFunctions<4>(argc,argv);
-      // else if (strcmp(operation.c_str(),"TensorToVector") == 0) TensorFunctions<4>(argc,argv);
-      // else if (strcmp(operation.c_str(),"TensorToVectorComponent")
-      // == 0) TensorFunctions<4>(argc,argv);
-      else if( strcmp( operation.c_str(), "Finite") == 0 )
-        {
-        Finite<4>( argc, argv );
-        }
-      else if( strcmp(operation.c_str(), "FillHoles") == 0 )
-        {
-        FillHoles<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "HistogramMatch") == 0 )
-        {
-        HistogramMatching<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "RescaleImage") == 0 )
-        {
-        RescaleImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "NeighborhoodStats") == 0 )
-        {
-        NeighborhoodStats<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PadImage") == 0 )
-        {
-        PadImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "SigmoidImage") == 0 )
-        {
-        SigmoidImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Sharpen") == 0 )
-        {
-        SharpenImage<4>(argc, argv);
-        }
-      //  else if (strcmp(operation.c_str(),"SetOrGetPixel") == 0 )  SetOrGetPixel<4>(argc,argv);
-      else if( strcmp(operation.c_str(), "MakeImage") == 0 )
-        {
-        MakeImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "stack") == 0 )
-        {
-        StackImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CompareHeadersAndImages") == 0 )
-        {
-        CompareHeadersAndImages<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CountVoxelDifference") == 0 )
-        {
-        CountVoxelDifference<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ConvertImageToFile") == 0 )
-        {
-        ConvertImageToFile<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PValueImage") == 0 )
-        {
-        PValueImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PoissonDiffusion") == 0 )
-        {
-        PoissonDiffusion<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CorrelationUpdate") == 0 )
-        {
-        CorrelationUpdate<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ConvertImageSetToMatrix") == 0 )
-        {
-        ConvertImageSetToMatrix<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "RandomlySampleImageSetToCSV") == 0 )
-        {
-        RandomlySampleImageSetToCSV<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ConvertImageSetToEigenvectors") == 0 )
-        {
-        ConvertImageSetToEigenvectors<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ConvertVectorToImage") == 0 )
-        {
-        ConvertVectorToImage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PropagateLabelsThroughMask") == 0 )
-        {
-        itkPropagateLabelsThroughMask<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "FastMarchingSegmentation") == 0 )
-        {
-        FastMarchingSegmentation<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TriPlanarView") == 0 )
-        {
-        TriPlanarView<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TruncateImageIntensity") == 0 )
-        {
-        TruncateImageIntensity<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ExtractSlice") == 0 )
-        {
-        ExtractSlice<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ClusterThresholdVariate") == 0 )
-        {
-        ClusterThresholdVariate<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ConvertLandmarkFile") == 0 )
-        {
-        ConvertLandmarkFile<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TimeSeriesDisassemble") == 0 )
-        {
-        TimeSeriesDisassemble<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TimeSeriesAssemble") == 0 )
-        {
-        TimeSeriesAssemble<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TimeSeriesSubset") == 0 )
-        {
-        TimeSeriesSubset<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TimeSeriesToMatrix") == 0 )
-        {
-        TimeSeriesToMatrix<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TimeSeriesSimpleSubtraction") == 0 )
-        {
-        TimeSeriesSimpleSubtraction<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "TimeSeriesInterpolationSubtraction") == 0 )
-        {
-        TimeSeriesInterpolationSubtraction<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "SplitAlternatingTimeSeries") == 0 )
-        {
-        SplitAlternatingTimeSeries<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "SliceTimingCorrection") == 0 )
-        {
-        SliceTimingCorrection<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "AverageOverDimension") == 0 )
-        {
-        AverageOverDimension<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ThreeTissueConfounds") == 0 )
-        {
-        ThreeTissueConfounds<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CompCorrAuto") == 0 )
-        {
-        CompCorrAuto<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "ComputeTimeSeriesLeverage") == 0 )
-        {
-        ComputeTimeSeriesLeverage<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PASLQuantifyCBF") == 0 )
-        {
-        PASLQuantifyCBF<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PCASLQuantifyCBF") == 0 )
-        {
-        // PCASLQuantifyCBF<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PASL") == 0 )
-        {
-        PASL<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "pCASL") == 0 )
-        {
-        pCASL<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MajorityVoting") == 0 )
-        {
-        MajorityVoting<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MostLikely") == 0 )
-        {
-        MostLikely<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "CorrelationVoting") == 0 )
-        {
-        CorrelationVoting<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "PearsonCorrelation") == 0 )
-        {
-        PearsonCorrelation<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Translate") == 0 )
-        {
-        Translate<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "NeighborhoodCorrelation") == 0 )
-        {
-        ImageMetrics<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "NormalizedCorrelation") == 0 )
-        {
-        ImageMetrics<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Demons") == 0 )
-        {
-        ImageMetrics<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Mattes") == 0 )
-        {
-        returnvalue = ImageMetrics<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "MinMaxMean") == 0 )
-        {
-        MinMaxMean<4>(argc, argv);
-        }
-      else if( strcmp(operation.c_str(), "Project") == 0 )
-        {
-        Project<4>(argc, argv);
-        }
-      else
-        {
-        std::cout << " cannot find 4D operation : " << operation << std::endl;
-        }
-      }
+      returnvalue = ImageMathHelper<4>(argc,argv);
       break;
     default:
-      std::cout << " Dimension Not supported " << atoi(argv[1]) << std::endl;
-      returnvalue = EXIT_FAILURE;
+      std::cout << " Dimension " << imageDimension << " is not supported " << std::endl;
+      return EXIT_FAILURE;
     }
+
+    if ( returnvalue == EXIT_FAILURE )
+      {
+      std::cout << " Operation " << operation << " not found or not supported for dimension " << imageDimension << std::endl;
+      }
+
   return returnvalue;
 }
 

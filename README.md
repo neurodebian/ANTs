@@ -2,7 +2,7 @@
 Advanced Normalization Tools 
 ============================
 
-Questions: [Discussion Site](http://sourceforge.net/p/advants/discussion/) or *new* [ANTsDoc](http://stnava.github.io/ANTsDoc/)
+Questions: [Discussion Site](http://sourceforge.net/p/advants/discussion/) or *new* [ANTsDoc](http://stnava.github.io/ANTsDoc/) or try [this version](http://issuu.com/brianavants/docs/ants2)
 
  Email: [antsr.me at gmail dot com](mailto:antsr.me@gmail.com)
 
@@ -12,6 +12,8 @@ Questions: [Discussion Site](http://sourceforge.net/p/advants/discussion/) or *n
  Build [ANTs](https://github.com/stnava/ANTs) from:
 [Source-Code](http://brianavants.wordpress.com/2012/04/13/updated-ants-compile-instructions-april-12-2012/)
 (recommended)
+
+[ANTs Dashboard](http://testing.psychiatry.uiowa.edu/CDash/index.php?project=ANTS) maintained by Hans J. Johnson
 
 ANTs extracts information from complex datasets that include imaging
 ([Word Cloud](http://brianavants.files.wordpress.com/2013/05/avants_wordcloud.jpg)).
@@ -166,6 +168,16 @@ ANTs has won several unbiased & international competitions
 Learning about ANTs
 ----------------------------------------------------------
 
+**ANTs and ITK** [paper](http://www.ncbi.nlm.nih.gov/pmc/articles/PMC4009425/)
+
+**Pre-built ANTs templates with spatial priors** [download](http://figshare.com/articles/ANTs_ANTsR_Brain_Templates/915436)
+
+**The ANTs Cortical Thickness Pipeline** [example](https://github.com/ntustison/KapowskiChronicles/blob/master/paper2.pdf?raw=true)
+
+**"Cooking" tissue priors for templates**
+  [example](https://github.com/ntustison/antsCookTemplatePriorsExample)
+  (after you build your template)
+
 **Basic Brain Mapping** [example](http://stnava.github.io/BasicBrainMapping/)
 
 **Large deformation** [example](http://stnava.github.io/C/)
@@ -201,8 +213,6 @@ Learning about ANTs
 **Cortical thickness** [example](https://github.com/ntustison/antsCorticalThicknessExample)
 
 **MALF labeling example** [example](https://github.com/ntustison/MalfLabelingExample)
-
-**"Cooking" tissue priors for templates** [example](https://github.com/ntustison/antsCookTemplatePriorsExample)
 
 **Bibliography** [bibtex of ANTs-related papers](https://github.com/stnava/ANTsBibliography)
 

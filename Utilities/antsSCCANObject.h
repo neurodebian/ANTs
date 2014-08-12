@@ -65,6 +65,8 @@ public:
   typedef TRealType RealType;
   typedef Image<RealType,
                 itkGetStaticConstMacro( ImageDimension )>         RealImageType;
+  typedef Image<RealType,
+                itkGetStaticConstMacro( ImageDimension-1 )>       RealImageTypeDminus1;
 
   /** Define eigen types */
   //  typedef Eigen::Matrix<RealType, Eigen::Dynamic, Eigen::Dynamic> eMatrix;
@@ -202,7 +204,9 @@ public:
     for( unsigned int j = 0; j < M.cols(); j++ )
       {
       VectorType Mvec = M.get_column(j);
-      double     ratio = inner_product(Mvec, V) / inner_product(V, V);
+      double     vnorm = inner_product(V, V);
+      if ( vnorm < this->m_Epsilon ) vnorm = 1;
+      double     ratio = inner_product(Mvec, V) / vnorm;
       VectorType ortho = Mvec - V * ratio;
       M.set_column(j, ortho);
       }
@@ -267,7 +271,7 @@ public:
       matrix.rows(), matrix.cols() ); this->m_OriginalMatrixQ.update(matrix); this->m_MatrixQ.update(matrix);
   }
 
-  itkSetMacro( Covering, bool );
+  itkSetMacro( Covering, unsigned int );
   itkSetMacro( UseL1, bool );
   itkSetMacro( GradStep, RealType );
   itkSetMacro( FractionNonZeroR, RealType );
@@ -660,7 +664,7 @@ public:
 
   RealType SparsePartialCCA(unsigned int nvecs);
 
-  bool CCAUpdate(unsigned int nvecs, bool, bool );
+  bool CCAUpdate(unsigned int nvecs, bool, bool , unsigned int );
 
   bool CCAUpdateLong(unsigned int nvecs, bool, bool );
 
@@ -746,6 +750,8 @@ public:
 
   void MRFFilterVariateMatrix();
 
+  ImagePointer ConvertVariateToSpatialImage( VectorType variate, ImagePointer mask, bool threshold_at_zero = false );
+
 protected:
 
   void SortResults(unsigned int n_vecs);
@@ -801,7 +807,7 @@ protected:
 	}
       return;
       }
-    }
+    }//doclassic
 
     bool usel1 = this->m_UseL1;
     this->m_UseL1 = true;
@@ -826,7 +832,92 @@ protected:
     this->Sparsify( x_k1, fnp, this->m_KeepPositiveQ, this->m_MinClusterSizeQ, this->m_MaskImageQ);
   }
 
+
   void Sparsify( VectorType& x_k1, RealType fnp, bool keeppos, unsigned int clust, ImagePointer mask  )
+  {
+
+    if( x_k1.size() <= 1 )
+      {
+      return;
+      }
+    if(  fnp >= 1 &&  keeppos )
+      {
+      this->PositivePart( x_k1 );
+      return;
+      }
+    if( fnp >= 1 )
+      {
+      return;
+      }
+    bool negate = false;
+    if( x_k1.mean() <= 0 )
+      {
+      negate = true;
+      }
+    if( negate )
+      {
+      x_k1 = x_k1 * ( -1 );
+      }
+    RealType initmax = x_k1.max_value();
+    x_k1 = x_k1 / initmax;
+    std::vector<RealType> x_k1sort( x_k1.size() , 0 );
+    for ( unsigned long j = 0; j < x_k1.size(); ++j ) x_k1sort[j] = ( x_k1(j) );
+    sort(x_k1sort.begin(), x_k1sort.end() , std::less<RealType>() );
+    //    std::cout << "Sorted " << x_k1sort[1] << " " << x_k1sort[x_k1.size()-1] << std::endl;
+    RealType     low  = 0;
+    RealType maxj = static_cast<RealType>(  x_k1.size() );
+    unsigned long maxjind = static_cast<unsigned long>( (1-fnp*0.5) * maxj + 0.5 );
+    unsigned long minjind = static_cast<unsigned long>( (  fnp*0.5) * maxj + 0.5 );
+    if ( maxjind > ( maxj - 1 ) ) maxjind = ( maxj - 1 );
+    RealType  maxval = x_k1sort[ maxjind ]; 
+    RealType  minval = x_k1sort[ minjind ]; 
+    RealType    high = maxval;
+    if ( vnl_math_abs( minval ) > high ) high = vnl_math_abs( minval );
+    //    if ( high * 0.2  > 0 ) low = high * 0.2; // hack to speed convergence
+    RealType     eng = fnp;
+    RealType     mid = low + 0.5 * ( high - low );
+    unsigned int its = 0;
+    RealType     fnm = 0;
+    RealType     lastfnm = 1;
+    while( ( ( eng > (fnp*0.1) )  &&
+             ( vnl_math_abs( high - low ) > this->m_Epsilon )  &&
+             ( its < 20 ) ) || 
+	     its < 3  
+	 )
+      {
+      mid = low + 0.5 * ( high - low );
+      VectorType searcherm( x_k1 );
+      //      if ( its > 10 & fnm > 0.99 ) std::cout << " A " << searcherm << std::endl;
+      this->SoftClustThreshold( searcherm, mid, keeppos,  clust, mask );
+      //      if ( its > 10 & fnm > 0.99 ) std::cout << " B " << searcherm << std::endl;
+      searcherm = this->SpatiallySmoothVector( searcherm, mask );
+      //      if ( its > 10 & fnm > 0.99 ) std::cout << " C " << searcherm << std::endl;
+      //      if ( its > 10 & fnm > 0.99 ) exit(1);
+      lastfnm = fnm;
+      fnm = this->CountNonZero( searcherm );
+      if( fnm > fnp )
+        {
+        low = mid; // 0.5 * ( low + mid  ); // relax this b/c it may not be a strictly quadratic space
+        }
+      if( fnm < fnp )
+        {
+	high = mid; // 0.5 * ( high + mid  );
+        }
+      eng = vnl_math_abs( fnp - fnm );
+      its++;
+      }
+    this->SoftClustThreshold( x_k1, mid, keeppos,  clust, mask  );
+    x_k1 = this->SpatiallySmoothVector( x_k1, mask );
+    if( negate )
+      {
+      x_k1 = x_k1 * ( -1 );
+      }
+    return;
+  }
+
+
+
+  void SparsifyOld( VectorType& x_k1, RealType fnp, bool keeppos, unsigned int clust, ImagePointer mask  )
   {
 
     if( x_k1.size() <= 1 )
@@ -946,7 +1037,9 @@ protected:
 
   bool Close2Zero( RealType x ) 
   {
-    if ( vnl_math_abs( x - itk::NumericTraits<RealType>::Zero ) < this->m_Epsilon ) return true;
+    RealType eps = this->m_Epsilon * 5.0;
+    //    eps = 0.0001;
+    if ( vnl_math_abs( x - itk::NumericTraits<RealType>::Zero ) < eps ) return true;
     return false;
   }
 
@@ -969,6 +1062,49 @@ protected:
       }
     return vnl_math_abs( numer / denom );
   }
+
+  RealType RPearsonCorr(VectorType v1, VectorType v2 )
+  {
+    std::vector<TRealType> zeromatch( v1.size(), 0);
+    unsigned int zct = 0;
+    for ( unsigned int zm = 0; zm < v1.size(); zm++ )
+      {
+	if ( ( this->Close2Zero( v1(zm) )  ||  
+	       this->Close2Zero( v2(zm) ) ) ) 
+	{ 
+	zct++;
+        zeromatch[ zm ] = 1;
+	v1(zm) = 0;
+	v2(zm) = 0;
+	}
+      }
+
+    double frac = 1.0 / (double)v1.size();
+    double xysum = 0;
+    double xsum = 0;
+    double ysum = 0;
+    double xsqr = 0;
+    double ysqr = 0;
+    for( unsigned int i = 0; i < v1.size(); i++ )
+      {
+      if ( zeromatch[i] == 0 )  
+        {
+	xysum += v1(i) * v2(i);
+	xsum  += v1(i);
+	xsqr  += v1(i) * v1(i);
+	ysum  += v2(i);
+	ysqr  += v2(i) * v2(i);
+	}
+      }
+    double numer = xysum - frac * xsum * ysum;
+    double denom = sqrt( ( xsqr - frac * xsum * xsum) * ( ysqr - frac * ysum * ysum) );
+    if( denom <= 0 )
+      {
+      return 0;
+      }
+    return vnl_math_abs( numer / denom );
+  }
+
 
   RealType GoldenSection( MatrixType& A, VectorType&  x_k, VectorType&  p_k, VectorType&  bsol, RealType a, RealType b,
                           RealType c, RealType tau, RealType lambda);
@@ -1070,15 +1206,15 @@ protected:
 
   RealType CurvatureSparseness( VectorType & x, RealType sparsenessgoal, unsigned int maxit, ImagePointer );
 
-  // , MatrixType& A, VectorType& b );
 private:
 
-  ImagePointer ConvertVariateToSpatialImage( VectorType variate, ImagePointer mask, bool threshold_at_zero = false );
+  ImagePointer ConvertVariateToSpatialImage4D( VectorType variate, ImagePointer mask, bool threshold_at_zero = false );
 
   MatrixType m_OriginalMatrixPriorROI;
   VectorType ConvertImageToVariate(  ImagePointer image, ImagePointer mask );
-
+  VectorType ConvertImageToVariate4D(  ImagePointer image, ImagePointer mask );
   VectorType ClusterThresholdVariate( VectorType &, ImagePointer mask, unsigned int);
+  VectorType ClusterThresholdVariate4D( VectorType &, ImagePointer mask, unsigned int);
 
   bool       m_Debug;
   bool       m_Silent;
@@ -1148,7 +1284,8 @@ private:
 
   /** softer = true will compute the update  : if ( beta > thresh )  beta <- beta - thresh
    *     rather than the default update      : if ( beta > thresh )  beta <- beta  */
-  bool     m_Covering;
+  unsigned int     m_Covering;
+  unsigned int     m_VecToMaskSize;
   bool     m_UseL1;
   bool     m_AlreadyWhitened;
   bool     m_SpecializationForHBM2011;
@@ -1157,6 +1294,7 @@ private:
 
   // this->ComputeIntercept( A, x, b );
   RealType                   m_Intercept;
+  unsigned int               m_NTimeDimensions;
   unsigned int               m_MinClusterSizeP;
   unsigned int               m_MinClusterSizeQ;
   unsigned int               m_KeptClusterSize;

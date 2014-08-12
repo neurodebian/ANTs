@@ -76,7 +76,7 @@ Usage:
 
 Compulsory arguments (minimal command line requires SGE cluster, otherwise use -c & -j options):
 
-     -d:  ImageDimension: 2 or 3
+     -d:  ImageDimension: 2 or 3.
 
      -o:  OutputPrefix:   A prefix that is prepended to all output files.
 
@@ -88,14 +88,16 @@ Compulsory arguments (minimal command line requires SGE cluster, otherwise use -
 
 Optional arguments:
 
-     -k:  Keep files:     Keep warped atlas and label files (default = 0)
+     -m:  Majority vote:  Use majority vote instead of joint label fusion (default = 0).
+
+     -k:  Keep files:     Keep warped atlas and label files (default = 0).
 
      -c:  Control for parallel computation (default 0) -- 0 == run serially,  1 == SGE qsub,
-          2 == use PEXEC (localhost), 3 == Apple XGrid, 4 == PBS qsub
+          2 == use PEXEC (localhost), 3 == Apple XGrid, 4 == PBS qsub.
 
-     -j: Number of cpu cores to use (default 2; -- requires "-c 2")
+     -j: Number of cpu cores to use (default 2; -- requires "-c 2").
 
-     -q: Use quick parameters (default 0)
+     -q: Use quick registration parameters:  Either 0 or 1 (default = 1).
 
 Example:
 
@@ -145,7 +147,7 @@ Example Case:
 
 Compulsory arguments (minimal command line requires SGE cluster, otherwise use -c & -j options):
 
-     -d:  ImageDimension: 2 or 3
+     -d:  ImageDimension: 2 or 3.
 
      -o:  OutputPrefix:   A prefix that is prepended to all output files.
 
@@ -157,14 +159,16 @@ Compulsory arguments (minimal command line requires SGE cluster, otherwise use -
 
 Optional arguments:
 
-     -k:  Keep files:     Keep warped atlas and label files (default = 0)
+     -m:  Majority vote:  Use majority vote instead of joint label fusion (default = 0).
+
+     -k:  Keep files:     Keep warped atlas and label files (default = 0).
 
      -c:  Control for parallel computation (default 0) -- 0 == run serially,  1 == SGE qsub,
-          2 == use PEXEC (localhost), 3 == Apple XGrid, 4 == PBS qsub
+          2 == use PEXEC (localhost), 3 == Apple XGrid, 4 == PBS qsub.
 
-     -j: Number of cpu cores to use (default 2; -- requires "-c 2")
+     -j: Number of cpu cores to use (default 2; -- requires "-c 2").
 
-     -q: Use quick parameters ( either 0 or 1 )
+     -q: Use quick registration parameters:  Either 0 or 1 (default = 1).
 
 Requirements:
 
@@ -295,10 +299,10 @@ if [[ "$1" == "-h" ]];
   then
     Help >&2
   fi
-
-RUNQUICK=0
+MAJORITYVOTE=0
+RUNQUICK=1
 # reading command line arguments
-while getopts "c:d:g:h:j:k:l:o:t:q:" OPT
+while getopts "c:d:g:h:j:k:l:m:o:t:q:" OPT
   do
   case $OPT in
       h) #help
@@ -326,6 +330,9 @@ while getopts "c:d:g:h:j:k:l:o:t:q:" OPT
    ;;
       j) #number of cpu cores to use
    CORES=$OPTARG
+   ;;
+      m) #majority voting option
+   MAJORITYVOTE=$OPTARG
    ;;
       k)
    KEEP_ALL_IMAGES=$OPTARG
@@ -410,7 +417,7 @@ for (( i = 0; i < ${#ATLAS_IMAGES[@]}; i++ ))
                           -j 1 \
                           -f ${TARGET_IMAGE} \
                           -m ${ATLAS_IMAGES[$i]} \
-                          -o ${OUTPUT_PREFIX}${BASENAME}"
+                          -o ${OUTPUT_PREFIX}${BASENAME} > ${OUTPUT_PREFIX}${BASENAME}_log.txt"
 
     labelXfrmCall="${ANTSPATH}/antsApplyTransforms \
                           -d ${DIM} \
@@ -420,9 +427,10 @@ for (( i = 0; i < ${#ATLAS_IMAGES[@]}; i++ ))
                           -o ${OUTPUT_PREFIX}${BASENAME}WarpedLabels.nii.gz \
                           -n NearestNeighbor \
                           -t ${OUTPUT_PREFIX}${BASENAME}1Warp.nii.gz \
-                          -t ${OUTPUT_PREFIX}${BASENAME}0GenericAffine.mat"
+                          -t ${OUTPUT_PREFIX}${BASENAME}0GenericAffine.mat >> ${OUTPUT_PREFIX}${BASENAME}_log.txt"
 
     WARPED_ATLAS_IMAGES[${#WARPED_ATLAS_IMAGES[@]}]="${OUTPUT_PREFIX}${BASENAME}Warped.nii.gz"
+    INVERSE_WARPED_ATLAS_IMAGES[${#INVERSE_WARPED_ATLAS_IMAGES[@]}]="${OUTPUT_PREFIX}${BASENAME}InverseWarped.nii.gz"
     WARPED_ATLAS_LABELS[${#WARPED_ATLAS_LABELS[@]}]="${OUTPUT_PREFIX}${BASENAME}WarpedLabels.nii.gz"
     WARP_FIELDS[${#WARP_FIELDS[@]}]="${OUTPUT_PREFIX}${BASENAME}1Warp.nii.gz"
     INVERSE_WARP_FIELDS[${#INVERSE_WARP_FIELDS[@]}]="${OUTPUT_PREFIX}${BASENAME}1InverseWarp.nii.gz"
@@ -454,7 +462,33 @@ for (( i = 0; i < ${#ATLAS_IMAGES[@]}; i++ ))
       fi
 done
 
-malfCall="${ANTSPATH}/jointfusion ${DIM} 1 -m Joint[0.1,2] -tg $TARGET_IMAGE -g ${WARPED_ATLAS_IMAGES[@]} -l ${WARPED_ATLAS_LABELS[@]} ${OUTPUT_PREFIX}MalfLabels.nii.gz"
+if [[ $DOQSUB -eq 2 ]];
+  then
+    echo
+    echo "--------------------------------------------------------------------------------------"
+    echo " Starting MALF on max ${CORES} cpucores. "
+    echo "--------------------------------------------------------------------------------------"
+    chmod +x ${OUTPUT_DIR}/job_*.sh
+    $PEXEC -j ${CORES} "sh" ${OUTPUT_DIR}/job_*.sh
+  fi
+
+EXISTING_WARPED_ATLAS_IMAGES=()
+EXISTING_WARPED_ATLAS_LABELS=()
+for (( i = 0; i < ${#WARPED_ATLAS_IMAGES[@]}; i++ ))
+  do
+    echo ${WARPED_ATLAS_IMAGES[$i]}
+    if [[ -f ${WARPED_ATLAS_IMAGES[$i]} ]] && [[ -f ${WARPED_ATLAS_LABELS[$i]} ]];
+      then
+        EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
+        EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+      fi
+  done
+
+malfCall="${ANTSPATH}/jointfusion ${DIM} 1 -m Joint[0.1,2] -tg $TARGET_IMAGE -g ${EXISTING_WARPED_ATLAS_IMAGES[@]} -l ${EXISTING_WARPED_ATLAS_LABELS[@]} ${OUTPUT_PREFIX}MalfLabels.nii.gz"
+if [[ $MAJORITYVOTE -eq 1 ]];
+  then
+    malfCall="${ANTSPATH}/ImageMath ${DIM} ${OUTPUT_PREFIX}MajorityVotingLabels.nii.gz MajorityVoting ${WARPED_ATLAS_LABELS[@]} "
+  fi
 
 qscript2="${OUTPUT_PREFIX}MALF.sh"
 echo "$malfCall" > $qscript2
@@ -508,12 +542,6 @@ if [[ $DOQSUB -eq 4 ]];
 
 if [[ $DOQSUB -eq 2 ]];
   then
-    echo
-    echo "--------------------------------------------------------------------------------------"
-    echo " Starting MALF on max ${CORES} cpucores. "
-    echo "--------------------------------------------------------------------------------------"
-    chmod +x ${OUTPUT_DIR}/job_*.sh
-    $PEXEC -j ${CORES} "sh" ${OUTPUT_DIR}/job_*.sh
     sh $qscript2
   fi
 if [[ $DOQSUB -eq 3 ]];
@@ -539,6 +567,7 @@ rm -f ${OUTPUT_DIR}/job_*.sh
 if [[ $KEEP_ALL_IMAGES -eq 0 ]];
   then
     rm -f ${WARPED_ATLAS_IMAGES[@]}
+    rm -f ${INVERSE_WARPED_ATLAS_IMAGES[@]}
     rm -f ${WARPED_ATLAS_LABELS[@]}
     rm -f ${AFFINE_FILES[@]}
     rm -f ${WARP_FIELDS[@]}
@@ -551,7 +580,12 @@ time_end=`date +%s`
 time_elapsed=$((time_end - time_start))
 echo
 echo "--------------------------------------------------------------------------------------"
-echo " Done creating: ${OUTPUT_PREFIX}MalfLabels.nii.gz"
+if [[ $MAJORITYVOTE -eq 1 ]];
+  then
+    echo " Done creating: ${OUTPUT_PREFIX}MalfLabels.nii.gz"
+  else
+    echo " Done creating: ${OUTPUT_PREFIX}MajorityVotingLabels.nii.gz"
+  fi
 echo " Script executed in $time_elapsed seconds"
 echo " $(( time_elapsed / 3600 ))h $(( time_elapsed %3600 / 60 ))m $(( time_elapsed % 60 ))s"
 echo "--------------------------------------------------------------------------------------"
