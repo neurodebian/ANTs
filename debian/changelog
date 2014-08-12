@@ -1,4 +1,4 @@
-ants (2.1.0~rc1-1) unstable; urgency=medium
+ants (2.1.0~rc2-1) unstable; urgency=medium
 
   * Newer upstream pre-release
     - should be compatible with ITK v4.6.0 and VTK 6.1 (Closes: #757595)
@@ -9,7 +9,7 @@ ants (2.1.0~rc1-1) unstable; urgency=medium
     - Add-soname-and-local-data.patch -> deb_local-data.patch
       (SONAME and SOVERSIONing is done now by upstream)
 
- -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 12 Aug 2014 10:48:11 -0400
+ -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 12 Aug 2014 12:41:12 -0400
 
 ants (2.0.0-2) unstable; urgency=medium
 
