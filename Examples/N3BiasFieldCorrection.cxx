@@ -2,7 +2,7 @@
 #include "antsUtilities.h"
 #include "antsAllocImage.h"
 #include <algorithm>
-#include "ReadWriteImage.h"
+#include "ReadWriteData.h"
 #include "itkBSplineControlPointImageFilter.h"
 #include "itkExpImageFilter.h"
 #include "itkImageFileReader.h"
@@ -258,6 +258,11 @@ private:
     case 3:
       {
       N3BiasFieldCorrection<3>( argc, argv );
+      }
+      break;
+    case 4:
+      {
+      N3BiasFieldCorrection<4>( argc, argv );
       }
       break;
     default:
