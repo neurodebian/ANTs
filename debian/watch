@@ -1,2 +1,3 @@
 version=3
-opts="uversionmangle=s/pt/./g,dversionmangle=s/.dfsg$//" http://sf.net/advants/ants(.*)code\.zip
+opts="uversionmangle=s/rc/~rc/g,filenamemangle=s/.*\/(.*)/ants-$1\.tar\.gz/" \
+  http://github.com/stnava/ANTs/releases .*archive/v([\d\.a-z]+).tar.gz
