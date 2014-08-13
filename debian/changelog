@@ -8,8 +8,10 @@ ants (2.1.0~rc2-1) unstable; urgency=medium
     - removed debian/patches/up_use_bash (upstreamed)
     - Add-soname-and-local-data.patch -> deb_local-data.patch
       (SONAME and SOVERSIONing is done now by upstream)
+  * debian/{control,rules}
+    - build without VTK support for now
 
- -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 12 Aug 2014 12:41:12 -0400
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 13 Aug 2014 12:12:07 -0400
 
 ants (2.0.0-2) unstable; urgency=medium
 
