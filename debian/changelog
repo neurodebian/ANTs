@@ -1,4 +1,4 @@
-ants (2.1.0~rc2-1) unstable; urgency=medium
+ants (2.1.0~rc2+git3-g9103999-1) unstable; urgency=medium
 
   * Newer upstream pre-release
     - should be compatible with ITK v4.6.0 and VTK 6.1 (Closes: #757595)
