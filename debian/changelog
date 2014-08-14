@@ -11,6 +11,8 @@ ants (2.1.0~rc2-1) unstable; urgency=medium
   * debian/{control,rules}
     - build without VTK support for now
     - added libpng12-dev to build-depends
+  * debian/rules
+    - fixed up installation of versioned ants modulefile
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 13 Aug 2014 12:12:07 -0400
 

@@ -37,3 +37,6 @@ Description: advanced normalization tools for brain and image analysis
  optimal implementations of diffeomorphisms. The symmetric
  normalization (SyN) strategy is a part of the ANTS toolkit as is
  directly manipulated free form deformation (DMFFD).
+ .
+ This package provides environment-modules configuration.
+ Use 'module load ants' to make all cmdline tools available in your shell.
