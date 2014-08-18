@@ -1,3 +1,9 @@
+ants (2.1.0~rc2+git3-g9103999-2) unstable; urgency=medium
+
+  * Robustify bogomips comparison, fix tests execution
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Mon, 18 Aug 2014 16:41:04 -0400
+
 ants (2.1.0~rc2+git3-g9103999-1) unstable; urgency=medium
 
   * Newer upstream pre-release

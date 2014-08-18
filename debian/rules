@@ -23,7 +23,8 @@ export DH_VERBOSE=1
 
 # Exclude all heavy tests while building on slowish build
 # bots/platforms
-CTEST_EXCLUDE = $(shell [ `grep -i bogomips /proc/cpuinfo | head -n 1 | sed -e 's,.*:\s*\([0-9]*\)\(\..*\)*$,\1,g'` -gt 2000 ] || echo "-E '^ANTS(_|PSE)'")
+BOGOMIPS = $(shell awk '/^bogomips/{print $$3;}' /proc/cpuinfo | sed -ne '1s,\..*,,gp' )
+CTEST_EXCLUDE = $(shell [ "$(BOGOMIPS)" -gt 2000 ] || echo "-E '^ANTS(_|PSE)'")
 
 # Default mega-rule
 %:
@@ -59,9 +60,9 @@ override_dh_auto_build: $(modulesfile)
 
 override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-	cd obj-*
-	ln -s debian/testdata ExternalData
-	ctest --force-new-ctest-process $(CTEST_EXCLUDE)
+	cd obj-*; \
+	 ln -s ../debian/testdata ExternalData || : ; \
+	 ctest --force-new-ctest-process $(CTEST_EXCLUDE)
 else
 	: # Skip unittests due to nocheck
 endif
