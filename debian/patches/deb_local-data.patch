@@ -5,8 +5,8 @@ Description: Set ExternalData download point to the debian/testdata directory  f
 Forwarded: no
 Last-Update: 2014-08-11
 
---- ants-2.0.0.orig/CMake/ANTSExternalData.cmake
-+++ ants-2.0.0/CMake/ANTSExternalData.cmake
+--- a/CMake/ANTSExternalData.cmake
++++ b/CMake/ANTSExternalData.cmake
 @@ -31,14 +31,7 @@ file:///var/bigharddrive/%(algo)/%(hash)
  mark_as_advanced(ExternalData_URL_TEMPLATES)
  list(APPEND ExternalData_URL_TEMPLATES
