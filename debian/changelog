@@ -1,3 +1,11 @@
+ants (2.1.0~rc2+git3-g9103999-3) unstable; urgency=medium
+
+  * Added Conflicts for gpe-conf also providing bl.1.gz manpage
+    (gpe-conf is for embedded systems, so unlikely to be co-installed with
+    ants in production) (Closes: #768222)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 05 Nov 2014 21:27:30 -0500
+
 ants (2.1.0~rc2+git3-g9103999-2) unstable; urgency=medium
 
   * Robustify bogomips comparison, fix tests execution

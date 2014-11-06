@@ -24,6 +24,7 @@ Vcs-Browser: http://git.debian.org/?p=pkg-exppsy/ants.git;a=summary
 Package: ants
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Conflicts: gpe-conf
 Recommends: environment-modules
 Suggests: fsl, gridengine-client, r-base-core
 Description: advanced normalization tools for brain and image analysis
