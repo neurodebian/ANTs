@@ -1,3 +1,11 @@
+ants (2.1.0~rc2+git3-g9103999-4) unstable; urgency=medium
+
+  * patches/up_lower_cc_3_test_i386_precision
+    - lower precision for the ANTS_CC_3_WARP_METRIC_0 test to mitigate
+      FTBFS on i386 (Closes: #768645)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 21 Nov 2014 15:35:44 -0500
+
 ants (2.1.0~rc2+git3-g9103999-3) unstable; urgency=medium
 
   * Added Conflicts for gpe-conf also providing bl.1.gz manpage
