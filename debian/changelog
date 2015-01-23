@@ -1,3 +1,9 @@
+ants (2.1.0-1) experimental; urgency=medium
+
+  * New upstream release
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 23 Jan 2015 08:49:42 -0500
+
 ants (2.1.0~rc2+git3-g9103999-4) unstable; urgency=medium
 
   * patches/up_lower_cc_3_test_i386_precision

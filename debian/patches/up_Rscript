@@ -1,8 +1,0 @@
---- a/Scripts/cbf_pasl_robust_batch.R
-+++ b/Scripts/cbf_pasl_robust_batch.R
-@@ -1,4 +1,4 @@
--#!Rscript --vanilla --slave
-+#!/usr/bin/env Rscript
- 
- library( "ANTsR" )
- library("extremevalues" )
