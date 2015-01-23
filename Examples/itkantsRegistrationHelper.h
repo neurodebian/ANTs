@@ -132,7 +132,7 @@ public:
   typedef typename DisplacementFieldTransformType::DisplacementFieldType             DisplacementFieldType;
   typedef itk::TimeVaryingVelocityFieldTransform<RealType, VImageDimension>          TimeVaryingVelocityFieldTransformType;
   typedef itk::ObjectToObjectMetric
-                     <VImageDimension, VImageDimension, ImageType, RealType>         SingleMetricType;
+                     <VImageDimension, VImageDimension, ImageType, RealType>         ObjectMetricType;
   typedef itk::ObjectToObjectMultiMetricv4
                      <VImageDimension, VImageDimension, ImageType, RealType>         MultiMetricType;
   typedef itk::ImageToImageMetricv4<ImageType, ImageType, ImageType, RealType>       ImageMetricType;
@@ -162,7 +162,7 @@ public:
     invalid = 17
     };
 
-  bool IsPointSetMetric( MetricEnumeration metricType )
+  bool IsPointSetMetric( const MetricEnumeration metricType ) const
     {
     if( metricType == ICP || metricType == PSE || metricType == JHCT )
       {
@@ -397,7 +397,7 @@ public:
     // TimeVaryingVelocityField
     RealType       m_UpdateFieldTimeSigma;
     RealType       m_TotalFieldTimeSigma;
-    unsigned int m_NumberOfTimeIndices;
+    unsigned int   m_NumberOfTimeIndices;
     // TimeVaryingBSplineVelocityField
     std::vector<unsigned int> m_VelocityFieldMeshSize;
     unsigned int              m_NumberOfTimePointSamples;
@@ -590,7 +590,7 @@ public:
   /**
    * Add the restrict deformation optimizer weights
    */
-  void SetRestrictDeformationOptimizerWeights( const std::vector<RealType> & restrictDeformationWeights );
+  void SetRestrictDeformationOptimizerWeights( const std::vector<std::vector<RealType> > & restrictDeformationWeights );
 
   /**
    * Add the collected bool smoothing sigmas in voxel units list
@@ -754,7 +754,7 @@ private:
   std::vector<unsigned int>               m_ConvergenceWindowSizes;
   std::vector<std::vector<float> >        m_SmoothingSigmas;
   std::vector<bool>                       m_SmoothingSigmasAreInPhysicalUnits;
-  std::vector<RealType>                   m_RestrictDeformationOptimizerWeights;
+  std::vector<std::vector<RealType> >     m_RestrictDeformationOptimizerWeights;
   std::vector<std::vector<unsigned int> > m_ShrinkFactors;
   bool                                    m_UseHistogramMatching;
   bool                                    m_WinsorizeImageIntensities;

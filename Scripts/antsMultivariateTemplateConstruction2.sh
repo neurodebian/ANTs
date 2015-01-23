@@ -102,7 +102,7 @@ Optional arguments:
 
      -e   use single precision ( default 1 )
 
-     -a   image statistic used to summarize images (default 2)
+     -a   image statistic used to summarize images (default 1)
           0 = mean
           1 = mean of normalized intensities
           2 = median
@@ -293,7 +293,9 @@ function shapeupdatetotemplate() {
     #echo "   ${ANTSPATH}AverageImages $dim ${template} 1 ${templatename}${whichtemplate}*WarpedToTemplate.nii.gz    "
     #echo "    ${ANTSPATH}ImageSetStatistics $dim ${whichtemplate}WarpedToTemplateList.txt ${template} 0"
     echo "--------------------------------------------------------------------------------------"
-    imagelist=(`ls ${outputname}*WarpedToTemplate.nii.gz`)
+
+    imagelist=(`ls ${outputname}template${whichtemplate}*WarpedToTemplate.nii.gz`)
+
     summarizeimageset $dim $template $statsmethod ${imagelist[@]}
 
     WARPLIST=( `ls ${outputname}*[0-9]Warp.nii.gz 2> /dev/null` )
@@ -601,6 +603,13 @@ elif [[ $nargs -lt 6 ]]
     Usage >&2
 fi
 
+OUTPUT_DIR=${OUTPUTNAME%\/*}
+if [[ ! -d $OUTPUT_DIR ]];
+  then
+    echo "The output directory \"$OUTPUT_DIR\" does not exist. Making it."
+    mkdir -p $OUTPUT_DIR
+  fi
+
 if [[ $DOQSUB -eq 1 || $DOQSUB -eq 4 ]];
   then
     qq=`which  qsub`
@@ -702,8 +711,8 @@ fi
 
 if [[ $STATSMETHOD -gt 2 ]];
   then
-  echo "Invalid stats type: using median (2)"
-  STATSMETHOD=2
+  echo "Invalid stats type: using normalized mean (1)"
+  STATSMETHOD=1
 fi
 
 
@@ -1246,8 +1255,8 @@ while [[ $i -lt ${ITERATIONLIMIT} ]];
             if [[ $N4CORRECT -eq 1 ]];
               then
                 REPAIRED="${outdir}/${OUTFN}Repaired.nii.gz"
-                exe=" $exe $N4 -d ${DIM} -b [200] -c [50x50x40x30,0.00000001] -i ${IMAGESETARRAY[$l]} -o ${REPAIRED} -s 2\n"
-                pexe=" $pexe $N4 -d ${DIM} -b [200] -c [50x50x40x30,0.00000001] -i ${IMAGESETARRAY[$l]} -o ${REPAIRED} -s 2  >> ${outdir}/job_${count}_metriclog.txt >> ${outdir}/job_${count}_metriclog.txt\n"
+                exe=" $exe $N4 -d ${DIM} -b [200] -c [50x50x40x30,0.00000001] -i ${IMAGESETARRAY[$l]} -o ${REPAIRED} -r 0 -s 2\n"
+                pexe=" $pexe $N4 -d ${DIM} -b [200] -c [50x50x40x30,0.00000001] -i ${IMAGESETARRAY[$l]} -o ${REPAIRED} -r 0 -s 2  >> ${outdir}/job_${count}_metriclog.txt >> ${outdir}/job_${count}_metriclog.txt\n"
 
                 IMAGEMETRICSET="$IMAGEMETRICSET -m ${METRIC}${TEMPLATES[$k]},${REPAIRED},${METRICPARAMS}"
                 IMAGEMETRICLINEARSET="$IMAGEMETRICLINEARSET -m MI[${TEMPLATES[$k]},${REPAIRED},${MODALITYWEIGHTS[$k]},32,Regular,0.25]"

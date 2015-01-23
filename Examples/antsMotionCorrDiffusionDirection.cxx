@@ -157,6 +157,7 @@ int ants_motion_directions( itk::ants::CommandLineParser *parser )
   typedef double                                    RealType;
   typedef itk::Image<PixelType, ImageDimension>     FixedIOImageType;
   typedef itk::Image<RealType, ImageDimension>      FixedImageType;
+  typedef itk::ImageFileReader<FixedImageType>      ImageReaderType;
   typedef itk::Image<PixelType, ImageDimension + 1> MovingIOImageType;
   typedef itk::Image<RealType, ImageDimension + 1>  MovingImageType;
   typedef vnl_matrix<RealType>                      vMatrix;
@@ -178,6 +179,7 @@ int ants_motion_directions( itk::ants::CommandLineParser *parser )
 
   std::string outputName = "";
   std::string mocoName = "";
+  std::string physicalName = "";
 
 
   OptionType::Pointer outputOption = parser->GetOption( "output" );
@@ -203,6 +205,19 @@ int ants_motion_directions( itk::ants::CommandLineParser *parser )
     std::cerr << "Motion parameter file not specified" << std::endl;
     return EXIT_FAILURE;
     }
+    
+  OptionType::Pointer physicalOption = parser->GetOption( "physical" );
+  if( physicalOption && physicalOption->GetNumberOfFunctions() )
+    {
+    physicalName = physicalOption->GetFunction(0)->GetName();
+    std::cout << "Physical space image: " << physicalName << std::endl;
+    }
+  else
+    {
+    std::cerr << "Physical space image not specified" << std::endl;
+    return EXIT_FAILURE;
+    }
+
 
   OptionType::Pointer schemeOption = parser->GetOption( "scheme" );
   OptionType::Pointer bvecOption = parser->GetOption( "bvec" );
@@ -246,6 +261,7 @@ int ants_motion_directions( itk::ants::CommandLineParser *parser )
 
     }
 
+  bool transposeArray = true;
   if( bvecOption && bvecOption->GetNumberOfFunctions() )
     {
     std::string bvecName = bvecOption->GetFunction(0)->GetName();
@@ -260,23 +276,50 @@ int ants_motion_directions( itk::ants::CommandLineParser *parser )
     MocoDataArrayType::MatrixType bvecMatrix = bvecReader->GetOutput()->GetMatrix();
   
     //std::cout << "BVEC data array size = " << bvecMatrix.rows() << " x " << bvecMatrix.cols() << std::endl;
-    
-    // Transpose the array
-    directionArray.SetSize( bvecMatrix.cols(), bvecMatrix.rows() );
-
-    for ( unsigned int i=0; i < bvecMatrix.cols(); i++ )
+    if ( bvecMatrix.cols() == 3 )
       {
-      for ( unsigned int j=0; j < bvecMatrix.rows(); j++ ) 
-        {
-        directionArray(i,j) = bvecMatrix(j,i);
-        }
-      
+      transposeArray = false;
+      std::cout << "Column based format" << std::endl;      
+      }    
+
+    // Transpose the array
+    if ( transposeArray ) 
+      {
+      directionArray.SetSize( bvecMatrix.cols(), bvecMatrix.rows() );
+      }
+    else 
+      {
+      directionArray.SetSize( bvecMatrix.rows(), bvecMatrix.cols() );
       }
 
-    }
-  
+    if ( transposeArray ) 
+      {
+      for ( unsigned int i=0; i < bvecMatrix.cols(); i++ )
+        {
+        for ( unsigned int j=0; j < bvecMatrix.rows(); j++ ) 
+          {
+          directionArray(i,j) = bvecMatrix(j,i);
+          }
+        }
+      }
+    else
+      {
+      for ( unsigned int i=0; i < bvecMatrix.cols(); i++ )
+        {
+        for ( unsigned int j=0; j < bvecMatrix.rows(); j++ ) 
+          {
+          directionArray(j,i) = bvecMatrix(j,i);
+          }
+        }
+      }
+    }  
+
   std::cout << "Read direction data of size: " << directionArray.rows() << " x " 
               << directionArray.cols() << std::endl;
+              
+  ImageReaderType::Pointer imageReader = ImageReaderType::New();
+  imageReader->SetFileName(physicalName.c_str());
+  imageReader->Update();
 
   DirectionArrayType outputDirectionArray;
   outputDirectionArray.SetSize( directionArray.rows(), directionArray.cols() );
@@ -297,6 +340,22 @@ int ants_motion_directions( itk::ants::CommandLineParser *parser )
   unsigned int nTransformParams = mocoDataArray->GetMatrix().cols() - 2;
   //std::cout << "# Transform parameters = " << nTransformParams << std::endl;
   
+  AffineTransformType::Pointer toPhysical = AffineTransformType::New();
+  toPhysical->SetIdentity();
+  AffineTransformType::Pointer toIndex = AffineTransformType::New();
+  toIndex->SetIdentity();
+  
+  AffineTransformType::MatrixType toPhysicalMatrix = toPhysical->GetMatrix();
+  for ( unsigned int i=0; i < ImageDimension; i++) 
+    {
+    for ( unsigned int j=0; j < ImageDimension; j++) 
+      {
+      toPhysicalMatrix(i,j) = imageReader->GetOutput()->GetDirection()(i,j);
+      }
+    }
+  toPhysical->SetMatrix(toPhysicalMatrix);
+  toPhysical->GetInverse(toIndex);
+  
   for ( unsigned int i=0; i<directionArray.rows(); i++ ) 
     {
 
@@ -315,6 +374,8 @@ int ants_motion_directions( itk::ants::CommandLineParser *parser )
 
     AffineTransformType::InputVectorType dir;
     AffineTransformType::OutputVectorType rotatedDir;
+    
+    
 
     for ( unsigned int j=0; j<directionArray.cols(); j++ )
       {
@@ -323,8 +384,13 @@ int ants_motion_directions( itk::ants::CommandLineParser *parser )
     if ( dir.GetNorm() > 0 ) 
       {
       dir.Normalize();
-      rotatedDir = affineTransform->TransformVector( dir );
+      rotatedDir = toPhysical->TransformVector( dir );
+      rotatedDir = affineTransform->TransformVector( rotatedDir );
       rotatedDir.Normalize();
+      rotatedDir = toIndex->TransformVector( rotatedDir );
+      
+      //rotatedDir = affineTransform->TransformVector( dir );
+      //rotatedDir.Normalize();
 
       }
     else
@@ -350,14 +416,30 @@ int ants_motion_directions( itk::ants::CommandLineParser *parser )
     //std::cout << "Writing bvec file " << outputName << std::endl;
     std::ofstream outfile( outputName.c_str() );
 
-    for ( unsigned int i=0; i<outputDirectionArray.cols(); i++ )
+
+    if ( transposeArray ) 
       {
-      for ( unsigned int j=0; j<outputDirectionArray.rows(); j++)
+      for ( unsigned int i=0; i<outputDirectionArray.cols(); i++ )
         {
-        outfile << outputDirectionArray(j,i) << " ";
+        for ( unsigned int j=0; j<outputDirectionArray.rows(); j++)
+          {
+          outfile << outputDirectionArray(j,i) << " ";
+          }
+        outfile << std::endl;
         }
-      outfile << std::endl;
       }
+    else
+      {
+      for ( unsigned int i=0; i<outputDirectionArray.rows(); i++ )
+        {
+        for ( unsigned int j=0; j<outputDirectionArray.cols(); j++)
+          {
+          outfile << outputDirectionArray(i,j) << " ";
+          }
+        outfile << std::endl;
+        }
+      }
+
 
     outfile.close();
   
@@ -392,6 +474,16 @@ void antsMotionCorrDiffusionDirectionInitializeCommandLineOptions( itk::ants::Co
     option->SetShortName( 'b' );
     option->SetDescription( description );
     option->SetUsageOption( 0, "dwi.bvec" );
+    parser->AddOption( option );
+    }
+    
+    {
+    std::string description =       std::string( "image in dwi space");
+    OptionType::Pointer option = OptionType::New();
+    option->SetLongName( "physical" );
+    option->SetShortName( 'p' );
+    option->SetDescription( description );
+    option->SetUsageOption( 0, "ref.nii.gz" );
     parser->AddOption( option );
     }
 

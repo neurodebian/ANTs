@@ -7,7 +7,7 @@ set(PICSL_INCLUDE_DIRS
 ../Temporary
 .
 )
-	
+
 include_directories( ${BOOST_INCLUDE_DIR} ) #Define where to find Boost includes
 include_directories(${PICSL_INCLUDE_DIRS})
 link_directories( ${ITK_LIBRARY_PATH}  )
@@ -20,14 +20,15 @@ set(UI_SOURCES "../Utilities/antsCommandLineParser" "../Utilities/antsCommandLin
 add_library(antsUtilities STATIC antsUtilities.cxx ../Utilities/ReadWriteData.cxx
             antsRegistrationTemplateHeader.cxx
             antsRegistration2DDouble.cxx antsRegistration2DFloat.cxx
-            antsRegistration3DDouble.cxx antsRegistration3DFloat.cxx)
+            antsRegistration3DDouble.cxx antsRegistration3DFloat.cxx
+            antsRegistration4DDouble.cxx antsRegistration4DFloat.cxx)
 target_link_libraries(antsUtilities ${ITK_LIBRARIES} )
 
 macro(STANDARD_ANTS_BUILD ANTS_FUNCTION_NAME EXTRA_LIBS)
   set( ANTS_FUNCTION_NAME ${ANTS_FUNCTION_NAME} )
 
   add_library(l_${ANTS_FUNCTION_NAME} ${ANTS_FUNCTION_NAME}.cxx ${UI_SOURCES})
-  SET_TARGET_PROPERTIES(l_${ANTS_FUNCTION_NAME} PROPERTIES 
+  SET_TARGET_PROPERTIES(l_${ANTS_FUNCTION_NAME} PROPERTIES
     SOVERSION ${LIBRARY_SOVERSION_INFO}  VERSION ${LIBRARY_VERSION_INFO})
   message(STATUS "${ANTS_FUNCTION_NAME} ${EXTRA_LIBS}")
   target_link_libraries(l_${ANTS_FUNCTION_NAME} antsUtilities ${ITK_LIBRARIES} ${EXTRA_LIBS} )
@@ -77,6 +78,7 @@ set(BASE_ANTS_APPS
   ConvertToJpg
   ConvertImagePixelType
   ConvertInputImagePixelTypeToFloat
+  FitBSplineCurveToPoints
   AverageImages
   AverageTensorImages
   ImageSetStatistics
@@ -127,6 +129,7 @@ set(BASE_ANTS_APPS
   antsMotionCorr
   antsMotionCorrStats
   antsMotionCorrDiffusionDirection
+  antsSliceRegularizedRegistration
   sccan
   CreateDisplacementField
   ANTSIntegrateVectorField
@@ -137,20 +140,36 @@ set(BASE_ANTS_APPS
   TimeSCCAN
   GetConnectedComponentsFeatureImages
   DeNrrd
+  antsTransformInfo
 )
 foreach(ANTS_APP ${BASE_ANTS_APPS})
   STANDARD_ANTS_BUILD(${ANTS_APP} "")
 endforeach()
 
 if(USE_VTK)
-find_package(VTK REQUIRED NO_MODULE)
+find_package(VTK 6.1 REQUIRED NO_MODULE)
+find_package(VTK COMPONENTS
+   vtkCommonCore
+   vtkCommonDataModel
+   vtkIOGeometry
+   vtkIOXML
+   vtkIOLegacy
+   vtkIOPLY
+   vtkRenderingOpenGL
+   vtkFiltersModeling
+   vtkImagingStencil
+   vtkImagingGeneral
+   vtkRenderingAnnotation
+   )
 include(${VTK_USE_FILE})
+include_directories(${VTK_INCLUDE_DIRS})
+
 set(VTK_ANTS_APPS
 #    ConvertVectorFieldToVTK
     antsSurf
-    # GetMeshAndTopology
-    # CheckTopology
-    # WarpVTKPolyDataMultiTransform
+    GetMeshAndTopology
+    CheckTopology
+    WarpVTKPolyDataMultiTransform
     # FLATFEM
     # ConformalMapping
     # ANTSConformalMapping
@@ -198,10 +217,10 @@ endif( COPY_SCRIPT_FILES_TO_BIN_DIR )
 set(CPACK_PACKAGE_NAME "ANTs")
 set(CPACK_PACKAGE_VENDOR "CMake.org")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "ANTs - Advanced Normalization Tools")
-set(CPACK_PACKAGE_VERSION "1.9.y")
-set(CPACK_PACKAGE_VERSION_MAJOR "1")
-set(CPACK_PACKAGE_VERSION_MINOR "9")
-set(CPACK_PACKAGE_VERSION_PATCH "y")
+set(CPACK_PACKAGE_VERSION 2.1.0)
+set(CPACK_PACKAGE_VERSION_MAJOR 2)
+set(CPACK_PACKAGE_VERSION_MINOR 1)
+set(CPACK_PACKAGE_VERSION_PATCH 0)
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "ANTS")
 # This must always be last!
 include(CPack)

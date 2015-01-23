@@ -7,6 +7,8 @@
 
 #include "antsApplyTransformsToPoints.h"
 
+#include "antsTransformInfo.h"
+
 #include "ANTSConformalMapping.h"
 
 #include "ANTS_.h"
@@ -24,6 +26,8 @@
 #include "antsMotionCorrStats.h"
 
 #include "antsMotionCorrDiffusionDirection.h"
+
+#include "antsSliceRegularizedRegistration.h"
 
 #include "antsRegistration.h"
 
@@ -88,6 +92,8 @@
 #include "ExtractRegionFromImage.h"
 
 #include "ExtractSliceFromImage.h"
+
+#include "FitBSplineCurveToPoints.h"
 
 #include "GetMeshAndTopology.h"
 
