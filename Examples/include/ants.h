@@ -7,6 +7,8 @@
 
 #include "antsApplyTransformsToPoints.h"
 
+#include "antsTransformInfo.h"
+
 #include "ANTSConformalMapping.h"
 
 #include "ANTS_.h"
@@ -25,9 +27,13 @@
 
 #include "antsMotionCorrDiffusionDirection.h"
 
+#include "antsSliceRegularizedRegistration.h"
+
 #include "antsRegistration.h"
 
 #include "antsSurf.h"
+
+#include "antsUtilitiesTesting.h"
 
 #include "ANTSUseDeformationFieldToGetAffineTransform.h"
 
@@ -89,13 +95,19 @@
 
 #include "ExtractSliceFromImage.h"
 
+#include "FitBSplineCurveToPoints.h"
+
 #include "GetMeshAndTopology.h"
 
 #include "ImageCompare.h"
 
 #include "ImageMath.h"
 
+#include "ImageIntensityStatistics.h"
+
 #include "antsAffineInitializer.h"
+
+// #include "antsSimilarityInitializer.h"
 
 #include "ImageSetStatistics.h"
 
@@ -112,6 +124,8 @@
 #include "LabelOverlapMeasures.h"
 
 #include "LaplacianThickness.h"
+
+#include "LesionFilling.h"
 
 #include "MeasureImageSimilarity.h"
 
@@ -179,8 +193,12 @@
 
 #include "ConvertTransformFile.h"
 
-#include "compareTwoCompositeTransforms.h"
+#include "compareTwoTransforms.h"
 
 #include "GetConnectedComponentsFeatureImages.h"
+
+#include "TextureRunLengthFeatures.h"
+
+#include "TextureCooccurrenceFeatures.h"
 
 #endif // ants_h

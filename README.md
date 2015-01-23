@@ -1,8 +1,13 @@
+[![Build Status](https://travis-ci.org/stnava/ANTs.svg?branch=master)](https://travis-ci.org/stnava/ANTs)
 ============================
-Advanced Normalization Tools 
+Advanced Normalization Tools
 ============================
 
 Questions: [Discussion Site](http://sourceforge.net/p/advants/discussion/) or *new* [ANTsDoc](http://stnava.github.io/ANTsDoc/) or try [this version](http://issuu.com/brianavants/docs/ants2)
+
+[ANTsTalk - subject to change at any moment](http://stnava.github.io/ANTsTalk/)
+
+[ANTsRegistrationTalk - subject to change at any moment](http://stnava.github.io/ANTsRegistrationTalk/)
 
  Email: [antsr.me at gmail dot com](mailto:antsr.me@gmail.com)
 
@@ -44,9 +49,9 @@ Authors
 
 **Role:** Large-Scale Application, Testing, Software design
 
-### Team Members 
+### Team Members
 
-**Core:** Gang Song (Originator), Jeffrey T. Duda (DTI), Ben M. Kandel (Perfusion, multivariate analysis), Kent Williams (software engineer, UIowa) 
+**Core:** Gang Song (Originator), Philip A. Cook, Jeffrey T. Duda (DTI), Ben M. Kandel (Perfusion, multivariate analysis), Kent Williams (software engineer, UIowa)
 
 
 Image Registration
@@ -94,17 +99,19 @@ Application Domains
 
 ### Frontotemporal degeneration [PENN FTD center](http://ftd.med.upenn.edu)
 
-### Multimodality Neuroimaging 
+### Multimodality Neuroimaging
 
 -   [Structural MRI](http://jeffduda.github.io/NeuroBattery/)
 -   Functional MRI
 -   Network Analysis
 
-### Lung Imaging 
+### Lung Imaging
 
 -   Structure
 -   Perfusion MRI
 -   Branching
+
+### Multiple sclerosis (lesion filling) [example](https://github.com/armaneshaghi/LesionFilling_example)
 
 Background & Theory
 ----------------------------------------------------------
@@ -138,7 +145,7 @@ Background & Theory
 -   Dev'd ITKv4 with Kitware, GE, Natl. Lib of Medicine & Academia
 
 
-ANTs has won several unbiased & international competitions 
+ANTs has won several unbiased & international competitions
 ----------------------------------------------------------
 
 -   New *antsRegistration* [bash
@@ -163,7 +170,9 @@ ANTs has won several unbiased & international competitions
 -   ITK-focused Frontiers in Neuroinformatics research topic
     [here](http://www.frontiersin.org/neuroinformatics/researchtopics/neuroinformatics_with_the_insi/1580)
 
--   Nick led us to a win at the [BRATS 2013 challenge](http://martinos.org/qtim/miccai2013/) with [ANTsR](http://stnava.github.io/ANTsR/)
+-   Won the [BRATS 2013 challenge](http://martinos.org/qtim/miccai2013/) with [ANTsR](http://stnava.github.io/ANTsR/)
+
+-   Won the best paper award at the [STACOM 2014 challenge](http://www.cardiacatlas.org/web/stacom2014/home)
 
 Learning about ANTs
 ----------------------------------------------------------
@@ -239,6 +248,63 @@ References
 Scholar](http://scholar.google.com/scholar?q=Advanced+Normalization+Tools+%22ANTs%22+-ant&hl=en&as_sdt=1%2C39&as_ylo=2008&as_yhi=)
 
 [Pubmed](http://www.ncbi.nlm.nih.gov/pubmed?term=%22Avants%20B%22%20OR%20%22Tustison%20N%22)
+
+Boilerplate ANTs 
+------------------
+
+Here is some boilerplate regarding ants image processing:
+
+We will analyze multiple modality neuroimaging data with Advanced
+Normalization Tools (ANTs) version >= 2.1 [1]
+(http://stnava.github.io/ANTs/).  ANTs has proven performance in
+lifespan analyses of brain morphology [1] and function [2] in both
+adult [1] and pediatric brain data [2,5,6] including infants [7].
+ANTs employs both probabilistic tissue segmentation (via Atropos [3])
+and machine learning methods based on expert labeled data (via joint
+label fusion [4]) in order to maximize reliability and consistency of
+multiple modality image segmentation.  These methods allow detailed
+extraction of critical image-based biomarkers such as volumes
+(e.g. hippocampus and amygdala), cortical thickness and area and
+connectivity metrics derived from structural white matter [13] or
+functional connectivity [12]. Critically, all ANTs components are
+capable of leveraging multivariate image features as well as expert
+knowledge in order to learn the best segmentation strategy available
+for each individual image [3,4].  This flexibility in segmentation and
+the underlying high-performance normalization methods have been
+validated by winning several internationally recognized medical image
+processing challenges conducted within the premier conferences within
+the field and published in several accompanying articles
+[8][9][10][11].
+
+References
+
+[1] http://www.ncbi.nlm.nih.gov/pubmed/24879923
+
+[2] http://www.ncbi.nlm.nih.gov/pubmed/24817849
+
+[3] http://www.ncbi.nlm.nih.gov/pubmed/21373993
+
+[4] http://www.ncbi.nlm.nih.gov/pubmed/21237273
+
+[5] http://www.ncbi.nlm.nih.gov/pubmed/22517961
+
+[6] http://www.ncbi.nlm.nih.gov/pubmed/24033570
+
+[7] http://www.ncbi.nlm.nih.gov/pubmed/24139564
+
+[8]  http://www.ncbi.nlm.nih.gov/pubmed/21632295
+
+[9] http://www.ncbi.nlm.nih.gov/pubmed/19195496
+
+[10] http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3837555/
+
+[11] http://nmr.mgh.harvard.edu/~koen/MenzeTMI2014.pdf
+
+[12] http://www.ncbi.nlm.nih.gov/pubmed/23813017
+
+[13] http://www.ncbi.nlm.nih.gov/pubmed/24830834
+
+
 
 ANTs was supported by: R01-EB006266-01
 

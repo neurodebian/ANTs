@@ -266,8 +266,6 @@ bool RegionAveraging(typename NetworkType::Pointer network, typename NetworkType
 {
 
   typedef vnl_vector<float>                                     VectorType;
-  typedef VectorType*                                           VectorPointerType;
-  typedef itk::VectorContainer<unsigned int, VectorPointerType> VectorContainerType;
   typedef vnl_matrix<float>                                     MatrixType;
 
   // Determine the number of regions to examine
@@ -391,8 +389,6 @@ int timesccan( itk::ants::CommandLineParser *parser )
 {
 
   typedef itk::Image<float,2>               NetworkType;
-  typedef itk::ImageFileReader<NetworkType> NetworkReaderType;
-  typedef itk::ImageFileWriter<NetworkType> NetworkWriterType;
 
 
   std::string                                       outname = "output.nii.gz";
@@ -552,10 +548,10 @@ int timesccan( itk::ants::CommandLineParser *parser )
       std::cout << "Time Series Data: " << timeMatrixName << std::endl;
       std::cout << "Time Series Labels: " << labelMatrixName << std::endl;
 
-      NetworkType::Pointer timeMat = NULL;
+      NetworkType::Pointer timeMat = ITK_NULLPTR;
       ReadImage<NetworkType>( timeMat, timeMatrixName.c_str() );
 
-      NetworkType::Pointer labelMat = NULL;
+      NetworkType::Pointer labelMat = ITK_NULLPTR;
       ReadImage<NetworkType>( labelMat, labelMatrixName.c_str() );
 
       float gradstep = -0.5 + vnl_math_abs( usel1 );
@@ -568,10 +564,10 @@ int timesccan( itk::ants::CommandLineParser *parser )
       std::cout << "Time Series Data: " << timeMatrixName << std::endl;
       std::cout << "Time Series Labels: " << labelMatrixName << std::endl;
 
-      NetworkType::Pointer timeMat = NULL;
+      NetworkType::Pointer timeMat = ITK_NULLPTR;
       ReadImage<NetworkType>( timeMat, timeMatrixName.c_str() );
 
-      NetworkType::Pointer labelMat = NULL;
+      NetworkType::Pointer labelMat = ITK_NULLPTR;
       ReadImage<NetworkType>( labelMat, labelMatrixName.c_str() );
 
       RegionAveraging<NetworkType>( network, timeMat, labelMat, nLabels, roiSize );
@@ -796,7 +792,7 @@ int TimeSCCAN( std::vector<std::string> args, std::ostream* /*out_stream = NULL 
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {
@@ -833,7 +829,10 @@ private:
   parser->SetCommandDescription( commandDescription );
   InitializeCommandLineOptions( parser );
 
-  parser->Parse( argc, argv );
+  if( parser->Parse( argc, argv ) == EXIT_FAILURE )
+    {
+    return EXIT_FAILURE;
+    }
 
   // Print the entire help menu
   itk::ants::CommandLineParser::OptionType::Pointer shortHelpOption =

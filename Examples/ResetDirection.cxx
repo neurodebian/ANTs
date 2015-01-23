@@ -46,10 +46,8 @@ int ResetDirection(int argc, char *argv[])
     }
 
   typedef  float                                     outPixelType;
-  typedef  float                                     floatPixelType;
   typedef  float                                     inPixelType;
   typedef itk::Image<inPixelType, ImageDimension>    ImageType;
-  typedef itk::Image<floatPixelType, ImageDimension> IntermediateType;
   typedef itk::Image<outPixelType, ImageDimension>   OutImageType;
   typedef itk::ImageFileReader<ImageType>            readertype;
   typedef itk::ImageFileWriter<OutImageType>         writertype;
@@ -101,7 +99,7 @@ int ResetDirection( std::vector<std::string> args, std::ostream* /*out_stream = 
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {

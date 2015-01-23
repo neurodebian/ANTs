@@ -45,28 +45,14 @@ template <unsigned int ImageDimension>
 int  LabelUniquely(int argc, char *argv[])
 {
   typedef float PixelType;
-//  const unsigned int ImageDimension = AvantsImageDimension;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
-  typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  // typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
 
-  typedef float                                            InternalPixelType;
+  typedef itk::Image<PixelType, ImageDimension>                           ImageType;
+
   typedef int                                              ULPixelType;
   typedef itk::Image<ULPixelType, ImageDimension>          labelimagetype;
   typedef itk::CastImageFilter<ImageType, labelimagetype>  CastFilterType;
   typedef itk::CastImageFilter< labelimagetype, ImageType> CastFilterType2;
 
-  typedef ImageType                                                          InternalImageType;
-  typedef ImageType                                                          OutputImageType;
   typedef itk::ConnectedComponentImageFilter<labelimagetype, labelimagetype> FilterType;
   typedef itk::RelabelComponentImageFilter<labelimagetype, labelimagetype>   RelabelType;
 
@@ -90,7 +76,7 @@ int  LabelUniquely(int argc, char *argv[])
   std::string fn1 = std::string(argv[1]);
   float       clusterthresh = atof(argv[3]);
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
 
   ReadImage<ImageType>(image1, fn1.c_str() );
 
@@ -147,7 +133,7 @@ int LabelClustersUniquely( std::vector<std::string> args, std::ostream* /*out_st
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {

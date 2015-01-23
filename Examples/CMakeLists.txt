@@ -7,7 +7,7 @@ set(PICSL_INCLUDE_DIRS
 ../Temporary
 .
 )
-	
+
 include_directories( ${BOOST_INCLUDE_DIR} ) #Define where to find Boost includes
 include_directories(${PICSL_INCLUDE_DIRS})
 link_directories( ${ITK_LIBRARY_PATH}  )
@@ -15,19 +15,26 @@ link_directories( ${ITK_LIBRARY_PATH}  )
 # non-templated class -- this should be stored in a library and linked in...
 set(UI_SOURCES "../Utilities/antsCommandLineParser" "../Utilities/antsCommandLineOption" )
 
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/ANTsVersionConfig.h.in"
+               "${CMAKE_CURRENT_BINARY_DIR}/ANTsVersionConfig.h" @ONLY IMMEDIATE)
+
 ## Note that the antsUtilities can always be built static.  It will then be linked
 ## Directly into the other libraries.
 add_library(antsUtilities STATIC antsUtilities.cxx ../Utilities/ReadWriteData.cxx
             antsRegistrationTemplateHeader.cxx
             antsRegistration2DDouble.cxx antsRegistration2DFloat.cxx
-            antsRegistration3DDouble.cxx antsRegistration3DFloat.cxx)
+            antsRegistration3DDouble.cxx antsRegistration3DFloat.cxx
+            antsRegistration4DDouble.cxx antsRegistration4DFloat.cxx
+            ANTsVersion.cxx
+            )
 target_link_libraries(antsUtilities ${ITK_LIBRARIES} )
 
 macro(STANDARD_ANTS_BUILD ANTS_FUNCTION_NAME EXTRA_LIBS)
   set( ANTS_FUNCTION_NAME ${ANTS_FUNCTION_NAME} )
 
   add_library(l_${ANTS_FUNCTION_NAME} ${ANTS_FUNCTION_NAME}.cxx ${UI_SOURCES})
-  SET_TARGET_PROPERTIES(l_${ANTS_FUNCTION_NAME} PROPERTIES 
+  SET_TARGET_PROPERTIES(l_${ANTS_FUNCTION_NAME} PROPERTIES
     SOVERSION ${LIBRARY_SOVERSION_INFO}  VERSION ${LIBRARY_VERSION_INFO})
   message(STATUS "${ANTS_FUNCTION_NAME} ${EXTRA_LIBS}")
   target_link_libraries(l_${ANTS_FUNCTION_NAME} antsUtilities ${ITK_LIBRARIES} ${EXTRA_LIBS} )
@@ -60,6 +67,7 @@ set(BASE_ANTS_APPS
   ANTSUseDeformationFieldToGetAffineTransform
   # FDR
   antsAffineInitializer
+  # antsSimilarityInitializer
   ImageMath
   SurfaceCurvature
   SurfaceBasedSmoothing
@@ -77,6 +85,7 @@ set(BASE_ANTS_APPS
   ConvertToJpg
   ConvertImagePixelType
   ConvertInputImagePixelTypeToFloat
+  FitBSplineCurveToPoints
   AverageImages
   AverageTensorImages
   ImageSetStatistics
@@ -87,6 +96,7 @@ set(BASE_ANTS_APPS
   LabelClustersUniquely
   # StudentsTestOnImages
   LabelOverlapMeasures
+  LesionFilling
   MeasureMinMaxMean
   WarpImageMultiTransform
   ComposeMultiTransform
@@ -127,30 +137,51 @@ set(BASE_ANTS_APPS
   antsMotionCorr
   antsMotionCorrStats
   antsMotionCorrDiffusionDirection
+  antsSliceRegularizedRegistration
   sccan
   CreateDisplacementField
   ANTSIntegrateVectorField
   ANTSIntegrateVelocityField
   Atropos
   ConvertTransformFile
-  compareTwoCompositeTransforms
+  compareTwoTransforms
   TimeSCCAN
+  TextureCooccurrenceFeatures
+  TextureRunLengthFeatures
+  ImageIntensityStatistics
   GetConnectedComponentsFeatureImages
   DeNrrd
+  antsTransformInfo
+  antsUtilitiesTesting
 )
 foreach(ANTS_APP ${BASE_ANTS_APPS})
   STANDARD_ANTS_BUILD(${ANTS_APP} "")
 endforeach()
 
 if(USE_VTK)
-find_package(VTK REQUIRED NO_MODULE)
+find_package(VTK 6.2 REQUIRED NO_MODULE)
+find_package(VTK COMPONENTS
+   vtkCommonCore
+   vtkCommonDataModel
+   vtkIOGeometry
+   vtkIOXML
+   vtkIOLegacy
+   vtkIOPLY
+   vtkRenderingOpenGL
+   vtkFiltersModeling
+   vtkImagingStencil
+   vtkImagingGeneral
+   vtkRenderingAnnotation
+   )
 include(${VTK_USE_FILE})
+include_directories(${VTK_INCLUDE_DIRS})
+
 set(VTK_ANTS_APPS
 #    ConvertVectorFieldToVTK
     antsSurf
-    # GetMeshAndTopology
-    # CheckTopology
-    # WarpVTKPolyDataMultiTransform
+    GetMeshAndTopology
+    CheckTopology
+    WarpVTKPolyDataMultiTransform
     # FLATFEM
     # ConformalMapping
     # ANTSConformalMapping
@@ -161,14 +192,26 @@ foreach(ANTS_APP ${VTK_ANTS_APPS})
 endforeach()
 endif(USE_VTK)
 
-install(PROGRAMS ../Scripts/ants.sh
-                 ../Scripts/basic_ants_example.sh
-                 ../Scripts/antsIntroduction.sh
-                 ../Scripts/antsaffine.sh
-                 ../Scripts/waitForXGridJobs.pl
-                ../Scripts/buildtemplateparallel.sh
-                 ../Scripts/ANTSpexec.sh
-                 ../Scripts/waitForSGEQJobs.pl
+install(PROGRAMS ../Scripts/ANTSpexec.sh
+     ../Scripts/antsASLProcessing.sh
+     ../Scripts/antsAtroposN4.sh
+     ../Scripts/antsBOLDNetworkAnalysis.R
+     ../Scripts/antsBrainExtraction.sh
+     ../Scripts/antsCorticalThickness.sh
+     ../Scripts/antsIntermodalityIntrasubject.sh
+     ../Scripts/antsIntroduction.sh
+     ../Scripts/antsLaplacianBoundaryCondition.R
+     ../Scripts/antsLongitudinalCorticalThickness.sh
+     ../Scripts/antsMalfLabeling.sh
+     ../Scripts/antsMultivariateTemplateConstruction.sh
+     ../Scripts/antsMultivariateTemplateConstruction2.sh
+     ../Scripts/antsNetworkAnalysis.R
+     ../Scripts/antsNeuroimagingBattery
+     ../Scripts/antsRegistrationSyN.sh
+     ../Scripts/antsRegistrationSyNQuick.sh
+     ../Scripts/waitForPBSQJobs.pl
+     ../Scripts/waitForSGEQJobs.pl
+     ../Scripts/waitForXGridJobs.pl
                 DESTINATION bin
                 PERMISSIONS  OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
                 CONFIGURATIONS  Release
@@ -198,10 +241,11 @@ endif( COPY_SCRIPT_FILES_TO_BIN_DIR )
 set(CPACK_PACKAGE_NAME "ANTs")
 set(CPACK_PACKAGE_VENDOR "CMake.org")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "ANTs - Advanced Normalization Tools")
-set(CPACK_PACKAGE_VERSION "1.9.y")
-set(CPACK_PACKAGE_VERSION_MAJOR "1")
-set(CPACK_PACKAGE_VERSION_MINOR "9")
-set(CPACK_PACKAGE_VERSION_PATCH "y")
+set(CPACK_PACKAGE_VERSION 2.1.0)
+set(CPACK_PACKAGE_VERSION_MAJOR 2)
+set(CPACK_PACKAGE_VERSION_MINOR 1)
+set(CPACK_PACKAGE_VERSION_PATCH 0)
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "ANTS")
+set(CPACK_BINARY_GENERATORS "DragNDrop TGZ TZ")
 # This must always be last!
 include(CPack)

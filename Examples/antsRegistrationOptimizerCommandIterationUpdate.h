@@ -19,8 +19,8 @@ public:
   typedef ParametersValueType     PixelType;
   typedef typename itk::Image<PixelType, VImageDimension>              ImageType;
   typedef itk::ImageToImageMetricv4
-                <ImageType, ImageType, ImageType, RealType>            MetricType;
-  typedef typename MetricType::MeasureType                             MeasureType;
+                <ImageType, ImageType, ImageType, RealType>            ImageMetricType;
+  typedef typename ImageMetricType::MeasureType                        MeasureType;
   typedef itk::CompositeTransform<RealType, VImageDimension>           CompositeTransformType;
   typedef typename CompositeTransformType::TransformType               TransformBaseType;
 protected:
@@ -37,17 +37,17 @@ protected:
     this->m_ComputeFullScaleCCInterval = 0;
     this->m_WriteInterationsOutputsInIntervals = 0;
     this->m_CurrentStageNumber = 0;
-    this->m_CurLevel = 0;
+    this->m_CurLevel = -1;
   }
 
 public:
 
-  void Execute(itk::Object *caller, const itk::EventObject & event)
+  void Execute(itk::Object *caller, const itk::EventObject & event) ITK_OVERRIDE
   {
     Execute( (const itk::Object *) caller, event);
   }
 
-  void Execute(const itk::Object *, const itk::EventObject & event)
+  void Execute(const itk::Object *, const itk::EventObject & event) ITK_OVERRIDE
   {
 #if 0
     if( typeid( event ) == typeid( itk::InitializeEvent ) )
@@ -91,7 +91,16 @@ public:
 #endif
     if( typeid( event ) == typeid( itk::IterationEvent ) )
       {
+      // const unsigned int curLevel = this->m_Optimizer->GetCurrentLevel();
+      const unsigned int curIter = this->m_Optimizer->GetCurrentIteration() + 1;
+      if( curIter == 1 )
+        {
+        ++this->m_CurLevel;
+        }
+
       const unsigned int lCurrentIteration = this->m_Optimizer->GetCurrentIteration() + 1;
+
+
       if( lCurrentIteration  == 1 )
         {
         if( this->m_ComputeFullScaleCCInterval != 0 )
@@ -142,7 +151,7 @@ public:
                      << std::scientific << std::setprecision(12) << this->m_Optimizer->GetConvergenceValue() << ", "
                      << std::setprecision(4) << now << ", "
                      << std::setprecision(4) << (now - this->m_lastTotalTime)  << ", ";
-      if( ( this->m_ComputeFullScaleCCInterval != 0 ) &&  fabs(metricValue) > 1e-7 )
+      if( ( this->m_ComputeFullScaleCCInterval != 0 ) && vcl_fabs(metricValue) > 1e-7 )
         {
         this->Logger() << std::scientific << std::setprecision(12) << metricValue
                        << std::flush << std::endl;
@@ -151,6 +160,8 @@ public:
         {
         this->Logger() << std::flush << std::endl;
         }
+
+      this->m_Optimizer->SetNumberOfIterations( this->m_NumberOfIterations[this->m_CurLevel] );
 
       this->m_lastTotalTime = now;
       m_clock.Start();
@@ -206,22 +217,22 @@ public:
                                   MeasureType & metricValue ) const
   {
     // Get the registration metric from the optimizer
-    typename MetricType::Pointer inputMetric( dynamic_cast<MetricType *>( myOptimizer->GetModifiableMetric() ) );
+    typename ImageMetricType::Pointer inputMetric( dynamic_cast<ImageMetricType *>( myOptimizer->GetModifiableMetric() ) );
 
     // Define the CC metric type
     // This metric type is used to measure the general similarity metric between the original input fixed and moving
     // images.
-    typedef itk::ANTSNeighborhoodCorrelationImageToImageMetricv4<ImageType, ImageType, ImageType, MeasureType> CorrelationMetricType;
-    typename CorrelationMetricType::Pointer correlationMetric = CorrelationMetricType::New();
+    typedef itk::ANTSNeighborhoodCorrelationImageToImageMetricv4<ImageType, ImageType, ImageType, MeasureType> CorrelationImageMetricType;
+    typename CorrelationImageMetricType::Pointer correlationMetric = CorrelationImageMetricType::New();
       {
-      typename CorrelationMetricType::RadiusType radius;
+      typename CorrelationImageMetricType::RadiusType radius;
       radius.Fill( 4 );  // NOTE: This is just a common reference for fine-tuning parameters, so perhaps a smaller
                          // window would be sufficient.
       correlationMetric->SetRadius( radius );
       }
     correlationMetric->SetUseMovingImageGradientFilter( false );
     correlationMetric->SetUseFixedImageGradientFilter( false );
-    typename MetricType::Pointer metric = correlationMetric.GetPointer();
+    typename ImageMetricType::Pointer metric = correlationMetric.GetPointer();
 
     // We need to create an exact copy from the composite fixed and moving transforms returned from the metric
     // We should roll off the composite transform and create a new instance from each of its sub transforms
@@ -235,7 +246,6 @@ public:
       // We cast the metric's transform to a composite transform, so we can copy each
       // of its sub transforms to a new instance.
       // Notice that the metric transform will not be changed inside this fuction.
-      typedef typename MetricType::FixedTransformType FixedTransformType;
       typename CompositeTransformType::ConstPointer inputFixedTransform =
                                           dynamic_cast<CompositeTransformType *>( inputMetric->GetModifiableFixedTransform() );
       const unsigned int N = inputFixedTransform->GetNumberOfTransforms();
@@ -268,7 +278,6 @@ public:
       }
 
     // Same procedure for the moving transform. Moving transform is always a Composite transform.
-    typedef typename MetricType::MovingTransformType MovingTransformType;
     typename CompositeTransformType::Pointer movingTransform = CompositeTransformType::New();
 
     typename CompositeTransformType::ConstPointer inputMovingTransform =
@@ -300,10 +309,9 @@ public:
   void WriteIntervalVolumes(itk::WeakPointer<OptimizerType> myOptimizer)
   {
     // Get the registration metric from the optimizer
-    typename MetricType::Pointer inputMetric( dynamic_cast<MetricType *>( myOptimizer->GetModifiableMetric() ) );
+    typename ImageMetricType::Pointer inputMetric( dynamic_cast<ImageMetricType *>( myOptimizer->GetModifiableMetric() ) );
 
     // First, compute the moving transform
-    typedef typename MetricType::MovingTransformType MovingTransformType;
     typename CompositeTransformType::Pointer movingTransform = CompositeTransformType::New();
 
     typename CompositeTransformType::ConstPointer inputMovingTransform =
@@ -337,12 +345,6 @@ public:
     resampler->Update();
 
     // write the results to the disk
-    // const unsigned int curLevel = this->m_Optimizer->GetCurrentLevel();
-    const unsigned int curIter = this->m_Optimizer->GetCurrentIteration() + 1;
-    if( curIter == 1 )
-      {
-      ++this->m_CurLevel;
-      }
     std::stringstream currentFileName;
     currentFileName << "Stage" << this->m_CurrentStageNumber + 1 << "_level" << this->m_CurLevel;
     /*
@@ -350,6 +352,9 @@ public:
     To prevent: "Iter1 Iter10 Iter2 Iter20" we use the following style.
     Then the order is: "Iter1 Iter2 ... Iters10 ... Itert20"
     */
+
+    const unsigned int curIter = this->m_Optimizer->GetCurrentIteration() + 1;
+
     if( curIter > 9 )
       {
       currentFileName << "_Iters" << curIter << ".nii.gz";

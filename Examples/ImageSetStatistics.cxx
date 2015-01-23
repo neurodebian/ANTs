@@ -264,8 +264,8 @@ GetClusterStat(typename TImage::Pointer image, float Tthreshold, unsigned int mi
   threshold_hi = 1.e9;
 
   threshold->SetInput(image);
-  threshold->SetInsideValue(itk::NumericTraits<InternalPixelType>::One);
-  threshold->SetOutsideValue(itk::NumericTraits<InternalPixelType>::Zero);
+  threshold->SetInsideValue(itk::NumericTraits<InternalPixelType>::OneValue());
+  threshold->SetOutsideValue(itk::NumericTraits<InternalPixelType>::ZeroValue());
   threshold->SetLowerThreshold(threshold_low);
   threshold->SetUpperThreshold(threshold_hi);
   threshold->Update();
@@ -627,17 +627,9 @@ template <unsigned int ImageDimension>
 int ImageSetStatistics(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
   typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
   typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
   unsigned int mch = 0;
   int          argct = 2;
@@ -663,8 +655,8 @@ int ImageSetStatistics(int argc, char *argv[])
 
   //  std::cout <<" roifn " << roifn << " fn1 " << fn1 << " whichstat " << whichstat << std::endl;
 
-  typename ImageType::Pointer outimage = NULL;
-  typename ImageType::Pointer ROIimg = NULL;
+  typename ImageType::Pointer outimage = ITK_NULLPTR;
+  typename ImageType::Pointer ROIimg = ITK_NULLPTR;
 
   if( roifn.length() > 4 )
     {
@@ -678,7 +670,7 @@ int ImageSetStatistics(int argc, char *argv[])
       }
     catch( ... )
       {
-      ROIimg = NULL;
+      ROIimg = ITK_NULLPTR;
       std::cout << " Error reading ROI image " << std::endl;
       //  return 0;
       }
@@ -989,7 +981,7 @@ int ImageSetStatistics( std::vector<std::string> args, std::ostream* /*out_strea
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {

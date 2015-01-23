@@ -35,9 +35,7 @@ int antsAlignOriginImplementation( itk::ants::CommandLineParser::Pointer & parse
     std::cerr << "inputImageType is not used, therefore only mode 0 is supported at the momemnt." << std::endl;
     return EXIT_FAILURE;
     }
-  typedef double                           RealType;
   typedef double                           PixelType;
-  typedef itk::Vector<RealType, Dimension> VectorType;
 
   typedef itk::Image<PixelType, Dimension> ImageType;
 
@@ -137,7 +135,6 @@ int antsAlignOriginImplementation( itk::ants::CommandLineParser::Pointer & parse
 
 static void InitializeCommandLineOptions( itk::ants::CommandLineParser *parser )
 {
-  typedef itk::ants::CommandLineParser::OptionType OptionType;
 
     {
     std::string description =
@@ -236,7 +233,7 @@ int antsAlignOrigin( std::vector<std::string> args, std::ostream* /*out_stream =
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {
@@ -275,7 +272,10 @@ private:
   parser->SetCommandDescription( commandDescription );
   InitializeCommandLineOptions( parser );
 
-  parser->Parse( argc, argv );
+  if( parser->Parse( argc, argv ) == EXIT_FAILURE )
+    {
+    return EXIT_FAILURE;
+    }
 
   if( argc < 2 || ( parser->GetOption( "help" ) &&
                     ( parser->Convert<bool>( parser->GetOption( "help" )->GetFunction()->GetName() ) ) ) )

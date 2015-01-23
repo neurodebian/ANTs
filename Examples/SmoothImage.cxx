@@ -29,23 +29,12 @@ template <unsigned int ImageDimension>
 int SmoothImage(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   std::vector<float> sigmaVector = ConvertVector<float>( argv[3] );
 
-  typename ImageType::Pointer image1 = NULL;
-  typename ImageType::Pointer varimage = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer varimage = ITK_NULLPTR;
   ReadImage<ImageType>(image1, argv[2]);
 
   typedef itk::DiscreteGaussianImageFilter<ImageType, ImageType> dgf;
@@ -142,7 +131,7 @@ int SmoothImage( std::vector<std::string> args, std::ostream* /*out_stream = NUL
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {

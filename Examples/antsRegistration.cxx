@@ -21,14 +21,24 @@
 #include <string>
 #include "antsRegistrationTemplateHeader.h"
 
+#include "ANTsVersion.h"
+
 namespace ants
 {
 
 static void antsRegistrationInitializeCommandLineOptions( itk::ants::CommandLineParser *parser )
 {
-  typedef itk::ants::CommandLineParser::OptionType OptionType;
 
-  // short names in use-  a:b:c:d:f:g:h:l:m:n:o:q:r:s:t:u::w:x:z
+  // short names in use-  a:b:c:d:f:g:h:i:j:k:l:m:n:o:q:r:s:t:u:v:w:x:z
+    {
+    const std::string description = std::string( "Get Version Information." );
+
+    OptionType::Pointer option = OptionType::New();
+    option->SetLongName( "version" );
+    option->SetShortName( 'v' );
+    option->SetDescription( description );
+    parser->AddOption( option );
+    }
 
     {
     std::string description =
@@ -56,6 +66,39 @@ static void antsRegistrationInitializeCommandLineOptions( itk::ants::CommandLine
     option->SetShortName( 'o' );
     option->SetUsageOption( 0, "outputTransformPrefix" );
     option->SetUsageOption( 1, "[outputTransformPrefix,<outputWarpedImage>,<outputInverseWarpedImage>]" );
+    option->SetDescription( description );
+    parser->AddOption( option );
+    }
+
+    {
+    std::string description = std::string( "A boolean specifying whether or not the " )
+      + std::string( "composite transform resulted from the current state of the registration " )
+      + std::string( "should be written to an hdf5 composite file. It is specially usefull if " )
+      + std::string( "we want to save the current state of a SyN registration to the disk, so " )
+      + std::string( "we can load and restore that later to continue the next registration " )
+      + std::string( "directly started from the same state that it was stored. " )
+      + std::string( "The output of this flag will be the same as the write-composite-transform, " )
+      + std::string( "unless the last transform is a SyN transform. In that case, the inverse " )
+      + std::string( "displacement field of the SyN transform is also added to the output composite transform. " )
+      + std::string( "To load the written file this flag, we must use restore-state." );
+    OptionType::Pointer option = OptionType::New();
+    option->SetLongName( "save-state" );
+    option->SetShortName( 'j' );
+    option->SetUsageOption( 0, "saveSateAsTransform" );
+    option->SetDescription( description );
+    parser->AddOption( option );
+    }
+
+    {
+    std::string description = std::string( "Specify the initial state of the registration which get immediately " )
+      + std::string( "used to directly initialize the registration process. " )
+      + std::string( "The flag is mutually exclusive with other intialization flags." )
+      + std::string( "If this flag is used, none of the initial-moving-transform and initial-fixed-transform " )
+      + std::string( "cannot be used." );
+    OptionType::Pointer option = OptionType::New();
+    option->SetLongName( "restore-state" );
+    option->SetShortName( 'k' );
+    option->SetUsageOption( 0, "restoreStateAsATransform" );
     option->SetDescription( description );
     parser->AddOption( option );
     }
@@ -130,13 +173,30 @@ static void antsRegistrationInitializeCommandLineOptions( itk::ants::CommandLine
       + std::string( "possible.  All adjacent linear transforms are written to disk in the form" )
       + std::string( "an itk affine transform (called xxxGenericAffine.mat).  Similarly, all " )
       + std::string( "adjacent displacement field transforms are combined when written to disk " )
-      + std::string( "(e.g. xxxWarp.nii.gz and xxxInverseWarp.nii.gz (if available))." );
+      + std::string( "(e.g. xxxWarp.nii.gz and xxxInverseWarp.nii.gz (if available))." )
+      + std::string( "Also, an output composite transform including the collapsed transforms is " )
+      + std::string( "written to the disk (called outputCollapsed(Inverse)Composite).");
     OptionType::Pointer option = OptionType::New();
     option->SetLongName( "collapse-output-transforms" );
     option->SetShortName( 'z' );
     option->SetUsageOption( 0, "(1)/0" );
     option->SetDescription( description );
     option->AddFunction( std::string( "1" ) );
+    parser->AddOption( option );
+    }
+
+    {
+    std::string description = std::string( "Initialize linear transforms from the previous stage. " )
+    + std::string( "By enabling this option, the current linear stage transform is directly intialized " )
+    + std::string( "from the previous stage's linear transform; this allows multiple linear stages to be run " )
+    + std::string( "where each stage directly updates the estimated linear transform from the previous stage. ")
+    + std::string( "(e.g. Translation -> Rigid -> Affine)." );
+    OptionType::Pointer option = OptionType::New();
+    option->SetLongName( "initialize-transforms-per-stage" );
+    option->SetShortName( 'i' );
+    option->SetUsageOption( 0, "(1)/0" );
+    option->SetDescription( description );
+    option->AddFunction( std::string( "0" ) );
     parser->AddOption( option );
     }
 
@@ -165,10 +225,12 @@ static void antsRegistrationInitializeCommandLineOptions( itk::ants::CommandLine
 
     {
     std::string description = std::string( "This option allows the user to restrict the " )
-      + std::string( "optimization of the displacement field transform on a per-component " )
-      + std::string( "basis.  For example, if one wants to limit the deformation of a " )
-      + std::string( "3-D volume to the first two dimensions, this is possible by specifying " )
-      + std::string( "a weight vector of \'1x1x0\'." );
+      + std::string( "optimization of the displacement field, translation, rigid or affine " )
+      + std::string( "transform on a per-component basis.  For example, if one wants to limit " )
+      + std::string( "the deformation or rotation of 3-D volume to the first two dimensions, ")
+      + std::string( "this is possible by specifying a weight vector of \'1x1x0\' for a " )
+      + std::string( "deformation field or  \'1x1x0x1x1x0\' for a rigid transformation." )
+      + std::string( "Low-dimensional restriction only works if there are no preceding transformations." );
 
     OptionType::Pointer option = OptionType::New();
     option->SetLongName( "restrict-deformation" );
@@ -258,10 +320,10 @@ static void antsRegistrationInitializeCommandLineOptions( itk::ants::CommandLine
       "ICP[fixedPointSet,movingPointSet,metricWeight,<samplingPercentage=[0,1]>,<boundaryPointsOnly=0>]" );
     option->SetUsageOption(
       7,
-      "PSE[fixedPointSet,movingPointSet,metricWeight,<samplingPercentage=[0,1]>,<boundaryPointsOnly=0>,<pointSetSigma=>,<kNeighborhood=50>]" );
+      "PSE[fixedPointSet,movingPointSet,metricWeight,<samplingPercentage=[0,1]>,<boundaryPointsOnly=0>,<pointSetSigma=1>,<kNeighborhood=50>]" );
     option->SetUsageOption(
       8,
-      "JHCT[fixedPointSet,movingPointSet,metricWeight,<samplingPercentage=[0,1]>,<boundaryPointsOnly=0>,<pointSetSigma=>,<kNeighborhood=50>,<alpha=1.1>,<useAnisotropicCovariances=1>]" );
+      "JHCT[fixedPointSet,movingPointSet,metricWeight,<samplingPercentage=[0,1]>,<boundaryPointsOnly=0>,<pointSetSigma=1>,<kNeighborhood=50>,<alpha=1.1>,<useAnisotropicCovariances=1>]" );
     option->SetDescription( description );
     parser->AddOption( option );
     }
@@ -410,7 +472,8 @@ static void antsRegistrationInitializeCommandLineOptions( itk::ants::CommandLine
     }
 
     {
-    std::string description = std::string( "Print the help menu." );
+    std::string description = std::string( "Print the help menu.  Will also print values " )
+      + std::string( "used on the current command line call." );
 
     OptionType::Pointer option = OptionType::New();
     option->SetLongName( "help" );
@@ -443,7 +506,7 @@ int antsRegistration( std::vector<std::string> args, std::ostream * /*out_stream
       // place the null character in the end
       argv[i][args[i].length()] = '\0';
       }
-    argv[argc] = 0;
+    argv[argc] = ITK_NULLPTR;
     // class to automatically cleanup argv upon destruction
     class Cleanup_argv
     {
@@ -483,7 +546,31 @@ private:
     parser->SetCommandDescription( commandDescription );
     antsRegistrationInitializeCommandLineOptions( parser );
 
-    parser->Parse( argc, argv );
+    if( parser->Parse( argc, argv ) == EXIT_FAILURE )
+      {
+      return EXIT_FAILURE;
+      }
+    OptionType::Pointer collapseOutputTransformsOption = parser->GetOption( "collapse-output-transforms" );
+    OptionType::Pointer compositeOutputOption = parser->GetOption( "write-composite-transform" );
+    OptionType::Pointer initializePerStageOption = parser->GetOption( "initialize-transforms-per-stage" );
+    OptionType::Pointer saveStateOption = parser->GetOption( "save-state" );
+
+    const bool writeCompositeTransform = parser->Convert<bool>( compositeOutputOption->GetFunction( 0 )->GetName() );
+    const bool shouldInitializePerStage = parser->Convert<bool>( initializePerStageOption->GetFunction( 0 )->GetName() );
+    if ( shouldInitializePerStage && ( ! writeCompositeTransform ) )
+       {
+       std::cerr << "ERROR:  --initialize-transforms-per-stage requires --write-composite-transform" << std::endl;
+       std::cerr << "        because the initializizing transform is collapsed into each stage for optimization" << std::endl;
+       return EXIT_FAILURE;
+       }
+    if ( ( saveStateOption && saveStateOption->GetNumberOfFunctions() ) && ( ! writeCompositeTransform ) )
+       {
+       std::cerr << "ERROR:  --save-state requires --write-composite-transform" << std::endl;
+       std::cerr << "        because the the output transform will contain the this processes initializer" << std::endl;
+       return EXIT_FAILURE;
+       }
+
+    std::cout << "All_Command_lines_OK" << std::endl;
 
     if( argc == 1 )
       {
@@ -499,6 +586,18 @@ private:
       {
       parser->PrintMenu( std::cout, 5, true );
       return EXIT_SUCCESS;
+      }
+    ParserType::OptionType::Pointer versionOption = parser->GetOption( "version" );
+    if( versionOption && versionOption->GetNumberOfFunctions() )
+      {
+      std::string versionFunction = versionOption->GetFunction( 0 )->GetName();
+      ConvertToLowerCase( versionFunction );
+      if( versionFunction.compare( "1" ) == 0 || versionFunction.compare( "true" ) == 0 )
+        {
+        //Print Version Information
+        std::cout << ANTs::Version::ExtendedVersionString() << std::endl;
+        return EXIT_SUCCESS;
+        }
       }
 
     unsigned int dimension = 3;
@@ -549,6 +648,17 @@ private:
         else
           {
           return antsRegistration3DDouble( parser );
+          }
+        }
+      case 4:
+        {
+        if( strcmp( precisionType.c_str(), "float" ) == 0 )
+          {
+          return antsRegistration4DFloat( parser );
+          }
+        else
+          {
+          return antsRegistration4DDouble( parser );
           }
         }
       default:

@@ -202,7 +202,6 @@ void GetRigidTransformFromTwoPointSets3D(PointContainerType & fixedLandmarks, Po
   const unsigned int Dimension = 3;
   typedef itk::Image<PixelType, Dimension> FixedImageType;
   typedef itk::Image<PixelType, Dimension> MovingImageType;
-  typedef itk::Image<PixelType, Dimension> ImageType;
 
   typedef itk::LandmarkBasedTransformInitializer<TransformType,
                                                  FixedImageType, MovingImageType> TransformInitializerType;
@@ -233,7 +232,6 @@ void FetchLandmarkMappingFromDisplacementField(const std::string& deformation_fi
 
   typedef typename PointContainerType::value_type PointType;
 
-  typedef itk::Image<float, ImageDimension>           ImageType;
   typedef itk::Vector<float, ImageDimension>          VectorType;
   typedef itk::Image<VectorType, ImageDimension>      DisplacementFieldType;
   typedef itk::ImageFileReader<DisplacementFieldType> FieldReaderType;
@@ -265,7 +263,7 @@ void FetchLandmarkMappingFromDisplacementField(const std::string& deformation_fi
 
   FieldIteratorType it(field, field->GetLargestPossibleRegion() );
 
-  srand( time(NULL) );
+  srand( time(ITK_NULLPTR) );
 
   it.GoToBegin();
   unsigned int cnt = 0;
@@ -340,7 +338,7 @@ int DisplacementFieldBasedTransformInitializer3D(int argc, char * argv[])
   typedef itk::MatrixOffsetTransformBase<double, 3, 3> AffineTransformType;
   AffineTransformType::Pointer aff = AffineTransformType::New();
 
-  ImageType::Pointer maskimg = NULL;
+  ImageType::Pointer maskimg = ITK_NULLPTR;
   if( maskfn.length() > 4 )
     {
     ReadImage<ImageType>(maskimg, maskfn.c_str() );
@@ -434,7 +432,7 @@ int ANTSUseDeformationFieldToGetAffineTransform( std::vector<std::string> args, 
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {

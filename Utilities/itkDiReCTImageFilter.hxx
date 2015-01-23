@@ -69,7 +69,7 @@ DiReCTImageFilter<TInputImage, TOutputImage>
   m_ConvergenceWindowSize( 10 ),
   m_UseBSplineSmoothing( false )
 {
-  this->m_ThicknessPriorImage = NULL;
+  this->m_ThicknessPriorImage = ITK_NULLPTR;
   this->SetNumberOfRequiredInputs( 3 );
 }
 
@@ -583,7 +583,7 @@ DiReCTImageFilter<TInputImage, TOutputImage>
             {
             typename RealImageType::IndexType index = ItSegmentationImage.GetIndex();
             RealType thicknessPrior = this->m_ThicknessPriorImage->GetPixel( index );
-            if( ( thicknessPrior > NumericTraits<RealType>::Zero ) &&
+            if( ( thicknessPrior > NumericTraits<RealType>::ZeroValue() ) &&
                 ( thicknessValue > thicknessPrior ) )
               {
               priorEnergy += vnl_math_abs( thicknessPrior - thicknessValue );
@@ -875,8 +875,7 @@ DiReCTImageFilter<TInputImage, TOutputImage>
 ::BSplineSmoothDisplacementField( const DisplacementFieldType *inputField,
                            const RealType isotropicMeshSpacing )
 {
-  typedef itk::DisplacementFieldToBSplineImageFilter<DisplacementFieldType,
-    DisplacementFieldType> BSplineFilterType;
+  typedef itk::DisplacementFieldToBSplineImageFilter<DisplacementFieldType> BSplineFilterType;
 
   // calculate the number of control points based on the isotropic mesh spacing
 

@@ -43,12 +43,12 @@ N3BiasFieldScaleCostFunction<TInputImage, TBiasFieldImage, TMaskImage,
                              TConfidenceImage>
 ::N3BiasFieldScaleCostFunction()
 {
-  this->m_InputImage = NULL;
-  this->m_BiasFieldImage = NULL;
-  this->m_MaskImage = NULL;
-  this->m_ConfidenceImage = NULL;
+  this->m_InputImage = ITK_NULLPTR;
+  this->m_BiasFieldImage = ITK_NULLPTR;
+  this->m_MaskImage = ITK_NULLPTR;
+  this->m_ConfidenceImage = ITK_NULLPTR;
 
-  this->m_MaskLabel = NumericTraits<typename TMaskImage::PixelType>::One;
+  this->m_MaskLabel = NumericTraits<typename TMaskImage::PixelType>::OneValue();
 }
 
 template <class TInputImage, class TBiasFieldImage, class TMaskImage,
@@ -166,7 +166,7 @@ N3BiasFieldScaleCostFunction<TInputImage, TBiasFieldImage, TMaskImage,
                              TConfidenceImage>
 ::GetNumberOfParameters() const
 {
-  return NumericTraits<unsigned int>::One;
+  return NumericTraits<unsigned int>::OneValue();
 }
 
 /**
@@ -179,7 +179,7 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
 {
   this->SetNumberOfRequiredInputs( 1 );
 
-  this->m_MaskLabel = NumericTraits<MaskPixelType>::One;
+  this->m_MaskLabel = NumericTraits<MaskPixelType>::OneValue();
 
   this->m_NumberOfHistogramBins = 200;
   this->m_WeinerFilterNoise = 0.01;

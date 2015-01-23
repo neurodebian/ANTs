@@ -25,7 +25,6 @@ typename TImage::Pointer
 GetVectorComponent(typename TField::Pointer field, unsigned int index)
 {
   // Initialize the Moving to the displacement field
-  typedef TField FieldType;
   typedef TImage ImageType;
 
   typename ImageType::Pointer sfield =
@@ -409,10 +408,7 @@ float IntegrateLength( typename TImage::Pointer /* gmsurf */,  typename TImage::
                        float priorthickval,  typename TImage::Pointer smooththick, bool printprobability,
                        typename TImage::Pointer /* sulci */ )
 {
-  typedef   TField                                                 TimeVaryingVelocityFieldType;
   typedef typename TField::PixelType                               VectorType;
-  typedef itk::ImageRegionIteratorWithIndex<TField>                FieldIterator;
-  typedef typename TField::IndexType                               DIndexType;
   typedef typename TField::PointType                               DPointType;
   typedef itk::VectorLinearInterpolateImageFunction<TField, float> DefaultInterpolatorType;
 
@@ -657,12 +653,7 @@ int LaplacianThickness(int argc, char *argv[])
   typedef itk::Vector<float, ImageDimension>         VectorType;
   typedef itk::Image<VectorType, ImageDimension>     DisplacementFieldType;
   typedef itk::Image<PixelType, ImageDimension>      ImageType;
-  typedef itk::ImageFileReader<ImageType>            readertype;
-  typedef itk::ImageFileWriter<ImageType>            writertype;
-  typedef typename  ImageType::IndexType             IndexType;
-  typedef typename  ImageType::SizeType              SizeType;
   typedef typename  ImageType::SpacingType           SpacingType;
-  typedef itk::Image<VectorType, ImageDimension + 1> tvt;
 
   //  typename tvt::Pointer gWarp;
   // ReadImage<tvt>( gWarp, ifn.c_str() );
@@ -681,12 +672,12 @@ int LaplacianThickness(int argc, char *argv[])
   typedef itk::ImageRegionIteratorWithIndex<ImageType> IteratorType;
   IteratorType Iterator( wm, wm->GetLargestPossibleRegion().GetSize() );
   typename ImageType::Pointer wmb = BinaryThreshold<ImageType>(0.5, 1.e9, 1, wm);
-  typename DisplacementFieldType::Pointer lapgrad = NULL;
-  typename DisplacementFieldType::Pointer lapgrad2 = NULL;
+  typename DisplacementFieldType::Pointer lapgrad = ITK_NULLPTR;
+  typename DisplacementFieldType::Pointer lapgrad2 = ITK_NULLPTR;
   typename ImageType::Pointer gmb = BinaryThreshold<ImageType>(0.5, 1.e9, 1, gm);
 
 /** get sulcal priors */
-  typename ImageType::Pointer sulci = NULL;
+  typename ImageType::Pointer sulci = ITK_NULLPTR;
   if( dosulc > 0 )
     {
     std::cout << "  using sulcal prior " << std::endl;
@@ -770,7 +761,7 @@ int LaplacianThickness(int argc, char *argv[])
   // std::cout << " MUCKING WITH START FINISH TIME " <<  finishtime <<  std::endl;
 
   typename DisplacementFieldType::IndexType velind;
-  typename ImageType::Pointer smooththick = NULL;
+  typename ImageType::Pointer smooththick = ITK_NULLPTR;
   float timesign = 1.0;
   if( starttime  >  finishtime )
     {
@@ -778,13 +769,8 @@ int LaplacianThickness(int argc, char *argv[])
     }
   unsigned int m_NumberOfTimePoints = 2;
   typedef   DisplacementFieldType                                                        TimeVaryingVelocityFieldType;
-  typedef itk::ImageRegionIteratorWithIndex<DisplacementFieldType>                       FieldIterator;
-  typedef typename DisplacementFieldType::IndexType                                      DIndexType;
   typedef typename DisplacementFieldType::PointType                                      DPointType;
-  typedef typename TimeVaryingVelocityFieldType::IndexType                               VIndexType;
-  typedef typename TimeVaryingVelocityFieldType::PointType                               VPointType;
   typedef itk::VectorLinearInterpolateImageFunction<TimeVaryingVelocityFieldType, float> DefaultInterpolatorType;
-  typedef itk::VectorLinearInterpolateImageFunction<DisplacementFieldType, float>        DefaultInterpolatorType2;
   typename DefaultInterpolatorType::Pointer vinterp =  DefaultInterpolatorType::New();
   typedef itk::LinearInterpolateImageFunction<ImageType, float> ScalarInterpolatorType;
   typename ScalarInterpolatorType::Pointer sinterp =  ScalarInterpolatorType::New();
@@ -974,7 +960,7 @@ int LaplacianThickness( std::vector<std::string> args, std::ostream* /*out_strea
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {

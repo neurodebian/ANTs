@@ -36,8 +36,6 @@ $Revision: 1.8 $
 #include "vtkCallbackCommand.h"
 #include "vtkPointPicker.h"
 #include "vtkCellPicker.h"
-#include "vtkPolyDataWriter.h"
-#include "vtkPolyDataReader.h"
 #include "vtkExtractEdges.h"
 
 #include "itkMinimumMaximumImageFilter.h"
@@ -165,8 +163,8 @@ GetLargestComponent(typename TImage::Pointer image)
   typename RelabelType::Pointer relabel = RelabelType::New();
 
   threshold->SetInput(image);
-  threshold->SetInsideValue(itk::NumericTraits<InternalPixelType>::One);
-  threshold->SetOutsideValue(itk::NumericTraits<InternalPixelType>::Zero);
+  threshold->SetInsideValue(itk::NumericTraits<InternalPixelType>::OneValue());
+  threshold->SetOutsideValue(itk::NumericTraits<InternalPixelType>::ZeroValue());
   threshold->SetLowerThreshold(0.499);
   threshold->SetUpperThreshold(1.001);
   threshold->Update();

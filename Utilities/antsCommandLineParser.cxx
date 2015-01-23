@@ -93,7 +93,7 @@ CommandLineParser
   return s2.length() <= s1.length() && s1.compare(0, s2.length(), s2) == 0;
 }
 
-void
+int
 CommandLineParser
 ::Parse( unsigned int argc, char * *argv )
 {
@@ -102,6 +102,7 @@ CommandLineParser
 
   unsigned int n = 0;
   unsigned int order = 0;
+  bool allFlagsAreValid = true;
 
   if ( arguments.size() > 1 )
     {
@@ -122,8 +123,12 @@ CommandLineParser
       {
       name = argument.substr( 1, 2 );
       }
-
-    if( !( name.empty() ) && !atof( name.c_str() ) )
+    if ( name.size() > 0 )
+      allFlagsAreValid &= this->ValidateFlag(name);
+    if( ( !( name.empty() ) )     &&
+        ( !atof( name.c_str() ) ) &&
+        ( name.size() > 0 )
+      )
       {
       OptionType::Pointer option = this->GetOption( name );
       if( !option )
@@ -198,8 +203,13 @@ CommandLineParser
         }
       }
     }
-
+  if( ! allFlagsAreValid )
+    {
+    std::cerr << "ERROR:  Invalid command line flags found! Aborting execution." << std::endl;
+    return EXIT_FAILURE;
+    }
   this->AssignStages();
+  return EXIT_SUCCESS;
 }
 
 std::vector<std::string>
@@ -220,80 +230,87 @@ CommandLineParser
     {
     std::string a( argv[n] );
 
-    // replace left delimiters
-    std::replace( a.begin(), a.end(), '{', '[' );
-    std::replace( a.begin(), a.end(), '(', '[' );
-    std::replace( a.begin(), a.end(), '<', '[' );
-
-    // replace right delimiters
-    std::replace( a.begin(), a.end(), '}', ']' );
-    std::replace( a.begin(), a.end(), ')', ']' );
-    std::replace( a.begin(), a.end(), '>', ']' );
-
-    if( isArgOpen )
+    if( n == 0 )
       {
-      std::size_t leftDelimiterPosition = a.find( this->m_LeftDelimiter );
-      if( leftDelimiterPosition != std::string::npos )
-        {
-        itkExceptionMacro( "Incorrect command line specification. Missing leftDelimiterPosition? " << a );
-        }
+      arguments.push_back( a );
+      }
+    else
+      {
+      // replace left delimiters
+      std::replace( a.begin(),  a.begin()+1, '{', '[' );
+      std::replace( a.begin(), a.begin()+1, '(', '[' );
+      std::replace( a.begin(), a.begin()+1, '<', '[' );
 
-      std::size_t rightDelimiterPosition = a.find( this->m_RightDelimiter );
-      if( rightDelimiterPosition != std::string::npos )
+      // replace right delimiters
+      std::replace( a.end()-1, a.end(), '}', ']' );
+      std::replace( a.end()-1, a.end(), ')', ']' );
+      std::replace( a.end()-1, a.end(), '>', ']' );
+
+      if( isArgOpen )
         {
-        if( rightDelimiterPosition < a.length() - 1 )
+        std::size_t leftDelimiterPosition = a.find( this->m_LeftDelimiter );
+        if( leftDelimiterPosition != std::string::npos )
           {
-          itkExceptionMacro( "Incorrect command line specification. Missing rightDelimiterPosition? " << a );
+          itkExceptionMacro( "Incorrect command line specification. Missing leftDelimiterPosition? " << a );
+          }
+
+        std::size_t rightDelimiterPosition = a.find( this->m_RightDelimiter );
+        if( rightDelimiterPosition != std::string::npos )
+          {
+          if( rightDelimiterPosition < a.length() - 1 )
+            {
+            itkExceptionMacro( "Incorrect command line specification. Missing rightDelimiterPosition? " << a );
+            }
+          else
+            {
+            currentArg += a;
+            arguments.push_back( currentArg );
+            currentArg.clear();
+            isArgOpen = false;
+            }
           }
         else
           {
+          currentArg += a;
+          }
+        }
+      else
+        {
+        std::size_t leftDelimiterPosition = a.find( this->m_LeftDelimiter );
+        std::size_t rightDelimiterPosition = a.find( this->m_RightDelimiter );
+
+        if( leftDelimiterPosition == std::string::npos )
+          {
+          if( rightDelimiterPosition == std::string::npos )
+            {
+            currentArg += a;
+            arguments.push_back( currentArg );
+            currentArg.clear();
+            }
+          else
+            {
+            itkExceptionMacro( "Incorrect command line specification. " << a);
+            }
+          }
+        else if( leftDelimiterPosition != std::string::npos &&
+                 rightDelimiterPosition != std::string::npos &&
+                 leftDelimiterPosition < rightDelimiterPosition )
+          {
+          if( rightDelimiterPosition < a.length() - 1 )
+            {
+            itkExceptionMacro( "Incorrect command line specification. " << a );
+            }
           currentArg += a;
           arguments.push_back( currentArg );
           currentArg.clear();
           isArgOpen = false;
           }
-        }
-      else
-        {
-        currentArg += a;
-        }
-      }
-    else
-      {
-      std::size_t leftDelimiterPosition = a.find( this->m_LeftDelimiter );
-      std::size_t rightDelimiterPosition = a.find( this->m_RightDelimiter );
-
-      if( leftDelimiterPosition == std::string::npos )
-        {
-        if( rightDelimiterPosition == std::string::npos )
+        else if( rightDelimiterPosition == std::string::npos &&
+                 leftDelimiterPosition != std::string::npos )
           {
           currentArg += a;
-          arguments.push_back( currentArg );
-          currentArg.clear();
+          isArgOpen = true;
           }
-        else
-          {
-          itkExceptionMacro( "Incorrect command line specification. " << a);
-          }
-        }
-      else if( leftDelimiterPosition != std::string::npos &&
-               rightDelimiterPosition != std::string::npos &&
-               leftDelimiterPosition < rightDelimiterPosition )
-        {
-        if( rightDelimiterPosition < a.length() - 1 )
-          {
-          itkExceptionMacro( "Incorrect command line specification. " << a );
-          }
-        currentArg += a;
-        arguments.push_back( currentArg );
-        currentArg.clear();
-        isArgOpen = false;
-        }
-      else if( rightDelimiterPosition == std::string::npos &&
-               leftDelimiterPosition != std::string::npos )
-        {
-        currentArg += a;
-        isArgOpen = true;
         }
       }
     }
@@ -318,7 +335,7 @@ CommandLineParser
       return *it;
       }
     }
-  return NULL;
+  return ITK_NULLPTR;
 }
 
 CommandLineParser::OptionType::Pointer
@@ -334,7 +351,31 @@ CommandLineParser
       return *it;
       }
     }
-  return NULL;
+  return ITK_NULLPTR;
+}
+
+bool
+CommandLineParser::
+ValidateFlag(const std::string & currentFlag)
+{
+  bool validFlagFound = false;
+  for( OptionListType::const_iterator it = this->m_Options.begin(); it != this->m_Options.end(); ++it )
+    {
+    const char shortName = (*it)->GetShortName();
+    const std::string longName  = (*it)->GetLongName();
+    if( (    ( currentFlag.size() == 1 ) &&
+             ( shortName == currentFlag[0] ) )
+          || ( longName == currentFlag ) )
+      {
+      validFlagFound = true;
+      }
+    }
+
+  if ( ( ! validFlagFound ) && ( currentFlag.size() > 0 ))
+    {
+    std::cout << "ERROR:  Invalid flag provided " << currentFlag << std::endl;
+    }
+  return validFlagFound;
 }
 
 void

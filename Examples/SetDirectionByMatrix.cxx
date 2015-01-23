@@ -53,10 +53,8 @@ int ResetDirection(int argc, char *argv[])
     }
 
   typedef  float                                     outPixelType;
-  typedef  float                                     floatPixelType;
   typedef  float                                     inPixelType;
   typedef itk::Image<inPixelType, ImageDimension>    ImageType;
-  typedef itk::Image<floatPixelType, ImageDimension> IntermediateType;
   typedef itk::Image<outPixelType, ImageDimension>   OutImageType;
   typedef itk::ImageFileReader<ImageType>            readertype;
   typedef itk::ImageFileWriter<OutImageType>         writertype;
@@ -91,6 +89,7 @@ int ResetDirection(int argc, char *argv[])
     vfIter2.Set(outim->GetPixel(vfIter2.GetIndex() ) );
     }
 
+
   typename writertype::Pointer writer = writertype::New();
   writer->SetFileName(argv[2]);
   writer->SetInput(  varimage );
@@ -119,7 +118,7 @@ int SetDirectionByMatrix( std::vector<std::string> args, std::ostream* /*out_str
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {
@@ -176,8 +175,13 @@ private:
       ResetDirection<3>(argc, argv);
       }
       break;
+    case 4:
+      {
+      ResetDirection<4>(argc,argv);
+      }
+      break;
     default:
-      std::cout << "Unsupported dimension" << std::endl;
+      std::cout << "Unsupported dimension " << imageIO->GetNumberOfDimensions() << std::endl;
       return EXIT_FAILURE;
     }
   return EXIT_SUCCESS;

@@ -84,7 +84,7 @@ public:
   /** Get the rotation from an ANTSAffine3DTransform.
    * This method returns the value of the rotation of the
    * ANTSAffine3DTransform.   **/
-  const VnlQuaternionType & GetRotation(void) const
+  const VnlQuaternionType & GetRotation() const
   {
     return m_Rotation;
   }
@@ -99,16 +99,16 @@ public:
   itkGetConstReferenceMacro( K3, TScalarType );
 
   /** Set the parameters to the IdentityTransform */
-  virtual void SetIdentity(void);
+  virtual void SetIdentity() ITK_OVERRIDE;
 
   /** Set the transformation from a container of parameters.
    * This is typically used by optimizers.
    * There are 7 parameters. The first four represents the
    * quaternion and the last three represents the
    * offset. */
-  void SetParameters( const ParametersType & parameters );
+  void SetParameters( const ParametersType & parameters ) ITK_OVERRIDE;
 
-  const ParametersType & GetParameters() const;
+  const ParametersType & GetParameters() const ITK_OVERRIDE;
 
 //  /** Compute the Jacobian of the transformation.
 //   * This method computes the Jacobian matrix of the transformation.
@@ -126,7 +126,7 @@ public:
  * Get local Jacobian for the given point
  * \c j will sized properly as needed.
  */
-  virtual void ComputeJacobianWithRespectToParameters(const InputPointType  & p, JacobianType & j) const;
+  virtual void ComputeJacobianWithRespectToParameters(const InputPointType  & p, JacobianType & j) const ITK_OVERRIDE;
 
 protected:
 /*   ANTSAffine3DTransform(const MatrixType &matrix, */
@@ -137,18 +137,18 @@ protected:
   {
   };
 
-  virtual void ComputeMatrix();
+  virtual void ComputeMatrix() ITK_OVERRIDE;
 
-  virtual void ComputeMatrixParameters();
+  virtual void ComputeMatrixParameters() ITK_OVERRIDE;
 
   void SetVarRotation(const VnlQuaternionType & rotation)
   {
     m_Rotation = rotation;
   };
 
-//  const InverseMatrixType & GetInverseMatrix( void ) const;
+//  const InverseMatrixType & GetInverseMatrix() const;
 
-  void PrintSelf(std::ostream & os, Indent indent) const;
+  void PrintSelf(std::ostream & os, Indent indent) const ITK_OVERRIDE;
 
 private:
   ANTSAffine3DTransform(const Self &); // purposely not implemented
