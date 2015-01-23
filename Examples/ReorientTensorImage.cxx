@@ -80,7 +80,6 @@ static bool ReorientTensorImage_ParseInput(int argc, char * *argv, char *& movin
 template <int ImageDimension>
 void ReorientTensorImage(char *moving_image_filename, char *output_image_filename, TRAN_OPT_QUEUE & opt_queue)
 {
-  typedef itk::DiffusionTensor3D<double>                                         TensorType;
   typedef itk::DiffusionTensor3D<double>                                         PixelType;
   typedef itk::Image<PixelType, ImageDimension>                                  TensorImageType;
   typedef itk::Image<float, ImageDimension>                                      ImageType;
@@ -95,14 +94,14 @@ void ReorientTensorImage(char *moving_image_filename, char *output_image_filenam
   // No reason to use log-euclidean space
   ReadTensorImage<TensorImageType>(img_mov, moving_image_filename, false);
 
-  typename ImageType::Pointer img_ref = NULL;
+  typename ImageType::Pointer img_ref = ITK_NULLPTR;
 
   typename ImageFileReaderType::Pointer reader_img_ref = ImageFileReaderType::New();
 
   typedef itk::TransformFileReader                    TranReaderType;
   typedef itk::ImageFileReader<DisplacementFieldType> FieldReaderType;
-  typename DisplacementFieldType::Pointer field = NULL;
-  typename AffineTransformType::Pointer aff = NULL;
+  typename DisplacementFieldType::Pointer field = ITK_NULLPTR;
+  typename AffineTransformType::Pointer aff = ITK_NULLPTR;
 
   const int kOptQueueSize = opt_queue.size();
 
@@ -173,7 +172,7 @@ int ReorientTensorImage( std::vector<std::string> args, std::ostream* /*out_stre
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {
@@ -210,8 +209,8 @@ private:
     }
 
   TRAN_OPT_QUEUE opt_queue;
-  char *         moving_image_filename = NULL;
-  char *         output_image_filename = NULL;
+  char *         moving_image_filename = ITK_NULLPTR;
+  char *         output_image_filename = ITK_NULLPTR;
 
   bool is_parsing_ok = false;
   int  dim = atoi(argv[1]);

@@ -110,7 +110,7 @@ Optional arguments:
      -a:                                        Atlases (assumed to be skull-stripped) used to cook template priors.  If atlases
                                                 aren't used then we simply smooth the single-subject template posteriors after
                                                 passing through antsCorticalThickness.sh. Example:
-        
+
  						  -a atlas1.nii.gz -a atlas2.nii.gz ... -a atlasN.nii.gz
 
      -l:                                        Labels associated with each atlas, in the same order as they are specified
@@ -425,6 +425,37 @@ if [[ ${#MALF_ATLASES[@]} -ne ${#MALF_LABELS[@]} ]]
     echo "Error:  The number of malf atlases and labels aren't equal."
   fi
 
+
+# Set up various things related to RUN_QUICK
+
+# Can't do everything fast and still get good results if there is large deformation.
+# Initiate levels of fast:
+
+# 0 - Fast SST (old ANTS) but everything else slower for quality
+# 1 - + Fast antsct to SST
+# 2 - + Fast MALF cooking
+# 3 - + Fast everything
+
+RUN_OLD_ANTS_SST_CREATION=1
+RUN_ANTSCT_TO_SST_QUICK=0
+RUN_FAST_MALF_COOKING=0
+RUN_FAST_ANTSCT_TO_GROUP_TEMPLATE=0
+
+if [[ $RUN_QUICK -gt 0 ]];
+  then
+    RUN_ANTSCT_TO_SST_QUICK=1
+  fi
+
+if [[ $RUN_QUICK -gt 1 ]];
+  then
+    RUN_FAST_MALF_COOKING=1
+  fi
+
+if [[ $RUN_QUICK -gt 2 ]];
+  then
+    RUN_FAST_ANTSCT_TO_GROUP_TEMPLATE=1
+  fi
+
 ################################################################################
 #
 # Preliminaries:
@@ -454,9 +485,12 @@ if [[ ${#ANATOMICAL_IMAGES[@]} -eq ${NUMBER_OF_MODALITIES} ]];
         SUBJECT_ANATOMICAL_IMAGES="${SUBJECT_ANATOMICAL_IMAGES} -a ${ANATOMICAL_IMAGES[$j]}"
       done
 
+    # Won't be quick unless -q 3 was specified
+    # But if you are running a longitudinal script without longitudinal data, that may not be the only problem
+
     logCmd ${ANTSPATH}/antsCorticalThickness.sh \
       -d ${DIMENSION} \
-      -q ${RUN_QUICK} \
+      -q ${RUN_FAST_ANTSCT_TO_GROUP_TEMPLATE} \
       ${SUBJECT_ANATOMICAL_IMAGES} \
       -e ${BRAIN_TEMPLATE} \
       -f ${EXTRACTION_REGISTRATION_MASK} \
@@ -524,12 +558,22 @@ for(( i=1; i < ${NUMBER_OF_MODALITIES}; i++ ))
   done
 
 TEMPLATE_Z_IMAGES=''
-for(( i=0; i < ${NUMBER_OF_MODALITIES}; i++ ))
-  do
-    TEMPLATE_Z_IMAGES="${TEMPLATE_Z_IMAGES} -z ${ANATOMICAL_IMAGES[$i]}"
-  done
 
 OUTPUT_DIRECTORY_FOR_SINGLE_SUBJECT_TEMPLATE="${OUTPUT_PREFIX}SingleSubjectTemplate/"
+
+logCmd mkdir -p ${OUTPUT_DIRECTORY_FOR_SINGLE_SUBJECT_TEMPLATE}
+
+# Pad initial template image to avoid problems with SST drifting out of FOV
+for(( i=0; i < ${NUMBER_OF_MODALITIES}; i++ ))
+  do
+    TEMPLATE_INPUT_IMAGE="${OUTPUT_DIRECTORY_FOR_SINGLE_SUBJECT_TEMPLATE}initTemplateModality${i}.nii.gz"
+
+    logCmd ${ANTSPATH}/ImageMath 3 ${TEMPLATE_INPUT_IMAGE} PadImage ${ANATOMICAL_IMAGES[$i]} 5
+
+    TEMPLATE_Z_IMAGES="${TEMPLATE_Z_IMAGES} -z ${TEMPLATE_INPUT_IMAGE}"
+  done
+
+
 SINGLE_SUBJECT_TEMPLATE=${OUTPUT_DIRECTORY_FOR_SINGLE_SUBJECT_TEMPLATE}T_template0.nii.gz
 
 time_start_sst_creation=`date +%s`
@@ -537,46 +581,51 @@ time_start_sst_creation=`date +%s`
 if [[ ! -f $SINGLE_SUBJECT_TEMPLATE ]];
   then
 
-#     logCmd ${ANTSPATH}/antsMultivariateTemplateConstruction2.sh \
-#       -d ${DIMENSION} \
-#       -o ${OUTPUT_DIRECTORY_FOR_SINGLE_SUBJECT_TEMPLATE}T_ \
-#       -a 0 \
-#       -b 0 \
-#       -g 0.25 \
-#       -i 4 \
-#       -c ${DOQSUB} \
-#       -j ${CORES} \
-#       -e ${USE_FLOAT_PRECISION} \
-#       -k ${NUMBER_OF_MODALITIES} \
-#       -w ${TEMPLATE_MODALITY_WEIGHT_VECTOR} \
-#       -q 100x70x30x3  \
-#       -f 8x4x2x1 \
-#       -s 3x2x1x0 \
-#       -n 1 \
-#       -r 1 \
-#       -l 1 \
-#       -m CC[4] \
-#       -t SyN \
-#       ${TEMPLATE_Z_IMAGES} \
-#       ${ANATOMICAL_IMAGES[@]}
-
-    logCmd ${ANTSPATH}/antsMultivariateTemplateConstruction.sh \
-      -d ${DIMENSION} \
-      -o ${OUTPUT_DIRECTORY_FOR_SINGLE_SUBJECT_TEMPLATE}T_ \
-      -b 0 \
-      -g 0.25 \
-      -i 4 \
-      -c ${DOQSUB} \
-      -j ${CORES} \
-      -k ${NUMBER_OF_MODALITIES} \
-      -w ${TEMPLATE_MODALITY_WEIGHT_VECTOR} \
-      -m 100x70x30x3  \
-      -n 1 \
-      -r 1 \
-      -s CC \
-      -t GR \
-      ${TEMPLATE_Z_IMAGES} \
-      ${ANATOMICAL_IMAGES[@]}
+    if [[ $RUN_OLD_ANTS_SST_CREATION -gt 0 ]];
+      then
+        logCmd ${ANTSPATH}/antsMultivariateTemplateConstruction.sh \
+          -d ${DIMENSION} \
+          -o ${OUTPUT_DIRECTORY_FOR_SINGLE_SUBJECT_TEMPLATE}T_ \
+          -b 0 \
+          -g 0.25 \
+          -i 4 \
+          -c ${DOQSUB} \
+          -j ${CORES} \
+          -k ${NUMBER_OF_MODALITIES} \
+          -w ${TEMPLATE_MODALITY_WEIGHT_VECTOR} \
+          -m 100x70x30x3  \
+          -n 1 \
+          -r 1 \
+          -s CC \
+          -t GR \
+          -y 0 \
+          ${TEMPLATE_Z_IMAGES} \
+          ${ANATOMICAL_IMAGES[@]}
+    else
+       logCmd ${ANTSPATH}/antsMultivariateTemplateConstruction2.sh \
+         -d ${DIMENSION} \
+         -o ${OUTPUT_DIRECTORY_FOR_SINGLE_SUBJECT_TEMPLATE}T_ \
+         -a 0 \
+         -b 0 \
+         -g 0.25 \
+         -i 4 \
+         -c ${DOQSUB} \
+         -j ${CORES} \
+         -e ${USE_FLOAT_PRECISION} \
+         -k ${NUMBER_OF_MODALITIES} \
+         -w ${TEMPLATE_MODALITY_WEIGHT_VECTOR} \
+         -q 100x70x30x3  \
+         -f 8x4x2x1 \
+         -s 3x2x1x0 \
+         -n 1 \
+         -r 1 \
+         -l 1 \
+         -m CC[4] \
+         -t SyN \
+         -y 0 \
+         ${TEMPLATE_Z_IMAGES} \
+         ${ANATOMICAL_IMAGES[@]}
+    fi
 
   fi
 
@@ -599,6 +648,7 @@ logCmd rm -f ${OUTPUT_DIRECTORY_FOR_SINGLE_SUBJECT_TEMPLATE}T_*GenericAffine*
 logCmd rm -f ${OUTPUT_DIRECTORY_FOR_SINGLE_SUBJECT_TEMPLATE}T_template0warp.nii.gz
 logCmd rm -f ${OUTPUT_DIRECTORY_FOR_SINGLE_SUBJECT_TEMPLATE}T_template0Affine.txt
 logCmd rm -f ${OUTPUT_DIRECTORY_FOR_SINGLE_SUBJECT_TEMPLATE}T_templatewarplog.txt
+logCmd rm -f ${OUTPUT_DIRECTORY_FOR_SINGLE_SUBJECT_TEMPLATE}initTemplateModality*.nii.gz
 
 # Need to change the number of iterations to  -q \
 
@@ -635,12 +685,11 @@ time_start_priors=`date +%s`
 
 if [[ ! -f ${SINGLE_SUBJECT_TEMPLATE_CORTICAL_THICKNESS} ]];
   then
-
     if [[ $DO_REGISTRATION_TO_TEMPLATE -eq 0 ]];
       then
         logCmd ${ANTSPATH}/antsCorticalThickness.sh \
           -d ${DIMENSION} \
-          -q ${RUN_QUICK} \
+          -q ${RUN_FAST_ANTSCT_TO_GROUP_TEMPLATE} \
           -a ${SINGLE_SUBJECT_TEMPLATE} \
           -e ${BRAIN_TEMPLATE} \
           -f ${EXTRACTION_REGISTRATION_MASK} \
@@ -654,7 +703,7 @@ if [[ ! -f ${SINGLE_SUBJECT_TEMPLATE_CORTICAL_THICKNESS} ]];
         logCmd ${ANTSPATH}/antsCorticalThickness.sh \
           -d ${DIMENSION} \
           -t ${REGISTRATION_TEMPLATE} \
-          -q ${RUN_QUICK} \
+          -q ${RUN_FAST_ANTSCT_TO_GROUP_TEMPLATE} \
           -a ${SINGLE_SUBJECT_TEMPLATE} \
           -e ${BRAIN_TEMPLATE} \
           -f ${EXTRACTION_REGISTRATION_MASK} \
@@ -736,7 +785,7 @@ if [[ ${SINGLE_SUBJECT_TEMPLATE_PRIORS_EXIST} -eq 0 ]];
           then
             logCmd ${ANTSPATH}/antsMalfLabeling.sh \
               -d ${DIMENSION} \
-              -q ${RUN_QUICK} \
+              -q ${RUN_FAST_MALF_COOKING} \
               -c ${DOQSUB} \
               -j ${CORES} \
               -t ${SINGLE_SUBJECT_TEMPLATE_SKULL_STRIPPED} \
@@ -868,7 +917,7 @@ for (( i=0; i < ${#ANATOMICAL_IMAGES[@]}; i+=$NUMBER_OF_MODALITIES ))
 
     logCmd ${ANTSPATH}/antsCorticalThickness.sh \
       -d ${DIMENSION} \
-      -q ${RUN_QUICK} \
+      -q ${RUN_ANTSCT_TO_SST_QUICK} \
       ${SUBJECT_ANATOMICAL_IMAGES} \
       -e ${SINGLE_SUBJECT_TEMPLATE} \
       -m ${SINGLE_SUBJECT_TEMPLATE_EXTRACTION_PRIOR} \
@@ -946,4 +995,3 @@ echo " $(( time_elapsed / 3600 ))h $(( time_elapsed %3600 / 60 ))m $(( time_elap
 echo "--------------------------------------------------------------------------------------"
 
 exit 0
-

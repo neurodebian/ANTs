@@ -51,9 +51,9 @@ FMarchingImageFilter<TLevelSet, TSpeedImage>
   this->m_OutputDirection.SetIdentity();
   this->m_OverrideOutputInformation = false;
 
-  this->m_AlivePoints = NULL;
-  this->m_TrialPoints = NULL;
-  this->m_ProcessedPoints = NULL;
+  this->m_AlivePoints = ITK_NULLPTR;
+  this->m_TrialPoints = ITK_NULLPTR;
+  this->m_ProcessedPoints = ITK_NULLPTR;
 
   this->m_SpeedConstant = 1.0;
   this->m_InverseSpeed = -1.0;
@@ -118,7 +118,7 @@ FMarchingImageFilter<TLevelSet, TSpeedImage>
   Superclass::GenerateOutputInformation();
 
   // use user-specified output information
-  if( this->GetInput() == NULL || this->m_OverrideOutputInformation )
+  if( this->GetInput() == ITK_NULLPTR || this->m_OverrideOutputInformation )
     {
     LevelSetPointer output = this->GetOutput();
     output->SetLargestPossibleRegion( this->m_OutputRegion );
@@ -235,7 +235,7 @@ FMarchingImageFilter<TLevelSet, TSpeedImage>
       if( this->m_TopologyCheck == NoHandles )
         {
         this->m_ConnectedComponentImage->SetPixel( node.GetIndex(),
-                                                   NumericTraits<typename ConnectedComponentImageType::PixelType>::One );
+                                                   NumericTraits<typename ConnectedComponentImageType::PixelType>::OneValue() );
         }
 
       outputPixel = node.GetValue();
@@ -399,9 +399,9 @@ FMarchingImageFilter<TLevelSet, TSpeedImage>
           ItC.SetLocation( node.GetIndex() );
 
           typename ConnectedComponentImageType::PixelType minLabel
-            = NumericTraits<typename ConnectedComponentImageType::PixelType>::Zero;
+            = NumericTraits<typename ConnectedComponentImageType::PixelType>::ZeroValue();
           typename ConnectedComponentImageType::PixelType otherLabel
-            = NumericTraits<typename ConnectedComponentImageType::PixelType>::Zero;
+            = NumericTraits<typename ConnectedComponentImageType::PixelType>::ZeroValue();
 
           bool doesChangeCreateHandle = false;
           for( unsigned int d = 0; d < SetDimension; d++ )
@@ -459,7 +459,7 @@ FMarchingImageFilter<TLevelSet, TSpeedImage>
     if( this->m_TopologyCheck == NoHandles )
       {
       typename ConnectedComponentImageType::PixelType neighborhoodLabel
-        = NumericTraits<typename ConnectedComponentImageType::PixelType>::Zero;
+        = NumericTraits<typename ConnectedComponentImageType::PixelType>::ZeroValue();
 
       typename NeighborhoodIteratorType::RadiusType radius;
       radius.Fill( 1 );
@@ -614,7 +614,6 @@ FMarchingImageFilter<TLevelSet, TSpeedImage>
   bb = 0.0;
   if( speedImage )
     {
-    typedef typename SpeedImageType::PixelType SpeedPixelType;
     cc = (double) speedImage->GetPixel( index ) / this->m_NormalizationFactor;
     cc = -1.0 * vnl_math_sqr( 1.0 / cc );
     }

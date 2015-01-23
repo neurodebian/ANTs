@@ -52,13 +52,13 @@ CrossCorrelationRegistrationFunction<TFixedImage, TMovingImage, TDisplacementFie
   m_TimeStep = 1.0;
   m_DenominatorThreshold = 1e-9;
   m_IntensityDifferenceThreshold = 0.001;
-  Superclass::m_MovingImage = NULL;
-  m_MetricGradientImage = NULL;
-  Superclass::m_FixedImage = NULL;
+  Superclass::m_MovingImage = ITK_NULLPTR;
+  m_MetricGradientImage = ITK_NULLPTR;
+  Superclass::m_FixedImage = ITK_NULLPTR;
   m_FixedImageSpacing.Fill( 1.0 );
   m_FixedImageOrigin.Fill( 0.0 );
   m_FixedImageGradientCalculator = GradientCalculatorType::New();
-  binaryimage = NULL;
+  binaryimage = ITK_NULLPTR;
   m_FullyRobust = false;
   m_MovingImageGradientCalculator = GradientCalculatorType::New();
 
@@ -69,13 +69,13 @@ CrossCorrelationRegistrationFunction<TFixedImage, TMovingImage, TDisplacementFie
       interp.GetPointer() );
   for( int i = 0; i < 5; i++ )
     {
-    finitediffimages[i] = NULL;
+    finitediffimages[i] = ITK_NULLPTR;
     }
 
   m_NumberOfHistogramBins = 32;
 
-  m_FixedImageMask = NULL;
-  m_MovingImageMask = NULL;
+  m_FixedImageMask = ITK_NULLPTR;
+  m_MovingImageMask = ITK_NULLPTR;
 }
 
 /*
@@ -107,7 +107,6 @@ void
 CrossCorrelationRegistrationFunction<TFixedImage, TMovingImage, TDisplacementField>
 ::InitializeIteration()
 {
-  typedef ImageRegionIteratorWithIndex<MetricImageType> ittype;
   if( !Superclass::m_MovingImage || !Superclass::m_FixedImage || !m_MovingImageInterpolator )
     {
     itkExceptionMacro( << "MovingImage, FixedImage and/or Interpolator not set" );
@@ -127,11 +126,6 @@ CrossCorrelationRegistrationFunction<TFixedImage, TMovingImage, TDisplacementFie
 
   m_MetricTotal = 0.0;
   this->m_Energy = 0.0;
-
-  typedef itk::DiscreteGaussianImageFilter<BinaryImageType, BinaryImageType> dgf1;
-//  typedef itk::DiscreteGaussianImageFilter<BinaryImageType, BinaryImageType> dgf;
-  typedef itk::MeanImageFilter<BinaryImageType, BinaryImageType>   dgf;
-  typedef itk::MedianImageFilter<BinaryImageType, BinaryImageType> dgf2;
 
   // compute the normalizer
   m_Normalizer      = 0.0;

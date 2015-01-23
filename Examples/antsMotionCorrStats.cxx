@@ -25,7 +25,8 @@
 #include "itkAffineTransform.h"
 #include "itkEuler3DTransform.h"
 #include "itkImageFileReader.h"
-
+#include "itkImageFileWriter.h"
+#include "itkTransformFileWriter.h"
 #include <sstream>
 
 namespace ants
@@ -38,16 +39,21 @@ int ants_motion_stats( itk::ants::CommandLineParser *parser )
 
   const unsigned int ImageDimension = 3;
 
-  typedef float                                     PixelType;
   typedef double                                    RealType;
 
   typedef itk::Image<RealType, ImageDimension>      ImageType;
   typedef vnl_matrix<RealType>                      vMatrix;
   vMatrix param_values;
-
+  typedef itk::Image<RealType, 4>                   TimeSeriesImageType; 
+  typedef TimeSeriesImageType::RegionType           TimeSeriesRegionType; 
+  typedef TimeSeriesImageType::IndexType            TimeSeriesIndexType;
+  typedef TimeSeriesImageType::SizeType             TimeSeriesSizeType; 
+  typedef itk::ImageRegionIterator< TimeSeriesImageType > TimeSeriesIteratorType;
+ 
   typedef itk::ImageRegionIteratorWithIndex<ImageType>      IteratorType;
   typedef itk::AffineTransform<RealType, ImageDimension>    AffineTransformType;
   typedef itk::Euler3DTransform<RealType>                   RigidTransformType;
+  typedef itk::TransformFileWriterTemplate<RealType>        TransformWriterType;
 
   typedef itk::ants::CommandLineParser ParserType;
   typedef ParserType::OptionType       OptionType;
@@ -62,6 +68,12 @@ int ants_motion_stats( itk::ants::CommandLineParser *parser )
 
   std::string outputName = "";
   std::string mocoName = "";
+  std::string spatialName = "";
+  std::string timeseriesDisplacementName = ""; 
+  unsigned long transformIndex = 0;
+  bool writeMap = false;
+  bool writeTransform = false;
+  bool timeseriesDisplacement = false; 
 
   OptionType::Pointer outputOption = parser->GetOption( "output" );
   if( outputOption && outputOption->GetNumberOfFunctions() )
@@ -74,7 +86,31 @@ int ants_motion_stats( itk::ants::CommandLineParser *parser )
     std::cerr << "Output option not specified." << std::endl;
     return EXIT_FAILURE;
     }
-  
+
+  OptionType::Pointer spatialOption = parser->GetOption( "spatial-map" );
+  if( spatialOption && spatialOption->GetNumberOfFunctions() )
+    {
+    spatialName = spatialOption->GetFunction(0)->GetName();
+    std::cout << "Spatial map output: " << spatialName << std::endl;
+    writeMap = true;
+    }
+
+  OptionType::Pointer timeseriesDisplacementOption = 
+    parser->GetOption("timeseries-displacement"); 
+  if(timeseriesDisplacementOption && timeseriesDisplacementOption->GetNumberOfFunctions())
+  {
+    timeseriesDisplacementName = timeseriesDisplacementOption->GetFunction(0)->GetName(); 
+    std::cout << "Time-series displacement map input 4d image: " << timeseriesDisplacementName << std::endl; 
+    timeseriesDisplacement = true; 
+  }
+  OptionType::Pointer transformOption = parser->GetOption( "transform" );
+  if( transformOption && transformOption->GetNumberOfFunctions() )
+    {
+    transformIndex = atoi( transformOption->GetFunction(0)->GetName().c_str() );
+    std::cout << "Index of transform to output: " << transformIndex << std::endl;
+    writeTransform = true;
+    }
+
   OptionType::Pointer mocoOption = parser->GetOption( "moco" );
   if( mocoOption && mocoOption->GetNumberOfFunctions() )
     {
@@ -90,36 +126,105 @@ int ants_motion_stats( itk::ants::CommandLineParser *parser )
   OptionType::Pointer maskOption = parser->GetOption( "mask" );
 
   ImageType::Pointer mask = ImageType::New();
-  if ( maskOption && maskOption->GetNumberOfFunctions() ) 
+  if ( maskOption && maskOption->GetNumberOfFunctions() )
     {
     ReadImage<ImageType>( mask, maskOption->GetFunction(0)->GetName().c_str()  );
     }
   else {
-    std::cerr << "Must use mask image" << std::endl;
-    return EXIT_FAILURE;
+    if ( !writeTransform )
+      {
+      std::cerr << "Must use mask image" << std::endl;
+      return EXIT_FAILURE;
+      }
     }
 
+  ImageType::Pointer map = ImageType::New();
+  if ( writeMap )
+    {
+    map->SetRegions( mask->GetLargestPossibleRegion() );
+    map->Allocate();
+    map->FillBuffer(0);
+
+    map->SetOrigin( mask->GetOrigin() );
+    map->SetSpacing( mask->GetSpacing() );
+    map->SetDirection( mask->GetDirection() );
+
+    }
+
+
+  TimeSeriesImageType::Pointer timeseriesImage = TimeSeriesImageType::New(); 
+  TimeSeriesImageType::Pointer timeseriesDisplacementImage = TimeSeriesImageType::New();
+  if ( timeseriesDisplacement )
+    {
+	  ReadImage<TimeSeriesImageType>(timeseriesImage, timeseriesDisplacementName.c_str());
+	  timeseriesDisplacementImage->SetRegions(timeseriesImage->GetLargestPossibleRegion());
+	  timeseriesDisplacementImage->Allocate();
+	  timeseriesDisplacementImage->FillBuffer(0.0);
+	  timeseriesDisplacementImage->SetOrigin(timeseriesImage->GetOrigin());
+	  timeseriesDisplacementImage->SetSpacing(timeseriesImage->GetSpacing());
+	  timeseriesDisplacementImage->SetDirection(timeseriesImage->GetDirection());
+    }
+
+  
   bool doFramewise = 0;
   doFramewise = parser->Convert<bool>( parser->GetOption( "framewise" )->GetFunction()->GetName() );
   std::cout << "Framewise = " << doFramewise << std::endl;
-  
+
   MocoReaderType::Pointer mocoReader = MocoReaderType::New();
   mocoReader->SetFileName( mocoName.c_str() );
   mocoReader->SetFieldDelimiterCharacter( ',' );
   mocoReader->HasColumnHeadersOn();
   mocoReader->HasRowHeadersOff();
   mocoReader->Update();
-  
+
   MocoDataArrayType::Pointer mocoDataArray = mocoReader->GetOutput();
-  std::cout << "Read motion correction data of size: " << mocoDataArray->GetMatrix().rows() << " x " 
+  std::cout << "Read motion correction data of size: " << mocoDataArray->GetMatrix().rows() << " x "
             << mocoDataArray->GetMatrix().cols() << std::endl;
 
   unsigned int nTransformParams = mocoDataArray->GetMatrix().cols() - 2;
   //std::cout << "# Transform parameters = " << nTransformParams << std::endl;
 
   WriterMatrixType dataMatrix( mocoDataArray->GetMatrix().rows(), 2 );
-  
-  for ( unsigned int i=0; i<mocoDataArray->GetMatrix().rows(); i++ ) 
+
+  // Extract a single 3D transform and write to file
+  if ( writeTransform  ) {
+
+    AffineTransformType::Pointer affineTransform1 = AffineTransformType::New();
+    AffineTransformType::ParametersType params1;
+    params1.SetSize( nTransformParams );
+
+    for ( unsigned int t=0; t<nTransformParams; t++ )
+      {
+      params1[t] = mocoDataArray->GetMatrix()(transformIndex,t+2);
+      }
+
+    // If rigid motion corretion
+    if ( nTransformParams == 6 )
+      {
+      RigidTransformType::Pointer rigid1 = RigidTransformType::New();
+      rigid1->SetParameters( params1 );
+      affineTransform1->SetMatrix( rigid1->GetMatrix() );
+      affineTransform1->SetTranslation( rigid1->GetTranslation() );
+      }
+    else if ( nTransformParams == 12 )
+      {
+      affineTransform1->SetParameters( params1 );
+      }
+    else
+      {
+      std::cout << "Unknown transform type! - Exiting" << std::endl;
+      return EXIT_FAILURE;
+      }
+
+    TransformWriterType::Pointer transformWriter = TransformWriterType::New();
+    transformWriter->SetInput( affineTransform1 );
+    transformWriter->SetFileName( outputName.c_str() );
+    transformWriter->Update();
+
+    return EXIT_SUCCESS;
+  }
+
+  for ( unsigned int i=0; i<mocoDataArray->GetMatrix().rows(); i++ )
     {
 
     AffineTransformType::Pointer affineTransform1 = AffineTransformType::New();
@@ -129,7 +234,7 @@ int ants_motion_stats( itk::ants::CommandLineParser *parser )
     params1.SetSize( nTransformParams );
     params2.SetSize( nTransformParams );
 
-    for ( unsigned int t=0; t<nTransformParams; t++ ) 
+    for ( unsigned int t=0; t<nTransformParams; t++ )
       {
       params1[t] = mocoDataArray->GetMatrix()(i,t+2);
       if ( i < (mocoDataArray->GetMatrix().rows()-1) )
@@ -138,7 +243,7 @@ int ants_motion_stats( itk::ants::CommandLineParser *parser )
         }
       }
 
-    // If rigid motion corretion
+    // If rigid motion correction
     if ( nTransformParams == 6 )
       {
       RigidTransformType::Pointer rigid1 = RigidTransformType::New();
@@ -151,14 +256,14 @@ int ants_motion_stats( itk::ants::CommandLineParser *parser )
 
       affineTransform2->SetMatrix( rigid2->GetMatrix() );
       affineTransform2->SetTranslation( rigid2->GetTranslation() );
-  
+
       }
     else if ( nTransformParams == 12 )
       {
       affineTransform1->SetParameters( params1 );
       affineTransform2->SetParameters( params2 );
       }
-    else 
+    else
       {
       std::cout << "Unknown transform type! - Exiting" << std::endl;
       return EXIT_FAILURE;
@@ -169,45 +274,75 @@ int ants_motion_stats( itk::ants::CommandLineParser *parser )
     double meanDisplacement = 0.0;
     double maxDisplacement = 0.0;
     double count = 0;
-
-    IteratorType it( mask, mask->GetLargestPossibleRegion() );
-    while( !it.IsAtEnd() ) 
-      {
     
+    // we iterate over the time-series one time volume at a time
+    TimeSeriesRegionType timeSeriesRegion; 
+    TimeSeriesIndexType timeSeriesIndex; 
+    TimeSeriesSizeType timeSeriesSize; 
+    if(timeseriesDisplacement){
+      for(int jj=0; jj<3; jj++){
+        timeSeriesIndex[jj] = mask->GetLargestPossibleRegion().GetIndex()[jj]; 
+        timeSeriesSize[jj] = mask->GetLargestPossibleRegion().GetSize()[jj]; 
+      }
+      timeSeriesIndex[3] = i; 
+      timeSeriesSize[3] = 1;
+      timeSeriesRegion.SetIndex(timeSeriesIndex); 
+      timeSeriesRegion.SetSize(timeSeriesSize);
+    }  
+    TimeSeriesIteratorType timeseriesIterator(timeseriesDisplacementImage, timeSeriesRegion); 
+    IteratorType it( mask, mask->GetLargestPossibleRegion() );
+    while( !it.IsAtEnd() )
+      {
+
       if ( it.Value() > 0 )
-        {    
+        {
+
         ImageType::IndexType idx = it.GetIndex();
         ImageType::PointType pt;
         mask->TransformIndexToPhysicalPoint(idx,pt);
-      
+
         ImageType::PointType pt1 = affineTransform1->TransformPoint( pt );
-      
+
         double dist = 0;
-        if ( doFramewise && ( i < (mocoDataArray->GetMatrix().rows()-1) ) ) 
+        if ( doFramewise && ( i < (mocoDataArray->GetMatrix().rows()-1) ) )
           {
           ImageType::PointType pt2 = affineTransform2->TransformPoint( pt );
           dist = pt1.EuclideanDistanceTo(pt2);
+          if ( writeMap )
+            {
+            map->SetPixel( idx, map->GetPixel(idx) + dist / (mocoDataArray->GetMatrix().rows()-1) );
+            }
           }
-        else 
+        else
           {
           dist = pt.EuclideanDistanceTo(pt1);
+          if ( writeMap )
+            {
+            map->SetPixel( idx, map->GetPixel(idx) + dist / mocoDataArray->GetMatrix().rows() );
+            }
           }
-        
-        if ( doFramewise && ( i == mocoDataArray->GetMatrix().rows()-1) ) 
+
+        if ( doFramewise && ( i == mocoDataArray->GetMatrix().rows()-1) )
           {
           dist = 0.0;
           }
 
 
-        if ( dist > maxDisplacement ) 
+
+        if ( dist > maxDisplacement )
           {
           maxDisplacement = dist;
           }
         meanDisplacement += dist;
         ++count;
-
+        if(timeseriesDisplacement) {
+          timeseriesIterator.Set(dist);
+        } 
         }
-      ++it; 
+      ++it;
+      if(timeseriesDisplacement) {
+        ++timeseriesIterator; 
+      }
       }
 
     meanDisplacement /= count;
@@ -224,7 +359,21 @@ int ants_motion_stats( itk::ants::CommandLineParser *parser )
   writer->SetInput( &dataMatrix );
   writer->SetFileName( outputOption->GetFunction(0)->GetName().c_str() );
   writer->Write();
+
+  if (writeMap)
+    {
+    WriteImage<ImageType>( map, spatialOption->GetFunction(0)->GetName().c_str()  );
+    }
   
+  if(timeseriesDisplacement){
+	std::string tsOutImageName = outputName;
+    std::size_t lastdot = outputName.find_last_of(".");
+    if (lastdot != std::string::npos)
+    	tsOutImageName = outputName.substr(0, lastdot);
+    tsOutImageName += ".nii.gz";
+    WriteImage<TimeSeriesImageType>(timeseriesDisplacementImage, tsOutImageName.c_str());
+  }
+
   return EXIT_SUCCESS;
 }
 
@@ -254,13 +403,24 @@ void antsMotionCorrStatsInitializeCommandLineOptions( itk::ants::CommandLinePars
     }
 
     {
-    std::string description = std::string( "Specify the output file for summary stats" );
+    std::string description = std::string( "Specify the output file" );
 
     OptionType::Pointer option = OptionType::New();
     option->SetLongName( "output" );
     option->SetShortName( 'o' );
     option->SetDescription( description );
     option->SetUsageOption( 0, "corrected.csv" );
+    parser->AddOption( option );
+    }
+
+    {
+    std::string description = std::string( "Specify the index for a 3D transform to output" );
+
+    OptionType::Pointer option = OptionType::New();
+    option->SetLongName( "transform" );
+    option->SetShortName( 't' );
+    option->SetDescription( description );
+    //option->SetUsageOption( 0, "0" );
     parser->AddOption( option );
     }
 
@@ -275,6 +435,25 @@ void antsMotionCorrStatsInitializeCommandLineOptions( itk::ants::CommandLinePars
     parser->AddOption( option );
     }
 
+    {
+    std::string description = std::string( "output image of displacement magnitude" );
+    OptionType::Pointer option = OptionType::New();
+    option->SetLongName("spatial-map");
+    option->SetShortName( 's' );
+    option->SetDescription( description );
+    //option->AddFunction( std::string( "0" ) );
+    parser->AddOption( option );
+    }
+
+    { 
+    std::string description = 
+      std::string("output 4d time-series image of displacement magnitude");
+    OptionType::Pointer option = OptionType::New(); 
+    option->SetLongName("timeseries-displacement"); 
+    option->SetShortName('d');
+    option->SetDescription(description); 
+    parser->AddOption(option);  
+    }
     {
     std::string description = std::string( "Print the help menu (short version)." );
 
@@ -317,7 +496,7 @@ int antsMotionCorrStats( std::vector<std::string> args, std::ostream * /*out_str
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {
@@ -351,7 +530,10 @@ private:
   parser->SetCommandDescription( commandDescription );
   antsMotionCorrStatsInitializeCommandLineOptions( parser );
 
-  parser->Parse( argc, argv );
+  if( parser->Parse( argc, argv ) == EXIT_FAILURE )
+    {
+    return EXIT_FAILURE;
+    }
 
   if( argc < 2 || parser->Convert<bool>( parser->GetOption( "help" )->GetFunction()->GetName() ) )
     {

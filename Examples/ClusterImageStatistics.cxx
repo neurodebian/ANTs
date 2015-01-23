@@ -47,24 +47,11 @@ int  ClusterStatistics(unsigned int argc, char *argv[])
 {
   typedef float PixelType;
 //  const unsigned int ImageDimension = AvantsImageDimension;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   // typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
 
-  typedef float                                                            InternalPixelType;
   typedef unsigned long                                                    ULPixelType;
   typedef itk::Image<ULPixelType, ImageDimension>                          labelimagetype;
-  typedef ImageType                                                        InternalImageType;
-  typedef ImageType                                                        OutputImageType;
   typedef itk::ConnectedComponentImageFilter<ImageType, labelimagetype>    FilterType;
   typedef itk::RelabelComponentImageFilter<labelimagetype, labelimagetype> RelabelType;
 
@@ -77,9 +64,9 @@ int  ClusterStatistics(unsigned int argc, char *argv[])
   float       minSize = clusterthresh;
   float       valuethresh = atof(argv[6]);
   //  std::cout << " Cth " << clusterthresh << " Vth " << valuethresh << std::endl;
-  typename ImageType::Pointer valimage = NULL;
-  typename ImageType::Pointer roiimage = NULL;
-  typename ImageType::Pointer labelimage = NULL;
+  typename ImageType::Pointer valimage = ITK_NULLPTR;
+  typename ImageType::Pointer roiimage = ITK_NULLPTR;
+  typename ImageType::Pointer labelimage = ITK_NULLPTR;
 
   ReadImage<ImageType>(roiimage, roimaskfn.c_str() );
   ReadImage<ImageType>(labelimage, labelimagefn.c_str() );
@@ -316,7 +303,7 @@ int ClusterImageStatistics( std::vector<std::string> args, std::ostream* /*out_s
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {

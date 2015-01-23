@@ -30,6 +30,7 @@
 #include "itkBSplineSyNImageRegistrationMethod.h"
 #include "itkBSplineTransform.h"
 #include "itkBSplineTransformParametersAdaptor.h"
+#include "itkCastImageFilter.h"
 #include "itkCenteredAffineTransform.h"
 #include "itkCenteredTransformInitializer.h"
 #include "itkCommand.h"
@@ -116,6 +117,7 @@ public:
   typedef itk::Image<PixelType, VImageDimension>                                     ImageType;
   typedef typename ImageType::Pointer                                                ImagePointer;
   typedef itk::ImageBase<VImageDimension>                                            ImageBaseType;
+  typedef typename ImageType::SpacingType                                            ImageSpacingType;
   typedef itk::PointSet<unsigned int, VImageDimension>                               PointSetType;
   typedef typename PointSetType::Pointer                                             PointSetPointer;
 
@@ -485,6 +487,11 @@ public:
   void SetMovingInitialTransform( const TransformType *initialTransform );
 
   /**
+   * restore the state transform and set that as an initial transform.
+   */
+  void SetRestoreStateTransform( const TransformType *initialTransform );
+
+  /**
    * add a rigid transform
    */
   void AddRigidTransform( RealType GradientStep );
@@ -609,7 +616,7 @@ public:
    * Then, for each other dimension, we find the factor ( < specified factor ) which
    * makes the subsampled image as close to isotropic (in terms of spacing) as possible.
    */
-  ShrinkFactorsPerDimensionContainerType CalculateShrinkFactorsPerDimension( unsigned int, ImagePointer );
+  ShrinkFactorsPerDimensionContainerType CalculateShrinkFactorsPerDimension( unsigned int, ImageSpacingType );
 
   /**
    * turn on histogram matching of the input images
@@ -648,12 +655,19 @@ public:
   itkGetConstMacro( WriteIntervalVolumes, unsigned int );
 
   /**
+   * turn on the option that cause the direct initialization of the linear transforms at each stage.
+   */
+  itkSetMacro( InitializeTransformsPerStage, bool );
+  itkGetConstMacro( InitializeTransformsPerStage, bool );
+  itkBooleanMacro( InitializeTransformsPerStage );
+
+  /**
    * turn on winsorize image intensity normalization
    */
   void SetWinsorizeImageIntensities( bool Winsorize, float LowerQuantile = 0.0, float UpperQuantile = 1.0 );
 
   itkGetModifiableObjectMacro( CompositeTransform, CompositeTransformType );
-
+  itkGetModifiableObjectMacro( RegistrationState, CompositeTransformType );
   /**
    * Set/Get the interpolator.  Linear is default.
    */
@@ -706,6 +720,14 @@ public:
   typename AffineTransformType::Pointer  CollapseLinearTransforms( const CompositeTransformType * );
 
   /**
+   *
+   */
+  template<class TTransformType>
+  bool InitializeWithPreviousLinearTransform(const CompositeTransformType *,
+                                             const std::string,
+                                             typename TTransformType::Pointer &);
+
+  /**
    * Compute approximate mesh size for a specified isotropic knot spacing
    */
   std::vector<unsigned int> CalculateMeshSizeForSpecifiedKnotSpacing( ImageBaseType * const,
@@ -740,6 +762,7 @@ private:
   }
 
   typename CompositeTransformType::Pointer         m_CompositeTransform;
+  typename CompositeTransformType::Pointer         m_RegistrationState;
   typename CompositeTransformType::Pointer         m_FixedInitialTransform;
   typename ImageMaskSpatialObjectType::Pointer     m_FixedImageMask;
   typename ImageMaskSpatialObjectType::Pointer     m_MovingImageMask;
@@ -766,12 +789,132 @@ private:
   bool         m_ApplyLinearTransformsToFixedImageHeader;
   unsigned int m_PrintSimilarityMeasureInterval;
   unsigned int m_WriteIntervalVolumes;
+  bool         m_InitializeTransformsPerStage;
   bool         m_AllPreviousTransformsAreLinear;
   typename CompositeTransformType::Pointer m_CompositeLinearTransformForFixedImageHeader;
 };
 
 // ##########################################################################
 // ##########################################################################
+
+/**
+ * Transform traits to generalize the rigid transform
+ */
+template <class TComputeType, unsigned int ImageDimension>
+class RigidTransformTraits
+{
+  // Don't worry about the fact that the default option is the
+  // affine Transform, that one will not actually be instantiated.
+public:
+typedef itk::AffineTransform<TComputeType, ImageDimension> TransformType;
+};
+
+template <>
+class RigidTransformTraits<double, 2>
+{
+public:
+typedef itk::Euler2DTransform<double> TransformType;
+};
+
+template <>
+class RigidTransformTraits<float, 2>
+{
+public:
+typedef itk::Euler2DTransform<float> TransformType;
+};
+
+template <>
+class RigidTransformTraits<double, 3>
+{
+public:
+  // typedef itk::VersorRigid3DTransform<double>    TransformType;
+  // typedef itk::QuaternionRigidTransform<double>  TransformType;
+typedef itk::Euler3DTransform<double> TransformType;
+};
+
+template <>
+class RigidTransformTraits<float, 3>
+{
+public:
+  // typedef itk::VersorRigid3DTransform<float>    TransformType;
+  // typedef itk::QuaternionRigidTransform<float>  TransformType;
+typedef itk::Euler3DTransform<float> TransformType;
+};
+
+template <class TComputeType, unsigned int ImageDimension>
+class SimilarityTransformTraits
+{
+// Don't worry about the fact that the default option is the
+// affine Transform, that one will not actually be instantiated.
+public:
+typedef itk::AffineTransform<TComputeType, ImageDimension> TransformType;
+};
+
+template <>
+class SimilarityTransformTraits<double, 2>
+{
+public:
+typedef itk::Similarity2DTransform<double> TransformType;
+};
+
+template <>
+class SimilarityTransformTraits<float, 2>
+{
+public:
+typedef itk::Similarity2DTransform<float> TransformType;
+};
+
+template <>
+class SimilarityTransformTraits<double, 3>
+{
+public:
+typedef itk::Similarity3DTransform<double> TransformType;
+};
+
+template <>
+class SimilarityTransformTraits<float, 3>
+{
+public:
+typedef itk::Similarity3DTransform<float> TransformType;
+};
+
+template <class TComputeType, unsigned int ImageDimension>
+class CompositeAffineTransformTraits
+{
+// Don't worry about the fact that the default option is the
+// affine Transform, that one will not actually be instantiated.
+public:
+typedef itk::AffineTransform<TComputeType, ImageDimension> TransformType;
+};
+
+template <>
+class CompositeAffineTransformTraits<double, 2>
+{
+public:
+typedef itk::ANTSCenteredAffine2DTransform<double> TransformType;
+};
+
+template <>
+class CompositeAffineTransformTraits<float, 2>
+{
+public:
+typedef itk::ANTSCenteredAffine2DTransform<float> TransformType;
+};
+
+template <>
+class CompositeAffineTransformTraits<double, 3>
+{
+public:
+typedef itk::ANTSAffine3DTransform<double> TransformType;
+};
+
+template <>
+class CompositeAffineTransformTraits<float, 3>
+{
+public:
+typedef itk::ANTSAffine3DTransform<float> TransformType;
+};
+
 // ##########################################################################
 // ##########################################################################
 
@@ -787,8 +930,8 @@ GetCompositeTransformFromParserOption( typename ParserType::Pointer & parser,
   typename CompositeTransformType::Pointer compositeTransform = CompositeTransformType::New();
 
   typedef typename RegistrationHelperType::ImageType ImageType;
-  typename ImageType::Pointer fixedImage = NULL;
-  typename ImageType::Pointer movingImage = NULL;
+  typename ImageType::Pointer fixedImage = ITK_NULLPTR;
+  typename ImageType::Pointer movingImage = ITK_NULLPTR;
 
   std::deque<std::string> transformNames;
   std::deque<std::string> transformTypes;
@@ -823,7 +966,7 @@ GetCompositeTransformFromParserOption( typename ParserType::Pointer & parser,
       unsigned short initializationFeature = parser->Convert<unsigned short>(
         initialTransformOption->GetFunction( n )->GetParameter( 2 ) );
 
-      typedef itk::AffineTransform<TComputeType, VImageDimension> TransformType;
+      typedef typename RigidTransformTraits<TComputeType, VImageDimension>::TransformType  TransformType;
 
       typename TransformType::Pointer transform = TransformType::New();
 
@@ -909,8 +1052,6 @@ GetCompositeTransformFromParserOption( typename ParserType::Pointer & parser,
 
     if( !calculatedTransformFromImages )
       {
-      typedef typename RegistrationHelperType::DisplacementFieldTransformType DisplacementFieldTransformType;
-
       typedef typename RegistrationHelperType::TransformType TransformType;
       typename TransformType::Pointer initialTransform;
       if( std::strcmp( initialTransformName.c_str(), "identity" ) == 0 || std::strcmp( initialTransformName.c_str(), "Identity" ) == 0 )
@@ -928,7 +1069,7 @@ GetCompositeTransformFromParserOption( typename ParserType::Pointer & parser,
       if( initialTransform.IsNull() )
         {
         std::cout << "Can't read initial transform " << initialTransformName << std::endl;
-        return NULL;
+        return ITK_NULLPTR;
         }
       if( useInverse )
         {
@@ -936,7 +1077,7 @@ GetCompositeTransformFromParserOption( typename ParserType::Pointer & parser,
         if( initialTransform.IsNull() )
           {
           std::cout << "Inverse does not exist for " << initialTransformName << std::endl;
-          return NULL;
+          return ITK_NULLPTR;
           }
         initialTransformName = std::string( "inverse of " ) + initialTransformName;
         }

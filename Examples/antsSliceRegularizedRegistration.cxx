@@ -32,7 +32,6 @@
 #include "itkHistogramMatchingImageFilter.h"
 #include "itkIntensityWindowingImageFilter.h"
 #include "itkTransformToDisplacementFieldFilter.h"
-
 #include "itkAffineTransform.h"
 #include "itkBSplineTransform.h"
 #include "itkBSplineSmoothingOnUpdateDisplacementFieldTransform.h"
@@ -43,16 +42,13 @@
 #include "itkEuler3DTransform.h"
 #include "itkTransform.h"
 #include "itkExtractImageFilter.h"
-
 #include "itkBSplineTransformParametersAdaptor.h"
 #include "itkBSplineSmoothingOnUpdateDisplacementFieldTransformParametersAdaptor.h"
 #include "itkGaussianSmoothingOnUpdateDisplacementFieldTransformParametersAdaptor.h"
 #include "itkTimeVaryingVelocityFieldTransformParametersAdaptor.h"
-
 #include "itkGradientDescentOptimizerv4.h"
 #include "itkConjugateGradientLineSearchOptimizerv4.h"
 #include "itkQuasiNewtonOptimizerv4.h"
-
 #include "itkHistogramMatchingImageFilter.h"
 #include "itkMinimumMaximumImageCalculator.h"
 #include "itkImageFileReader.h"
@@ -66,7 +62,12 @@
 #include "itkTransformFileWriter.h"
 #include "itkSimilarity2DTransform.h"
 #include "itkSimilarity3DTransform.h"
-
+#include "itkBSplineInterpolateImageFunction.h"
+#include "itkLinearInterpolateImageFunction.h"
+#include "itkGaussianInterpolateImageFunction.h"
+#include "itkNearestNeighborInterpolateImageFunction.h"
+#include "itkWindowedSincInterpolateImageFunction.h"
+#include "itkLabelImageGaussianInterpolateImageFunction.h"
 #include <sstream>
 
 namespace ants
@@ -90,12 +91,12 @@ protected:
 
 public:
 
-  void Execute(itk::Object *caller, const itk::EventObject & event)
+  void Execute(itk::Object *caller, const itk::EventObject & event) ITK_OVERRIDE
   {
     Execute( (const itk::Object *) caller, event);
   }
 
-  void Execute(const itk::Object * object, const itk::EventObject & event)
+  void Execute(const itk::Object * object, const itk::EventObject & event) ITK_OVERRIDE
   {
     TFilter * filter = const_cast<TFilter *>( dynamic_cast<const TFilter *>( object ) );
 
@@ -170,7 +171,6 @@ typename ImageType::Pointer sliceRegularizedPreprocessImage( ImageType * inputIm
   typedef itk::Statistics::ImageToHistogramFilter<ImageType>   HistogramFilterType;
   typedef typename HistogramFilterType::InputBooleanObjectType InputBooleanObjectType;
   typedef typename HistogramFilterType::HistogramSizeType      HistogramSizeType;
-  typedef typename HistogramFilterType::HistogramType          HistogramType;
 
   HistogramSizeType histogramSize( 1 );
   histogramSize[0] = 256;
@@ -197,7 +197,7 @@ typename ImageType::Pointer sliceRegularizedPreprocessImage( ImageType * inputIm
   windowingFilter->SetOutputMaximum( upperScaleFunction );
   windowingFilter->Update();
 
-  typename ImageType::Pointer outputImage = NULL;
+  typename ImageType::Pointer outputImage = ITK_NULLPTR;
   if( histogramMatchSourceImage )
     {
     typedef itk::HistogramMatchingImageFilter<ImageType, ImageType> HistogramMatchingFilterType;
@@ -220,8 +220,9 @@ typename ImageType::Pointer sliceRegularizedPreprocessImage( ImageType * inputIm
     calc->ComputeMinimum();
     if( vnl_math_abs( calc->GetMaximum() - calc->GetMinimum() ) < 1.e-9 )
       {
-      std::cout << "Warning: bad time point - too little intensity variation" << std::endl;
-      return histogramMatchSourceImage;
+      std::cout << "Warning: bad time point - too little intensity variation"
+        << calc->GetMinimum() << " " <<  calc->GetMaximum() << std::endl;
+      return ITK_NULLPTR;
       }
     }
   else
@@ -262,12 +263,12 @@ protected:
   };
 public:
 
-  void Execute(itk::Object *caller, const itk::EventObject & event)
+  void Execute(itk::Object *caller, const itk::EventObject & event) ITK_OVERRIDE
   {
     Execute( (const itk::Object *) caller, event);
   }
 
-  void Execute(const itk::Object * object, const itk::EventObject & event)
+  void Execute(const itk::Object * object, const itk::EventObject & event) ITK_OVERRIDE
   {
     TFilter * filter = const_cast<TFilter *>( dynamic_cast<const TFilter *>( object ) );
 
@@ -347,6 +348,20 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
     return EXIT_FAILURE;
     }
 
+  std::string whichInterpolator( "linear" );
+  typename itk::ants::CommandLineParser::OptionType::Pointer interpolationOption = parser->GetOption( "interpolation" );
+  if( interpolationOption && interpolationOption->GetNumberOfFunctions() )
+    {
+    whichInterpolator = interpolationOption->GetFunction( 0 )->GetName();
+    ConvertToLowerCase( whichInterpolator );
+    }
+
+  typedef MovingImageType ImageType;
+  typename ImageType::SpacingType
+    cache_spacing_for_smoothing_sigmas(itk::NumericTraits<typename ImageType::SpacingType::ValueType>::ZeroValue());
+  unsigned int VImageDimension = ImageDimension - 1;
+  #include "make_interpolator_snip.tmpl"
+
   typename OptionType::Pointer iterationsOption = parser->GetOption( "iterations" );
   if( !iterationsOption || iterationsOption->GetNumberOfFunctions() != numberOfStages  )
     {
@@ -390,7 +405,6 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
 
   bool                doEstimateLearningRateOnce(true);
 
-  unsigned int   nparams = 2;
   itk::TimeProbe totalTimer;
   totalTimer.Start();
   typedef itk::TranslationTransform<RealType, ImageDimension-1> TranslationTransformType;
@@ -402,10 +416,9 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
   std::vector<SingleTransformItemType>                     transformUList;
   std::vector<typename FixedImageType::Pointer>            fixedSliceList;
   std::vector<typename FixedImageType::Pointer>            movingSliceList;
-  typedef itk::ImageMaskSpatialObject<ImageDimension>      ImageMaskSpatialObjectType;
   typename FixedIOImageType::Pointer                       maskImage;
   typedef itk::Image< unsigned char, ImageDimension-1 >    ImageMaskType;
-  typename ImageMaskType::Pointer mask_time_slice = NULL;
+  typename ImageMaskType::Pointer mask_time_slice = ITK_NULLPTR;
   if ( maskfn.length() > 3 )
     ReadImage<FixedIOImageType>( maskImage, maskfn.c_str() );
 
@@ -417,8 +430,8 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
     // Get the fixed and moving images
     std::string fixedImageFileName = metricOption->GetFunction( currentStage )->GetParameter( 0 );
     std::string movingImageFileName = metricOption->GetFunction( currentStage )->GetParameter( 1 );
-    typename FixedImageType::Pointer fixed_time_slice = NULL;
-    typename FixedImageType::Pointer moving_time_slice = NULL;
+    typename FixedImageType::Pointer fixed_time_slice = ITK_NULLPTR;
+    typename FixedImageType::Pointer moving_time_slice = ITK_NULLPTR;
     typename FixedIOImageType::Pointer fixedImage;
     ReadImage<FixedIOImageType>( fixedImage, fixedImageFileName.c_str() );
     unsigned int timedims = fixedImage->GetLargestPossibleRegion().GetSize()[ImageDimension-1];
@@ -559,18 +572,26 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
     for ( unsigned int loop = 0; loop < maxloop; loop++ )
     {
     RealType metricval = 0;
+    bool skipThisTimePoint = false;
     for( unsigned int timedim = 0; timedim < timedims; timedim++ )
       {
       typename FixedImageType::Pointer preprocessFixedImage =
         sliceRegularizedPreprocessImage<FixedImageType>( fixedSliceList[timedim], 0,
                                          1, 0.005, 0.995,
-                                         NULL );
+                                         ITK_NULLPTR );
 
       typename FixedImageType::Pointer preprocessMovingImage =
         sliceRegularizedPreprocessImage<FixedImageType>( movingSliceList[timedim],
                                          0, 1,
                                          0.005, 0.995,
                                          preprocessFixedImage );
+      if (  preprocessFixedImage.IsNull() || preprocessMovingImage.IsNull() )
+        {
+        preprocessFixedImage = fixedSliceList[timedim];
+        preprocessMovingImage = movingSliceList[timedim];
+        skipThisTimePoint = true;
+        }
+
 
       std::string whichMetric = metricOption->GetFunction( currentStage )->GetName();
       ConvertToLowerCase( whichMetric );
@@ -662,7 +683,6 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
         transformOption->GetFunction( currentStage )->GetParameter(  0 ) );
 
       typedef itk::ConjugateGradientLineSearchOptimizerv4 OptimizerType;
-      typedef itk::GradientDescentOptimizerv4 OptimizerType1;
       typename OptimizerType::Pointer optimizer = OptimizerType::New();
       optimizer->SetNumberOfIterations( iterations[0] );
       optimizer->SetMinimumConvergenceValue( 1.e-7 );
@@ -681,7 +701,7 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
       typename TranslationRegistrationType::Pointer translationRegistration = TranslationRegistrationType::New();
       if( std::strcmp( whichTransform.c_str(), "translation" ) == 0 )
         {
-        nparams = transformList[timedim]->GetNumberOfParameters();
+        transformList[timedim]->GetNumberOfParameters();
         metric->SetFixedImage( preprocessFixedImage );
         metric->SetVirtualDomainFromImage( preprocessFixedImage );
         metric->SetMovingImage( preprocessMovingImage );
@@ -707,6 +727,7 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
         typename TranslationCommandType::Pointer translationObserver = TranslationCommandType::New();
         translationObserver->SetNumberOfIterations( iterations );
         translationRegistration->AddObserver( itk::IterationEvent(), translationObserver );
+        if ( ! skipThisTimePoint )
         try
           {
           translationRegistration->Update();
@@ -852,8 +873,9 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
     displacementinv->FillBuffer( displacementout->GetPixel( dind ) );
     for( unsigned int timedim = 0; timedim < timedims; timedim++ )
       {
-      typedef typename itk::TransformToDisplacementFieldFilter<DisplacementFieldType, RealType> ConverterType;
-      typename ConverterType::Pointer converter = ConverterType::New();
+      typedef typename itk::TransformToDisplacementFieldFilter<DisplacementFieldType, RealType>
+               _ConverterType;
+      typename _ConverterType::Pointer converter = _ConverterType::New();
       converter->SetOutputOrigin( fixedSliceList[timedim]->GetOrigin() );
       converter->SetOutputStartIndex( fixedSliceList[timedim]->GetBufferedRegion().GetIndex() );
       converter->SetSize( fixedSliceList[timedim]->GetBufferedRegion().GetSize() );
@@ -863,9 +885,11 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
       converter->Update();
 
       // resample the moving image and then put it in its place
+      interpolator->SetInputImage( movingSliceList[timedim] );
       typedef itk::ResampleImageFilter<FixedImageType, FixedImageType> ResampleFilterType;
       typename ResampleFilterType::Pointer resampler = ResampleFilterType::New();
       resampler->SetTransform( transformList[timedim] );
+      resampler->SetInterpolator( interpolator );
       resampler->SetInput( movingSliceList[timedim] );
       resampler->SetOutputParametersFromImage( fixedSliceList[timedim] );
       resampler->SetDefaultPixelValue( 0 );
@@ -900,8 +924,9 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
 // now apply to the inverse mapﬁ
       for( unsigned int timedim = 0; timedim < timedims; timedim++ )
         {
-        typedef typename itk::TransformToDisplacementFieldFilter<DisplacementFieldType, RealType> ConverterType;
-        typename ConverterType::Pointer converter = ConverterType::New();
+        typedef typename itk::TransformToDisplacementFieldFilter<DisplacementFieldType, RealType>
+          _ConverterType;
+        typename _ConverterType::Pointer converter = _ConverterType::New();
         converter->SetOutputOrigin( movingSliceList[timedim]->GetOrigin() );
         converter->SetOutputStartIndex( movingSliceList[timedim]->GetBufferedRegion().GetIndex() );
         converter->SetSize( movingSliceList[timedim]->GetBufferedRegion().GetSize() );
@@ -917,6 +942,8 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
         typedef itk::ResampleImageFilter<FixedImageType, FixedImageType> ResampleFilterType;
         typename ResampleFilterType::Pointer resampler = ResampleFilterType::New();
         resampler->SetTransform( invtx );
+        interpolator->SetInputImage( fixedSliceList[timedim] );
+        resampler->SetInterpolator( interpolator );
         resampler->SetInput( fixedSliceList[timedim] );
         resampler->SetOutputParametersFromImage( movingSliceList[timedim] );
         resampler->SetDefaultPixelValue( 0 );
@@ -1026,6 +1053,26 @@ void antsSliceRegularizedRegistrationInitializeCommandLineOptions( itk::ants::Co
     parser->AddOption( option );
     }
 
+    {
+    std::string description =
+      std::string( "Several interpolation options are available in ITK. " )
+      + std::string( "These have all been made available." );
+
+    OptionType::Pointer option = OptionType::New();
+    option->SetLongName( "interpolation" );
+    option->SetShortName( 'n' );
+    option->SetUsageOption( 0, "Linear" );
+    option->SetUsageOption( 1, "NearestNeighbor" );
+    option->SetUsageOption( 2, "MultiLabel[<sigma=imageSpacing>,<alpha=4.0>]" );
+    option->SetUsageOption( 3, "Gaussian[<sigma=imageSpacing>,<alpha=1.0>]" );
+    option->SetUsageOption( 4, "BSpline[<order=3>]" );
+    option->SetUsageOption( 5, "CosineWindowedSinc" );
+    option->SetUsageOption( 6, "WelchWindowedSinc" );
+    option->SetUsageOption( 7, "HammingWindowedSinc" );
+    option->SetUsageOption( 8, "LanczosWindowedSinc" );
+    option->SetDescription( description );
+    parser->AddOption( option );
+    }
 
     {
     std::string description = std::string( "Several transform options are available.  The gradientStep or" )
@@ -1117,15 +1164,6 @@ void antsSliceRegularizedRegistrationInitializeCommandLineOptions( itk::ants::Co
     parser->AddOption( option );
     }
 
-    {
-    std::string description = std::string( "Print the help menu." );
-
-    OptionType::Pointer option = OptionType::New();
-    option->SetLongName( "help" );
-    option->SetDescription( description );
-    option->AddFunction( std::string( "0" ) );
-    parser->AddOption( option );
-    }
 }
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
@@ -1148,7 +1186,7 @@ int antsSliceRegularizedRegistration( std::vector<std::string> args, std::ostrea
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {
@@ -1198,7 +1236,10 @@ private:
   parser->SetCommandDescription( commandDescription );
   antsSliceRegularizedRegistrationInitializeCommandLineOptions( parser );
 
-  parser->Parse( argc, argv );
+  if( parser->Parse( argc, argv ) == EXIT_FAILURE )
+    {
+    return EXIT_FAILURE;
+    }
 
   if( argc < 2 || parser->Convert<bool>( parser->GetOption( "help" )->GetFunction()->GetName() ) )
     {

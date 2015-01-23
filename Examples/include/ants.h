@@ -33,6 +33,8 @@
 
 #include "antsSurf.h"
 
+#include "antsUtilitiesTesting.h"
+
 #include "ANTSUseDeformationFieldToGetAffineTransform.h"
 
 #include "ANTSUseLandmarkImagesToGetAffineTransform.h"
@@ -101,7 +103,11 @@
 
 #include "ImageMath.h"
 
+#include "ImageIntensityStatistics.h"
+
 #include "antsAffineInitializer.h"
+
+// #include "antsSimilarityInitializer.h"
 
 #include "ImageSetStatistics.h"
 
@@ -118,6 +124,8 @@
 #include "LabelOverlapMeasures.h"
 
 #include "LaplacianThickness.h"
+
+#include "LesionFilling.h"
 
 #include "MeasureImageSimilarity.h"
 
@@ -185,8 +193,12 @@
 
 #include "ConvertTransformFile.h"
 
-#include "compareTwoCompositeTransforms.h"
+#include "compareTwoTransforms.h"
 
 #include "GetConnectedComponentsFeatureImages.h"
+
+#include "TextureRunLengthFeatures.h"
+
+#include "TextureCooccurrenceFeatures.h"
 
 #endif // ants_h

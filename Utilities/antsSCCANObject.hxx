@@ -60,9 +60,9 @@ antsSCCANObject<TInputImage, TRealType>::antsSCCANObject()
   this->m_PinvTolerance = 1.e-6;
   this->m_PercentVarianceForPseudoInverse = 0.9;
   this->m_MaximumNumberOfIterations = 20;
-  this->m_MaskImageP = NULL;
-  this->m_MaskImageQ = NULL;
-  this->m_MaskImageR = NULL;
+  this->m_MaskImageP = ITK_NULLPTR;
+  this->m_MaskImageQ = ITK_NULLPTR;
+  this->m_MaskImageR = ITK_NULLPTR;
   this->m_KeepPositiveP = true;
   this->m_KeepPositiveQ = true;
   this->m_KeepPositiveR = true;
@@ -94,7 +94,7 @@ antsSCCANObject<TInputImage, TRealType>
   weights->SetRegions( mask->GetLargestPossibleRegion() );
   weights->SetDirection( mask->GetDirection() );
   weights->Allocate();
-  weights->FillBuffer( itk::NumericTraits<PixelType>::Zero );
+  weights->FillBuffer( itk::NumericTraits<PixelType>::ZeroValue() );
 
   // overwrite weights with vector values;
   unsigned long vecind = 0;
@@ -166,7 +166,7 @@ antsSCCANObject<TInputImage, TRealType>
   weights->SetRegions( mask->GetLargestPossibleRegion() );
   weights->SetDirection( mask->GetDirection() );
   weights->Allocate();
-  weights->FillBuffer( itk::NumericTraits<PixelType>::Zero );
+  weights->FillBuffer( itk::NumericTraits<PixelType>::ZeroValue() );
 
   typename RealImageTypeDminus1::Pointer maskdm1;
   typedef itk::ExtractImageFilter<TInputImage, RealImageTypeDminus1> ExtractFilterType;
@@ -328,7 +328,6 @@ antsSCCANObject<TInputImage, TRealType>
   if ( ImageDimension == 4 ) return this->ClusterThresholdVariate4D( w_p, mask,  minclust );
   typedef unsigned long                                                    ULPixelType;
   typedef itk::Image<ULPixelType, ImageDimension>                          labelimagetype;
-  typedef TInputImage                                                      InternalImageType;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                     fIterator;
   typedef itk::ImageRegionIteratorWithIndex<labelimagetype>                Iterator;
   typedef itk::ConnectedComponentImageFilter<TInputImage, labelimagetype>  FilterType;
@@ -439,7 +438,6 @@ antsSCCANObject<TInputImage, TRealType>
     }
   typedef unsigned long                                                    ULPixelType;
   typedef itk::Image<ULPixelType, ImageDimension>                          labelimagetype;
-  typedef TInputImage                                                      InternalImageType;
   typedef itk::ImageRegionIteratorWithIndex<labelimagetype>                Iterator;
   typedef itk::ConnectedComponentImageFilter<TInputImage, labelimagetype>  FilterType;
   typedef itk::RelabelComponentImageFilter<labelimagetype, labelimagetype> RelabelType;
@@ -5492,7 +5490,6 @@ TRealType antsSCCANObject<TInputImage, TRealType>
   unsigned int       maxloop = this->m_MaximumNumberOfIterations;
   unsigned int       innerloop = 1;
   unsigned int       loop = 0;
-  bool               energyincreases = true;
   RealType           energy = 0;
   RealType           lastenergy = 0;
   VectorType gradsteps( n_vecs , basegradstep );
@@ -5519,12 +5516,7 @@ TRealType antsSCCANObject<TInputImage, TRealType>
     energy = this->m_CanonicalCorrelations.one_norm() / ( float ) n_vecs_in;
     if( this->m_GradStep < 1.e-12 ) // || ( vnl_math_abs( energy - lastenergy ) < this->m_Epsilon  && !changedgrad ) )
       {
-      energyincreases = false;
       std::cout << " this->m_GradStep : " << this->m_GradStep << " energy : " << energy << " changedgrad : " << changedgrad << std::endl;
-      }
-    else
-      {
-      energyincreases = true;
       }
     gradsteps[ k ] = this->m_GradStep;
     loop++;

@@ -102,6 +102,12 @@ Optional arguments:
      -p: Save posteriors:  Save posteriors in specified c-style format e.g. posterior%04d.nii.gz
                            Need to specify output directory.
 
+     -f: Float precision: Use float precision (default = 1) -- 0 == double, 1 == float.
+
+     -x: Target mask image:  Used to check the quality of registrations, if available.
+
+     -z: Dice threshold for target mask image and warped labels (default = 0.85).
+
 Example:
 
 `basename $0` -d 3 -t target.nii.gz -o malf \
@@ -177,6 +183,12 @@ Optional arguments:
 
      -p: Save posteriors:  Save posteriors in specified c-style format e.g. posterior%04d.nii.gz
                            Need to specify output directory.
+
+     -f: Float precision: Use float precision (default = 1) -- 0 == double, 1 == float.
+
+     -x: Target mask image:  Used to check the quality of registrations, if available.
+
+     -z: Dice threshold for target mask image and warped labels (default = 0.85).
 
 Requirements:
 
@@ -287,10 +299,13 @@ ATLAS_LABELS=()
 KEEP_ALL_IMAGES=0
 DOQSUB=0
 CORES=1
+PRECISION=0
 
 XGRID_OPTS=""
 SCRIPT_PREPEND=""
 QSUB_OPTS=""
+TARGET_MASK_IMAGE=""
+DICE_THRESHOLD=0.85
 
 ##Getting system info from linux can be done with these variables.
 # RAM=`cat /proc/meminfo | sed -n -e '/MemTotal/p' | awk '{ printf "%s %s\n", $2, $3 ; }' | cut -d " " -f 1`
@@ -312,7 +327,7 @@ if [[ "$1" == "-h" ]];
 MAJORITYVOTE=0
 RUNQUICK=1
 # reading command line arguments
-while getopts "c:d:g:h:j:k:l:m:o:p:t:q:" OPT
+while getopts "c:d:f:g:h:j:k:l:m:o:p:t:q:x:z:" OPT
   do
   case $OPT in
       h) #help
@@ -334,6 +349,9 @@ while getopts "c:d:g:h:j:k:l:m:o:p:t:q:" OPT
        echo " Dimensionality is only valid for 2 or 3.  You passed -d $DIM."
        exit 1
      fi
+   ;;
+      f)
+      PRECISION=$OPTARG
    ;;
       g)
    ATLAS_IMAGES[${#ATLAS_IMAGES[@]}]=$OPTARG
@@ -362,6 +380,12 @@ while getopts "c:d:g:h:j:k:l:m:o:p:t:q:" OPT
    ;;
       t)
    TARGET_IMAGE=$OPTARG
+   ;;
+      x)
+   TARGET_MASK_IMAGE=$OPTARG
+   ;;
+      z)
+   DICE_THRESHOLD=$OPTARG
    ;;
       \?) # getopts issues an error message
       echo "$USAGE" >&2
@@ -392,6 +416,12 @@ if [[ ${#ATLAS_IMAGES[@]} -ne ${#ATLAS_LABELS[@]} ]];
     exit 1
   fi
 
+PRECISIONFLAG='f'
+if [[ ${PRECISION} -eq 0 ]];
+  then
+    PRECISIONFLAG='d'
+  fi
+
 mkdir ${OUTPUT_DIR}
 
 ##########################################################################
@@ -420,36 +450,45 @@ for (( i = 0; i < ${#ATLAS_IMAGES[@]}; i++ ))
   do
     IMG_BASE=`basename ${ATLAS_IMAGES[$i]}`
     BASENAME=` echo ${IMG_BASE} | cut -d '.' -f 1 `
+
+    qscript="${OUTPUT_DIR}/job_${BASENAME}_${i}.sh"
+
+    WARPED_ATLAS_IMAGES[${#WARPED_ATLAS_IMAGES[@]}]="${OUTPUT_PREFIX}${BASENAME}_${i}_Warped.nii.gz"
+    INVERSE_WARPED_ATLAS_IMAGES[${#INVERSE_WARPED_ATLAS_IMAGES[@]}]="${OUTPUT_PREFIX}${BASENAME}_${i}_InverseWarped.nii.gz"
+    WARPED_ATLAS_LABELS[${#WARPED_ATLAS_LABELS[@]}]="${OUTPUT_PREFIX}${BASENAME}_${i}_WarpedLabels.nii.gz"
+    WARP_FIELDS[${#WARP_FIELDS[@]}]="${OUTPUT_PREFIX}${BASENAME}_${i}_1Warp.nii.gz"
+    INVERSE_WARP_FIELDS[${#INVERSE_WARP_FIELDS[@]}]="${OUTPUT_PREFIX}${BASENAME}_${i}_1InverseWarp.nii.gz"
+    AFFINE_FILES[${#AFFINE_FILES[@]}]="${OUTPUT_PREFIX}${BASENAME}_${i}_0GenericAffine.mat"
+
+    if [[ -f "${OUTPUT_PREFIX}${BASENAME}_${i}_WarpedLabels.nii.gz" ]];
+      then
+        echo ${OUTPUT_PREFIX}${BASENAME}_${i}_WarpedLabels.nii.gz already exists.
+        rm -f $qscript
+        continue
+      fi
+
     regcall=${ANTSPATH}/antsRegistrationSyN.sh
-    if [[ $RUNQUICK -eq 1 ]]; then
-      regcall=${ANTSPATH}/antsRegistrationSyNQuick.sh
-    fi
+    if [[ $RUNQUICK -eq 1 ]];
+      then
+        regcall=${ANTSPATH}/antsRegistrationSyNQuick.sh
+      fi
     registrationCall="$regcall \
                           -d ${DIM} \
-                          -p f \
+                          -p ${PRECISIONFLAG} \
                           -j 1 \
                           -f ${TARGET_IMAGE} \
                           -m ${ATLAS_IMAGES[$i]} \
-                          -o ${OUTPUT_PREFIX}${BASENAME} > ${OUTPUT_PREFIX}${BASENAME}_log.txt"
+                          -o ${OUTPUT_PREFIX}${BASENAME}_${i}_ > ${OUTPUT_PREFIX}${BASENAME}_${i}_log.txt"
 
     labelXfrmCall="${ANTSPATH}/antsApplyTransforms \
                           -d ${DIM} \
                           --float 1 \
                           -i ${ATLAS_LABELS[$i]} \
                           -r ${TARGET_IMAGE} \
-                          -o ${OUTPUT_PREFIX}${BASENAME}WarpedLabels.nii.gz \
+                          -o ${OUTPUT_PREFIX}${BASENAME}_${i}_WarpedLabels.nii.gz \
                           -n NearestNeighbor \
-                          -t ${OUTPUT_PREFIX}${BASENAME}1Warp.nii.gz \
-                          -t ${OUTPUT_PREFIX}${BASENAME}0GenericAffine.mat >> ${OUTPUT_PREFIX}${BASENAME}_log.txt"
-
-    WARPED_ATLAS_IMAGES[${#WARPED_ATLAS_IMAGES[@]}]="${OUTPUT_PREFIX}${BASENAME}Warped.nii.gz"
-    INVERSE_WARPED_ATLAS_IMAGES[${#INVERSE_WARPED_ATLAS_IMAGES[@]}]="${OUTPUT_PREFIX}${BASENAME}InverseWarped.nii.gz"
-    WARPED_ATLAS_LABELS[${#WARPED_ATLAS_LABELS[@]}]="${OUTPUT_PREFIX}${BASENAME}WarpedLabels.nii.gz"
-    WARP_FIELDS[${#WARP_FIELDS[@]}]="${OUTPUT_PREFIX}${BASENAME}1Warp.nii.gz"
-    INVERSE_WARP_FIELDS[${#INVERSE_WARP_FIELDS[@]}]="${OUTPUT_PREFIX}${BASENAME}1InverseWarp.nii.gz"
-    AFFINE_FILES[${#AFFINE_FILES[@]}]="${OUTPUT_PREFIX}${BASENAME}0GenericAffine.mat"
-
-    qscript="${OUTPUT_DIR}/job_${BASENAME}.sh"
+                          -t ${OUTPUT_PREFIX}${BASENAME}_${i}_1Warp.nii.gz \
+                          -t ${OUTPUT_PREFIX}${BASENAME}_${i}_0GenericAffine.mat >> ${OUTPUT_PREFIX}${BASENAME}_${i}_log.txt"
 
     echo "$registrationCall" > $qscript
     echo "$labelXfrmCall" >> $qscript
@@ -506,8 +545,28 @@ if [[ $DOQSUB -eq 0 ]];
         echo ${WARPED_ATLAS_IMAGES[$i]}
         if [[ -f ${WARPED_ATLAS_IMAGES[$i]} ]] && [[ -f ${WARPED_ATLAS_LABELS[$i]} ]];
           then
-            EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
-            EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+            if [[ -f ${TARGET_MASK_IMAGE} ]];
+              then
+                TMP_WARPED_ATLAS_LABEL_MASK=${OUTPUT_PREFIX}WarpedAtlasLabelMask.nii.gz
+                ${ANTSPATH}/ThresholdImage ${DIM} ${WARPED_ATLAS_LABELS[$i]} ${TMP_WARPED_ATLAS_LABEL_MASK} 0 0 0 1
+
+                OVERLAP_MEASURES=( `${ANTSPATH}/LabelOverlapMeasures ${DIM} ${TMP_WARPED_ATLAS_LABEL_MASK} ${TARGET_MASK_IMAGE} 1` )
+                TOKENS=( ${OVERLAP_MEASURES[1]//,/\ } )
+                DICE_OVERLAP=${TOKENS[3]}
+
+                if (( $(echo "${DICE_OVERLAP} >= ${DICE_THRESHOLD}" | bc -l) ));
+                  then
+                    EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
+                    EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+                  else
+                    echo Not including ${WARPED_ATLAS_IMAGES[$i]} \(Dice = ${DICE_OVERLAP}\)
+                  fi
+
+                rm -f $TMP_WARPED_ATLAS_LABEL_MASK
+              else
+                EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
+                EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+              fi
           fi
       done
 
@@ -525,7 +584,7 @@ if [[ $DOQSUB -eq 0 ]];
 
     if [[ $MAJORITYVOTE -eq 1 ]];
       then
-        malfCall="${ANTSPATH}/ImageMath ${DIM} ${OUTPUT_PREFIX}MajorityVotingLabels.nii.gz MajorityVoting ${WARPED_ATLAS_LABELS[@]} "
+        malfCall="${ANTSPATH}/ImageMath ${DIM} ${OUTPUT_PREFIX}MajorityVotingLabels.nii.gz MajorityVoting ${EXISTING_WARPED_ATLAS_LABELS[@]} "
       fi
 
     qscript2="${OUTPUT_PREFIX}MALF.sh"
@@ -542,7 +601,7 @@ if [[ $DOQSUB -eq 1 ]];
     echo " Starting MALF on SGE cluster. "
     echo "--------------------------------------------------------------------------------------"
 
-    ${ANTSPATH}waitForSGEQJobs.pl 1 600 $jobIDs
+    ${ANTSPATH}/waitForSGEQJobs.pl 1 600 $jobIDs
 
     # Returns 1 if there are errors
     if [[ ! $? -eq 0 ]];
@@ -558,8 +617,28 @@ if [[ $DOQSUB -eq 1 ]];
         echo ${WARPED_ATLAS_IMAGES[$i]}
         if [[ -f ${WARPED_ATLAS_IMAGES[$i]} ]] && [[ -f ${WARPED_ATLAS_LABELS[$i]} ]];
           then
-            EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
-            EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+            if [[ -f ${TARGET_MASK_IMAGE} ]];
+              then
+                TMP_WARPED_ATLAS_LABEL_MASK=${OUTPUT_PREFIX}WarpedAtlasLabelMask.nii.gz
+                ${ANTSPATH}/ThresholdImage ${DIM} ${WARPED_ATLAS_LABELS[$i]} ${TMP_WARPED_ATLAS_LABEL_MASK} 0 0 0 1
+
+                OVERLAP_MEASURES=( `${ANTSPATH}/LabelOverlapMeasures ${DIM} ${TMP_WARPED_ATLAS_LABEL_MASK} ${TARGET_MASK_IMAGE} 1` )
+                TOKENS=( ${OVERLAP_MEASURES[1]//,/\ } )
+                DICE_OVERLAP=${TOKENS[3]}
+
+                if (( $(echo "${DICE_OVERLAP} >= ${DICE_THRESHOLD}" | bc -l) ));
+                  then
+                    EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
+                    EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+                  else
+                    echo Not including ${WARPED_ATLAS_IMAGES[$i]} \(Dice = ${DICE_OVERLAP}\)
+                  fi
+
+                rm -f $TMP_WARPED_ATLAS_LABEL_MASK
+              else
+                EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
+                EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+              fi
           fi
       done
 
@@ -577,14 +656,14 @@ if [[ $DOQSUB -eq 1 ]];
 
     if [[ $MAJORITYVOTE -eq 1 ]];
       then
-        malfCall="${ANTSPATH}/ImageMath ${DIM} ${OUTPUT_PREFIX}MajorityVotingLabels.nii.gz MajorityVoting ${WARPED_ATLAS_LABELS[@]} "
+        malfCall="${ANTSPATH}/ImageMath ${DIM} ${OUTPUT_PREFIX}MajorityVotingLabels.nii.gz MajorityVoting ${EXISTING_WARPED_ATLAS_LABELS[@]} "
       fi
 
     qscript2="${OUTPUT_PREFIX}MALF.sh"
     echo "$malfCall" > $qscript2
 
     jobIDs=`qsub -cwd -S /bin/bash -N antsMalf -v ANTSPATH=$ANTSPATH $QSUB_OPTS $qscript2 | awk '{print $3}'`
-    ${ANTSPATH}waitForSGEQJobs.pl 1 600 $jobIDs
+    ${ANTSPATH}/waitForSGEQJobs.pl 1 600 $jobIDs
   fi
 if [[ $DOQSUB -eq 4 ]];
   then
@@ -594,7 +673,7 @@ if [[ $DOQSUB -eq 4 ]];
     echo " Starting MALF on PBS cluster. "
     echo "--------------------------------------------------------------------------------------"
 
-    ${ANTSPATH}waitForPBSQJobs.pl 1 600 $jobIDs
+    ${ANTSPATH}/waitForPBSQJobs.pl 1 600 $jobIDs
     # Returns 1 if there are errors
     if [[ ! $? -eq 0 ]];
       then
@@ -609,8 +688,28 @@ if [[ $DOQSUB -eq 4 ]];
         echo ${WARPED_ATLAS_IMAGES[$i]}
         if [[ -f ${WARPED_ATLAS_IMAGES[$i]} ]] && [[ -f ${WARPED_ATLAS_LABELS[$i]} ]];
           then
-            EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
-            EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+            if [[ -f ${TARGET_MASK_IMAGE} ]];
+              then
+                TMP_WARPED_ATLAS_LABEL_MASK=${OUTPUT_PREFIX}WarpedAtlasLabelMask.nii.gz
+                ${ANTSPATH}/ThresholdImage ${DIM} ${WARPED_ATLAS_LABELS[$i]} ${TMP_WARPED_ATLAS_LABEL_MASK} 0 0 0 1
+
+                OVERLAP_MEASURES=( `${ANTSPATH}/LabelOverlapMeasures ${DIM} ${TMP_WARPED_ATLAS_LABEL_MASK} ${TARGET_MASK_IMAGE} 1` )
+                TOKENS=( ${OVERLAP_MEASURES[1]//,/\ } )
+                DICE_OVERLAP=${TOKENS[3]}
+
+                if (( $(echo "${DICE_OVERLAP} >= ${DICE_THRESHOLD}" | bc -l) ));
+                  then
+                    EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
+                    EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+                  else
+                    echo Not including ${WARPED_ATLAS_IMAGES[$i]} \(Dice = ${DICE_OVERLAP}\)
+                  fi
+
+                rm -f $TMP_WARPED_ATLAS_LABEL_MASK
+              else
+                EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
+                EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+              fi
           fi
       done
 
@@ -628,19 +727,18 @@ if [[ $DOQSUB -eq 4 ]];
 
     if [[ $MAJORITYVOTE -eq 1 ]];
       then
-        malfCall="${ANTSPATH}/ImageMath ${DIM} ${OUTPUT_PREFIX}MajorityVotingLabels.nii.gz MajorityVoting ${WARPED_ATLAS_LABELS[@]} "
+        malfCall="${ANTSPATH}/ImageMath ${DIM} ${OUTPUT_PREFIX}MajorityVotingLabels.nii.gz MajorityVoting ${EXISTING_WARPED_ATLAS_LABELS[@]} "
       fi
 
     qscript2="${OUTPUT_PREFIX}MALF.sh"
     echo "$malfCall" > $qscript2
 
     jobIDs=`qsub -N antsMalf -v ANTSPATH=$ANTSPATH $QSUB_OPTS -q nopreempt -l nodes=1:ppn=1 -l mem=8gb -l walltime=30:00:00 $qscript2 | awk '{print $1}'`
-    ${ANTSPATH}waitForPBSQJobs.pl 1 600 $jobIDs
+    ${ANTSPATH}/waitForPBSQJobs.pl 1 600 $jobIDs
   fi
 
 if [[ $DOQSUB -eq 2 ]];
   then
-
     EXISTING_WARPED_ATLAS_IMAGES=()
     EXISTING_WARPED_ATLAS_LABELS=()
     for (( i = 0; i < ${#WARPED_ATLAS_IMAGES[@]}; i++ ))
@@ -648,8 +746,29 @@ if [[ $DOQSUB -eq 2 ]];
         echo ${WARPED_ATLAS_IMAGES[$i]}
         if [[ -f ${WARPED_ATLAS_IMAGES[$i]} ]] && [[ -f ${WARPED_ATLAS_LABELS[$i]} ]];
           then
-            EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
-            EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+            if [[ -f ${TARGET_MASK_IMAGE} ]];
+              then
+
+                TMP_WARPED_ATLAS_LABEL_MASK=${OUTPUT_PREFIX}WarpedAtlasLabelMask.nii.gz
+                ${ANTSPATH}/ThresholdImage ${DIM} ${WARPED_ATLAS_LABELS[$i]} ${TMP_WARPED_ATLAS_LABEL_MASK} 0 0 0 1
+
+                OVERLAP_MEASURES=( `${ANTSPATH}/LabelOverlapMeasures ${DIM} ${TMP_WARPED_ATLAS_LABEL_MASK} ${TARGET_MASK_IMAGE} 1` )
+                TOKENS=( ${OVERLAP_MEASURES[1]//,/\ } )
+                DICE_OVERLAP=${TOKENS[3]}
+
+                if (( $(echo "${DICE_OVERLAP} >= ${DICE_THRESHOLD}" | bc -l) ));
+                  then
+                    EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
+                    EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+                  else
+                    echo Not including ${WARPED_ATLAS_IMAGES[$i]} \(Dice = ${DICE_OVERLAP}\)
+                  fi
+
+                rm -f $TMP_WARPED_ATLAS_LABEL_MASK
+              else
+                EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
+                EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+              fi
           fi
       done
 
@@ -667,7 +786,7 @@ if [[ $DOQSUB -eq 2 ]];
 
     if [[ $MAJORITYVOTE -eq 1 ]];
       then
-        malfCall="${ANTSPATH}/ImageMath ${DIM} ${OUTPUT_PREFIX}MajorityVotingLabels.nii.gz MajorityVoting ${WARPED_ATLAS_LABELS[@]} "
+        malfCall="${ANTSPATH}/ImageMath ${DIM} ${OUTPUT_PREFIX}MajorityVotingLabels.nii.gz MajorityVoting ${EXISTING_WARPED_ATLAS_LABELS[@]} "
       fi
 
     qscript2="${OUTPUT_PREFIX}MALF.sh"
@@ -682,8 +801,8 @@ if [[ $DOQSUB -eq 3 ]];
     echo "--------------------------------------------------------------------------------------"
     echo " Starting MALF on XGrid cluster. Submitted $count jobs "
     echo "--------------------------------------------------------------------------------------"
-    # now wait for the jobs to finish. Rigid registration is quick, so poll queue every 60 seconds
-    ${ANTSPATH}waitForXGridJobs.pl -xgridflags "$XGRID_OPTS" -verbose -delay 30 $jobIDs
+
+    ${ANTSPATH}/waitForXGridJobs.pl -xgridflags "$XGRID_OPTS" -verbose -delay 30 $jobIDs
     # Returns 1 if there are errors
     if [[ ! $? -eq 0 ]];
       then
@@ -698,8 +817,28 @@ if [[ $DOQSUB -eq 3 ]];
         echo ${WARPED_ATLAS_IMAGES[$i]}
         if [[ -f ${WARPED_ATLAS_IMAGES[$i]} ]] && [[ -f ${WARPED_ATLAS_LABELS[$i]} ]];
           then
-            EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
-            EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+            if [[ -f ${TARGET_MASK_IMAGE} ]];
+              then
+                TMP_WARPED_ATLAS_LABEL_MASK=${OUTPUT_PREFIX}WarpedAtlasLabelMask.nii.gz
+                ${ANTSPATH}/ThresholdImage ${DIM} ${WARPED_ATLAS_LABELS[$i]} ${TMP_WARPED_ATLAS_LABEL_MASK} 0 0 0 1
+
+                OVERLAP_MEASURES=( `${ANTSPATH}/LabelOverlapMeasures ${DIM} ${TMP_WARPED_ATLAS_LABEL_MASK} ${TARGET_MASK_IMAGE} 1` )
+                TOKENS=( ${OVERLAP_MEASURES[1]//,/\ } )
+                DICE_OVERLAP=${TOKENS[3]}
+
+                if (( $(echo "${DICE_OVERLAP} >= ${DICE_THRESHOLD}" | bc -l) ));
+                  then
+                    EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
+                    EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+                  else
+                    echo Not including ${WARPED_ATLAS_IMAGES[$i]} \(Dice = ${DICE_OVERLAP}\)
+                  fi
+
+                rm -f $TMP_WARPED_ATLAS_LABEL_MASK
+              else
+                EXISTING_WARPED_ATLAS_IMAGES[${#EXISTING_WARPED_ATLAS_IMAGES[@]}]=${WARPED_ATLAS_IMAGES[$i]}
+                EXISTING_WARPED_ATLAS_LABELS[${#EXISTING_WARPED_ATLAS_LABELS[@]}]=${WARPED_ATLAS_LABELS[$i]}
+              fi
           fi
       done
 
@@ -717,7 +856,7 @@ if [[ $DOQSUB -eq 3 ]];
 
     if [[ $MAJORITYVOTE -eq 1 ]];
       then
-        malfCall="${ANTSPATH}/ImageMath ${DIM} ${OUTPUT_PREFIX}MajorityVotingLabels.nii.gz MajorityVoting ${WARPED_ATLAS_LABELS[@]} "
+        malfCall="${ANTSPATH}/ImageMath ${DIM} ${OUTPUT_PREFIX}MajorityVotingLabels.nii.gz MajorityVoting ${EXISTING_WARPED_ATLAS_LABELS[@]} "
       fi
 
     qscript2="${OUTPUT_PREFIX}MALF.sh"

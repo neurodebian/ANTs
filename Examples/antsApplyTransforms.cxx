@@ -69,7 +69,6 @@ CorrectImageVectorDirection( DisplacementFieldType * movingVectorImage, ImageTyp
     movingVectorImage->GetDirection().GetTranspose() * referenceImage->GetDirection().GetVnlMatrix();
 
   typedef typename DisplacementFieldType::PixelType VectorType;
-  typedef typename VectorType::ComponentType        ComponentType;
 
   const unsigned int dimension = ImageType::ImageDimension;
 
@@ -127,16 +126,15 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
   typedef typename ants::RegistrationHelper<T, Dimension>         RegistrationHelperType;
   typedef typename RegistrationHelperType::AffineTransformType    AffineTransformType;
   typedef typename RegistrationHelperType::CompositeTransformType CompositeTransformType;
-  typedef typename CompositeTransformType::TransformType          TransformType;
 
   typedef itk::SymmetricSecondRankTensor<RealType, Dimension> TensorPixelType;
   typedef itk::Image<TensorPixelType, Dimension>              TensorImageType;
 
   const unsigned int NumberOfTensorElements = numTensorElements<Dimension>();
 
-  typename TimeSeriesImageType::Pointer timeSeriesImage = NULL;
-  typename TensorImageType::Pointer tensorImage = NULL;
-  typename DisplacementFieldType::Pointer vectorImage = NULL;
+  typename TimeSeriesImageType::Pointer timeSeriesImage = ITK_NULLPTR;
+  typename TensorImageType::Pointer tensorImage = ITK_NULLPTR;
+  typename DisplacementFieldType::Pointer vectorImage = ITK_NULLPTR;
 
   std::vector<typename ImageType::Pointer> inputImages;
   inputImages.clear();
@@ -323,7 +321,7 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
 
   const size_t VImageDimension = Dimension;
   typename ImageType::SpacingType
-    cache_spacing_for_smoothing_sigmas(itk::NumericTraits<typename ImageType::SpacingType::ValueType>::Zero);
+    cache_spacing_for_smoothing_sigmas(itk::NumericTraits<typename ImageType::SpacingType::ValueType>::ZeroValue());
   if( !std::strcmp( whichInterpolator.c_str(), "gaussian" )
       ||   !std::strcmp( whichInterpolator.c_str(), "multilabel" )
       )
@@ -593,7 +591,6 @@ int antsApplyTransforms( itk::ants::CommandLineParser::Pointer & parser, unsigne
 
 static void antsApplyTransformsInitializeCommandLineOptions( itk::ants::CommandLineParser *parser )
 {
-  typedef itk::ants::CommandLineParser::OptionType OptionType;
 
     {
     std::string description =
@@ -792,7 +789,7 @@ int antsApplyTransforms( std::vector<std::string> args, std::ostream * /*out_str
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {
@@ -830,7 +827,10 @@ private:
   parser->SetCommandDescription( commandDescription );
   antsApplyTransformsInitializeCommandLineOptions( parser );
 
-  parser->Parse( argc, argv );
+  if( parser->Parse( argc, argv ) == EXIT_FAILURE )
+    {
+    return EXIT_FAILURE;
+    }
 
   if( argc == 1 )
     {

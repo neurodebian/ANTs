@@ -818,7 +818,7 @@ protected:
       {
       keeppos = true;
       }
-    this->Sparsify( x_k1, fnp, keeppos, 0, NULL );
+    this->Sparsify( x_k1, fnp, keeppos, 0, ITK_NULLPTR );
     this->m_UseL1 = usel1;
   }
 
@@ -1041,7 +1041,7 @@ protected:
   {
     RealType eps = this->m_Epsilon * 5.0;
     //    eps = 0.0001;
-    if ( vnl_math_abs( x - itk::NumericTraits<RealType>::Zero ) < eps ) return true;
+    if ( vnl_math_abs( x - itk::NumericTraits<RealType>::ZeroValue() ) < eps ) return true;
     return false;
   }
 
@@ -1170,7 +1170,7 @@ protected:
   {
   }
 
-  void PrintSelf( std::ostream &, /* os */ Indent /* indent */) const
+  void PrintSelf( std::ostream &, /* os */ Indent /* indent */) const ITK_OVERRIDE
   {
     if( this->m_MaskImageP && this->m_MaskImageQ && this->m_MaskImageR )
       {

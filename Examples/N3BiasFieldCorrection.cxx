@@ -28,12 +28,12 @@ protected:
   };
 public:
 
-  void Execute(itk::Object *caller, const itk::EventObject & event)
+  void Execute(itk::Object *caller, const itk::EventObject & event) ITK_OVERRIDE
   {
     Execute( (const itk::Object *) caller, event);
   }
 
-  void Execute(const itk::Object * object, const itk::EventObject & event)
+  void Execute(const itk::Object * object, const itk::EventObject & event) ITK_OVERRIDE
   {
     const TFilter * filter =
       dynamic_cast<const TFilter *>( object );
@@ -67,7 +67,7 @@ int N3BiasFieldCorrection( int argc, char *argv[] )
   shrinker->SetInput( image );
   shrinker->SetShrinkFactors( 1 );
 
-  typename MaskImageType::Pointer maskImage = NULL;
+  typename MaskImageType::Pointer maskImage = ITK_NULLPTR;
 
   if( argc > 5 )
     {
@@ -114,10 +114,18 @@ int N3BiasFieldCorrection( int argc, char *argv[] )
     correcter->SetNumberOfFittingLevels( atoi( argv[7] ) );
     }
 
+  bool verbose = false;
+  if( argc > 7 )
+    {
+    verbose = atoi( argv[8] );
+    }
+
   typedef CommandIterationUpdate<CorrecterType> CommandType;
   typename CommandType::Pointer observer = CommandType::New();
-  correcter->AddObserver( itk::IterationEvent(), observer );
-
+  if ( verbose )
+    {
+    correcter->AddObserver( itk::IterationEvent(), observer );
+    }
   try
     {
     correcter->Update();
@@ -209,7 +217,7 @@ int N3BiasFieldCorrection( std::vector<std::string> args, std::ostream* /*out_st
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {
@@ -239,7 +247,7 @@ private:
     {
     std::cout << "Usage: " << argv[0] << " imageDimension inputImage "
              << "outputImage [shrinkFactor] [maskImage] [numberOfIterations] "
-             << "[numberOfFittingLevels] [outputBiasField] " << std::endl;
+             << "[numberOfFittingLevels] [outputBiasField] [verbose]" << std::endl;
     if( argc >= 2 &&
         ( std::string( argv[1] ) == std::string("--help") || std::string( argv[1] ) == std::string("-h") ) )
       {

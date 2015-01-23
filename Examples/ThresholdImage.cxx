@@ -64,7 +64,6 @@ typename TImage::Pointer BinaryThreshold_AltInsideOutside_threashold(
   typename TImage::PixelType insideval, typename TImage::PixelType outsideval,
   typename TImage::Pointer input )
 {
-  std::cout << " Binary Thresh " << std::endl;
 
   typedef typename TImage::PixelType PixelType;
   // Begin Threshold Image
@@ -155,7 +154,6 @@ typename TImage::Pointer OtsuThreshold(
 {
   std::cout << " Otsu Thresh with " << NumberOfThresholds << " thresholds" << std::endl;
 
-  typedef typename TImage::PixelType PixelType;
   // Begin Threshold Image
   typedef itk::OtsuMultipleThresholdsImageFilter<TImage, TImage> InputThresholderType;
   typename InputThresholderType::Pointer inputThresholder =
@@ -232,7 +230,7 @@ int ThresholdImage( std::vector<std::string> args, std::ostream* /*out_stream = 
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {

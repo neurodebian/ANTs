@@ -35,13 +35,11 @@ namespace ants
 template <unsigned int ImageDimension>
 int ConvertScalarImageToRGB( int argc, char *argv[] )
 {
-  typedef unsigned int                 PixelType;
   typedef itk::RGBPixel<unsigned char> RGBPixelType;
 //  typedef itk::RGBAPixel<unsigned char> RGBPixelType;
 
   typedef float RealType;
 
-  typedef itk::Image<PixelType, ImageDimension>    ImageType;
   typedef itk::Image<float, ImageDimension>        RealImageType;
   typedef itk::Image<RGBPixelType, ImageDimension> RGBImageType;
 
@@ -51,7 +49,7 @@ int ConvertScalarImageToRGB( int argc, char *argv[] )
   reader->Update();
 
   typedef itk::Image<unsigned char, ImageDimension> MaskImageType;
-  typename MaskImageType::Pointer maskImage = NULL;
+  typename MaskImageType::Pointer maskImage = ITK_NULLPTR;
   typedef itk::ImageFileReader<MaskImageType> MaskReaderType;
   typename MaskReaderType::Pointer maskreader = MaskReaderType::New();
   maskreader->SetFileName( argv[4] );
@@ -62,7 +60,7 @@ int ConvertScalarImageToRGB( int argc, char *argv[] )
     }
   catch( ... )
     {
-    maskImage = NULL;
+    maskImage = ITK_NULLPTR;
     }
   ;
 
@@ -280,7 +278,7 @@ int ConvertScalarImageToRGB( int argc, char *argv[] )
 //
 //        rgbpixel.Fill( ratio * ( maximumRGBValue - minimumRGBValue )
 //          + minimumRGBValue );
-        rgbpixel.Fill( itk::NumericTraits<typename RGBPixelType::ComponentType>::Zero );
+        rgbpixel.Fill( itk::NumericTraits<typename RGBPixelType::ComponentType>::ZeroValue() );
 
         ItC.Set( rgbpixel );
         }
@@ -295,6 +293,33 @@ int ConvertScalarImageToRGB( int argc, char *argv[] )
   writer->SetInput( rgbfilter->GetOutput() );
   writer->SetFileName( argv[3] );
   writer->Update();
+
+
+  if( argc > 11 )
+    {
+    // Let's arbitrarily choose 256 colors to populate the look up table.
+
+    std::ofstream str( argv[11] );
+
+    RealType minimumValue2 = rgbfilter->GetModifiableColormap()->GetMinimumInputValue();
+    RealType maximumValue2 = rgbfilter->GetModifiableColormap()->GetMaximumInputValue();
+
+    RealType deltaValue = ( maximumValue2 - minimumValue2 ) / 255.0;
+
+    for( unsigned int d = 0; d < 256; d++ )
+      {
+      RealType value = minimumValue2 + d * deltaValue;
+
+      RGBPixelType rgbPixel = rgbfilter->GetModifiableColormap()->operator()( value );
+
+      str << value << ","
+                   << static_cast<int>( rgbPixel[0] ) << ","
+                   << static_cast<int>( rgbPixel[1] ) << ","
+                   << static_cast<int>( rgbPixel[2] ) << ",1" << std::endl;
+      }
+    str.close();
+    }
+
 
   return EXIT_SUCCESS;
 }
@@ -318,7 +343,7 @@ int ConvertScalarImageToRGB( std::vector<std::string> args, std::ostream* /*out_
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {
@@ -348,7 +373,7 @@ private:
     {
     std::cout << "Usage: " << argv[0] << " imageDimension inputImage outputImage "
              << "mask colormap [customColormapFile] [minimumInput] [maximumInput] "
-             << "[minimumRGBOutput=0] [maximumRGBOutput=255]" << std::endl;
+             << "[minimumRGBOutput=0] [maximumRGBOutput=255] <vtkLookupTable>" << std::endl;
     std::cout << "  Possible colormaps: grey, red, green, blue, copper, jet, hsv, ";
     std::cout << "spring, summer, autumn, winter, hot, cool, overunder, custom" << std::endl;
     if( argc >= 2 &&

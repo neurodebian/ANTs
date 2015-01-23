@@ -29,18 +29,21 @@
 #include "itkArray.h"
 #include "itkAverageOverDimensionImageFilter.h"
 #include "itkGradientImageFilter.h"
+#include "itkBlackTopHatImageFilter.h"
 #include "itkBSplineControlPointImageFilter.h"
 #include "itkBayesianClassifierImageFilter.h"
 #include "itkBayesianClassifierInitializationImageFilter.h"
 #include "itkBilateralImageFilter.h"
 #include "itkBSplineInterpolateImageFunction.h"
 #include "itkCSVNumericObjectFileWriter.h"
+#include "itkCannyEdgeDetectionImageFilter.h"
 #include "itkCastImageFilter.h"
 #include "itkCompositeValleyFunction.h"
 #include "itkConnectedComponentImageFilter.h"
 #include "itkConstNeighborhoodIterator.h"
 #include "itkConvolutionImageFilter.h"
 #include "itkCorrelationImageToImageMetricv4.h"
+#include "itkCyclicShiftImageFilter.h"
 #include "itkDiffusionTensor3D.h"
 #include "itkDiscreteGaussianImageFilter.h"
 #include "itkDistanceToCentroidMembershipFunction.h"
@@ -49,6 +52,8 @@
 #include "itkDemonsImageToImageMetricv4.h"
 #include "itkExpImageFilter.h"
 #include "itkExtractImageFilter.h"
+#include "itkFastMarchingExtensionImageFilterBase.h"
+#include "itkFastMarchingExtensionImageFilter.h"
 #include "itkGaussianImageSource.h"
 #include "itkGradientAnisotropicDiffusionImageFilter.h"
 #include "itkGradientMagnitudeRecursiveGaussianImageFilter.h"
@@ -100,6 +105,7 @@
 #include "itkRGBPixel.h"
 #include "itkRelabelComponentImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
+#include "itkIntensityWindowingImageFilter.h"
 #include "itkSampleToHistogramFilter.h"
 #include "itkScalarImageKmeansImageFilter.h"
 #include "itkShrinkImageFilter.h"
@@ -118,6 +124,7 @@
 #include "itkVariableSizeMatrix.h"
 #include "itkVectorLinearInterpolateImageFunction.h"
 #include "itkWeightedCentroidKdTreeGenerator.h"
+#include "itkWhiteTopHatImageFilter.h"
 #include "itkWindowedSincInterpolateImageFunction.h"
 #include "vnl/vnl_matrix_fixed.h"
 #include "itkTransformFactory.h"
@@ -261,22 +268,14 @@ void ClosestSimplifiedHeaderMatrix(int argc, char *argv[])
     std::cout << " need more args -- see usage   " << std::endl;
     }
   typedef float                                        PixelType;
-  typedef itk::Vector<float, ImageDimension>           VectorType;
-  typedef itk::Image<VectorType, ImageDimension>       FieldType;
   typedef itk::Image<PixelType, ImageDimension>        ImageType;
-  typedef itk::ImageFileReader<ImageType>              readertype;
-  typedef itk::ImageFileWriter<ImageType>              writertype;
-  typedef typename ImageType::IndexType                IndexType;
-  typedef typename ImageType::SizeType                 SizeType;
-  typedef typename ImageType::SpacingType              SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension> AffineTransformType;
   typedef double RealType;
   typedef itk::Matrix<RealType, ImageDimension, ImageDimension>                           MatrixType;
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
   argct += 2;
   std::string  fn1 = std::string(argv[argct]);   argct++;
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   ReadImage<ImageType>( image1, fn1.c_str() );
   MatrixType A_solution = image1->GetDirection();
   //  vnl_svd<RealType>    nearestorth( image1->GetDirection().GetVnlMatrix() );
@@ -291,7 +290,7 @@ void ClosestSimplifiedHeaderMatrix(int argc, char *argv[])
       mydir(d,dd) = static_cast<RealType>( vlong );
       }
   image1->SetDirection( mydir );
-  // also do the origin 
+  // also do the origin
   typename ImageType::PointType origin = image1->GetOrigin();
   for ( unsigned int d = 0; d < ImageDimension; d++ )
     {
@@ -314,21 +313,14 @@ void ReflectionMatrix(int argc, char *argv[])
     std::cout << " need more args -- see usage   " << std::endl;
     }
   typedef float                                        PixelType;
-  typedef itk::Vector<float, ImageDimension>           VectorType;
-  typedef itk::Image<VectorType, ImageDimension>       FieldType;
   typedef itk::Image<PixelType, ImageDimension>        ImageType;
-  typedef itk::ImageFileReader<ImageType>              readertype;
-  typedef itk::ImageFileWriter<ImageType>              writertype;
-  typedef typename ImageType::IndexType                IndexType;
-  typedef typename ImageType::SizeType                 SizeType;
-  typedef typename ImageType::SpacingType              SpacingType;
   typedef itk::AffineTransform<double, ImageDimension> AffineTransformType;
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
   argct += 2;
   std::string  fn1 = std::string(argv[argct]);   argct++;
   unsigned int axis = atoi(argv[argct]);  argct++;
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   ReadImage<ImageType>( image1, fn1.c_str() );
   // compute center of mass
   typedef typename itk::ImageMomentsCalculator<ImageType> ImageCalculatorType;
@@ -369,21 +361,36 @@ void ReflectionMatrix(int argc, char *argv[])
   return;
 }
 
+
+template <unsigned int ImageDimension>
+void MakeAffineTransform(int argc, char *argv[])
+{
+  if( argc < 3 )
+    {
+    std::cout << " need more args -- see usage   " << std::endl;
+    }
+  typedef float                                        PixelType;
+  typedef itk::AffineTransform<double, ImageDimension> AffineTransformType;
+  int               argct = 2;
+  const std::string outname = std::string(argv[argct]);
+  argct += 2;
+  typename AffineTransformType::Pointer aff = AffineTransformType::New();
+  aff->SetIdentity();
+  typedef itk::TransformFileWriter TransformWriterType;
+  typename TransformWriterType::Pointer transformWriter =
+    TransformWriterType::New();
+  transformWriter->SetInput( aff );
+  transformWriter->SetFileName( outname.c_str() );
+  transformWriter->Update();
+  return;
+}
+
+
 template <unsigned int ImageDimension>
 int GetLargestComponent(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -396,7 +403,7 @@ int GetLargestComponent(int argc, char *argv[])
     smallest = atoi(argv[argct]); argct++;
     }
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
   // compute the voxel volume
   typename ImageType::SpacingType spacing = image1->GetSpacing();
@@ -406,12 +413,8 @@ int GetLargestComponent(int argc, char *argv[])
     volumeelement *= spacing[i];
     }
 
-  typedef float InternalPixelType;
-  //  typedef unsigned long PixelType;
-  //  typedef Image<PixelType,ImageDimension>  labelimagetype;
   typedef itk::Image<unsigned long, ImageDimension>                          labelimagetype;
   typedef ImageType                                                          InternalImageType;
-  typedef ImageType                                                          OutputImageType;
   typedef itk::BinaryThresholdImageFilter<InternalImageType, labelimagetype> ThresholdFilterType;
   typedef itk::ConnectedComponentImageFilter<labelimagetype, labelimagetype> FilterType;
   typedef itk::RelabelComponentImageFilter<labelimagetype, ImageType>        RelabelType;
@@ -526,22 +529,10 @@ template <unsigned int ImageDimension>
 int ClusterThresholdVariate(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   typedef unsigned long                                                    ULPixelType;
   typedef itk::Image<ULPixelType, ImageDimension>                          labelimagetype;
-  typedef ImageType                                                        InternalImageType;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                     fIterator;
   typedef itk::ImageRegionIteratorWithIndex<labelimagetype>                labIterator;
   typedef itk::ConnectedComponentImageFilter<ImageType, labelimagetype>    FilterType;
@@ -557,9 +548,9 @@ int ClusterThresholdVariate(int argc, char *argv[])
     {
     minclustersize = atoi( argv[argct] );
     }
-  typename ImageType::Pointer image = NULL;
+  typename ImageType::Pointer image = ITK_NULLPTR;
   ReadImage<ImageType>(image, fn1.c_str() );
-  typename ImageType::Pointer mask = NULL;
+  typename ImageType::Pointer mask = ITK_NULLPTR;
   ReadImage<ImageType>(mask, maskfn.c_str() );
   typename FilterType::Pointer filter = FilterType::New();
   typename RelabelType::Pointer relabel = RelabelType::New();
@@ -651,19 +642,8 @@ int ExtractSlice(int argc, char *argv[])
     return 1;
     }
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
   typedef itk::Image<PixelType, ImageDimension - 1>                       OutImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
@@ -671,12 +651,10 @@ int ExtractSlice(int argc, char *argv[])
   std::string  fn1 = std::string(argv[argct]);   argct++;
   unsigned int slice = atoi(argv[argct]);   argct++;
   std::cout << " Extract slice " << slice << " from dimension" << ImageDimension << std::endl;
-  typename ImageType::Pointer image1 = NULL;
-  typename OutImageType::Pointer outimage = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename OutImageType::Pointer outimage = ITK_NULLPTR;
 
   typedef itk::ExtractImageFilter<ImageType, OutImageType> ExtractFilterType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>     ImageIt;
-  typedef itk::ImageRegionIteratorWithIndex<OutImageType>  SliceIt;
 
   if( fn1.length() > 3 )
     {
@@ -736,17 +714,7 @@ template <unsigned int ImageDimension>
 int Finite(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -760,7 +728,7 @@ int Finite(int argc, char *argv[])
     replaceValue = atof( argv[4] );
     }
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
   typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
   Iterator vfIter2( image1,  image1->GetLargestPossibleRegion() );
@@ -781,17 +749,7 @@ template <unsigned int ImageDimension>
 int ThresholdAtMean(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -804,7 +762,7 @@ int ThresholdAtMean(int argc, char *argv[])
     percentofmean = atof(argv[argct]); argct++;
     }
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
   typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
   double        mean = 0, max = -1.e9, min = 1.e9;
@@ -846,17 +804,7 @@ template <unsigned int ImageDimension>
 int FlattenImage(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -869,7 +817,7 @@ int FlattenImage(int argc, char *argv[])
     percentofmax = atof(argv[argct]); argct++;
     }
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
   typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
   double   max = -1.e9, min = 1.e9;
@@ -963,14 +911,14 @@ int TruncateImageIntensity( unsigned int argc, char *argv[] )
     catch( ... )
       {
       std::cout << " can't read mask " << std::endl;
-      mask = NULL;
+      mask = ITK_NULLPTR;
       }
     ;
     }
   //  std::cout << " Mask " << std::endl;
   if( mask.IsNull() )
     {
-    mask = AllocImage<ImageType>( image, itk::NumericTraits<PixelType>::One);
+    mask = AllocImage<ImageType>( image, itk::NumericTraits<PixelType>::OneValue());
     }
 
   //  std::cout << " iterate " << std::endl;
@@ -996,7 +944,7 @@ int TruncateImageIntensity( unsigned int argc, char *argv[] )
         {
         maxValue = ItI.Get();
         }
-      ItM.Set( itk::NumericTraits<PixelType>::One );
+      ItM.Set( itk::NumericTraits<PixelType>::OneValue() );
       }
     else
       {
@@ -1049,16 +997,7 @@ template <unsigned int ImageDimension>
 int TileImages(unsigned int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -1068,8 +1007,8 @@ int TileImages(unsigned int argc, char *argv[])
 
   unsigned int numberofimages = 0;
 
-  typename ImageType::Pointer averageimage = NULL;
-  typename ImageType::Pointer image2 = NULL;
+  typename ImageType::Pointer averageimage = ITK_NULLPTR;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
   typename ImageType::SizeType size;
   double meanval = 1;
   size.Fill(0);
@@ -1224,17 +1163,8 @@ template <unsigned int ImageDimension>
 int TriPlanarView(unsigned int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
   typedef itk::Image<PixelType, 2>                                        MatrixImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   unsigned int argct = 2;
@@ -1246,7 +1176,7 @@ int TriPlanarView(unsigned int argc, char *argv[])
   argct += 2;
   std::string maskfn = std::string(argv[argct]); argct++;
   std::cout << " file name " << maskfn << std::endl;
-  typename ImageType::Pointer mask = NULL;
+  typename ImageType::Pointer mask = ITK_NULLPTR;
   ReadImage<ImageType>(mask, maskfn.c_str() );
   //  WriteImage<ImageType>(mask,"temp.nii");
   float clamppercent1 = 0.1;
@@ -1399,17 +1329,8 @@ template <unsigned int ImageDimension>
 int ConvertVectorToImage(unsigned int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
   typedef itk::Image<PixelType, 2>                                        MatrixImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
   typedef itk::ImageRegionIteratorWithIndex<MatrixImageType>              vIterator;
 
@@ -1422,9 +1343,9 @@ int ConvertVectorToImage(unsigned int argc, char *argv[])
   argct += 2;
   std::string maskfn = std::string(argv[argct]); argct++;
   std::string vecfn = std::string(argv[argct]); argct++;
-  typename ImageType::Pointer mask = NULL;
+  typename ImageType::Pointer mask = ITK_NULLPTR;
   ReadImage<ImageType>(mask, maskfn.c_str() );
-  typename MatrixImageType::Pointer vecimg = NULL;
+  typename MatrixImageType::Pointer vecimg = ITK_NULLPTR;
   ReadImage<MatrixImageType>(vecimg, vecfn.c_str() );
   unsigned long voxct = 0, mct = 0;
   Iterator      mIter( mask, mask->GetLargestPossibleRegion() );
@@ -1443,7 +1364,7 @@ int ConvertVectorToImage(unsigned int argc, char *argv[])
 
   std::cout << " vct " << voxct << " mct " << mct << std::endl;
 
-  typename ImageType::Pointer outimage = NULL;
+  typename ImageType::Pointer outimage = ITK_NULLPTR;
   ReadImage<ImageType>(outimage, maskfn.c_str() );
   outimage->FillBuffer(0);
 
@@ -1466,17 +1387,7 @@ template <unsigned int ImageDimension>
 int CorruptImage(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -1494,7 +1405,7 @@ int CorruptImage(int argc, char *argv[])
     smoothlevel = atof(argv[argct]); argct++;
     }
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
   typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
   Iterator iter( image1,  image1->GetLargestPossibleRegion() );
@@ -1525,17 +1436,7 @@ template <unsigned int ImageDimension>
 int Where(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int         argct = 4;
@@ -1552,8 +1453,8 @@ int Where(int argc, char *argv[])
     tol = atof(argv[argct]);   argct++;
     }
 
-  typename ImageType::Pointer image1 = NULL;
-  typename ImageType::Pointer image2 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<ImageType>(image1, fn1.c_str() );
@@ -1590,18 +1491,7 @@ template <unsigned int ImageDimension>
 int SetOrGetPixel(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
@@ -1630,8 +1520,8 @@ int SetOrGetPixel(int argc, char *argv[])
     {
     get = true;
     }
-  typename ImageType::Pointer image1 = NULL;
-  typename ImageType::Pointer image2 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<ImageType>(image1, fn1.c_str() );
@@ -1752,7 +1642,6 @@ int RescaleImage( int argc, char * argv[] )
 
   typedef float                                                  PixelType;
   typedef itk::Image<PixelType, ImageDimension>                  ImageType;
-  typedef itk::RescaleIntensityImageFilter<ImageType, ImageType> RescalerType;
 
   // Usage:  ImageMath 3 output.nii.gz RescaleImage input.nii.gz min max
 
@@ -1768,6 +1657,43 @@ int RescaleImage( int argc, char * argv[] )
   typename RescaleFilterType::Pointer rescaler = RescaleFilterType::New();
   rescaler->SetOutputMinimum( min );
   rescaler->SetOutputMaximum( max );
+  rescaler->SetInput( input );
+  rescaler->Update();
+
+  WriteImage<ImageType>( rescaler->GetOutput(), outputName.c_str() );
+  return 0;
+}
+
+template <unsigned int ImageDimension>
+int WindowImage( int argc, char * argv[] )
+{
+  if( argc < 9 )
+    {
+    std::cout << " need more args -- see usage   " << std::endl;
+    throw std::exception();
+    }
+
+  typedef float                                                  PixelType;
+  typedef itk::Image<PixelType, ImageDimension>                  ImageType;
+
+  // Usage:  ImageMath 3 output.nii.gz RescaleImage input.nii.gz min max
+
+  const std::string outputName = std::string( argv[2] );
+  const std::string inputName = std::string( argv[4] );
+  const PixelType   inputMin = static_cast<PixelType>( atof( argv[5] ) );
+  const PixelType   inputMax = static_cast<PixelType>( atof( argv[6] ) );
+  const PixelType   outputMin = static_cast<PixelType>( atof( argv[7] ) );
+  const PixelType   outputMax = static_cast<PixelType>( atof( argv[8] ) );
+
+  typename ImageType::Pointer input;
+  ReadImage<ImageType>( input, inputName.c_str() );
+
+  typedef itk::IntensityWindowingImageFilter<ImageType, ImageType> IntensityWindowingFilterType;
+  typename IntensityWindowingFilterType::Pointer rescaler = IntensityWindowingFilterType::New();
+  rescaler->SetWindowMinimum( inputMin );
+  rescaler->SetWindowMaximum( inputMax );
+  rescaler->SetOutputMinimum( outputMin );
+  rescaler->SetOutputMaximum( outputMax );
   rescaler->SetInput( input );
   rescaler->Update();
 
@@ -1865,17 +1791,7 @@ template <unsigned int ImageDimension>
 int PadImage(int /*argc */, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -1885,7 +1801,7 @@ int PadImage(int /*argc */, char *argv[])
   const float padvalue = atof(argv[argct]);
   argct += 2;
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<ImageType>(image1, fn1.c_str() );
@@ -1902,7 +1818,6 @@ int PadImage(int /*argc */, char *argv[])
     float dimsz = (float)size[i];
     newsize[i] = (unsigned int)(dimsz + padvalue * 2);
     }
-  std::cout << " oldsize " << size <<  " newsize " << newsize << std::endl;
   newregion.SetSize(newsize);
   newregion.SetIndex(image1->GetLargestPossibleRegion().GetIndex() );
 
@@ -1929,7 +1844,6 @@ int PadImage(int /*argc */, char *argv[])
   image1->TransformIndexToPhysicalPoint(index, point1);
   padimage->TransformIndexToPhysicalPoint(index2, pointpad);
 
-  std::cout << " pre " << point1 << " pad " << pointpad << std::endl;
   for( unsigned int i = 0; i < ImageDimension; i++ )
     {
     origin2[i] += (point1[i] - pointpad[i]);
@@ -1975,8 +1889,6 @@ int SigmoidImage(int argc, char *argv[])
 {
   typedef float                                 PixelType;
   typedef itk::Image<PixelType, ImageDimension> ImageType;
-  typedef itk::ImageFileReader<ImageType>       ReaderType;
-  typedef itk::ImageFileWriter<ImageType>       WriterType;
 
   int               argct = 2;
   const std::string outname = std::string( argv[argct++] );
@@ -1994,7 +1906,7 @@ int SigmoidImage(int argc, char *argv[])
     beta = atof( argv[argct++] );
     }
 
-  typename ImageType::Pointer inputImage = NULL;
+  typename ImageType::Pointer inputImage = ITK_NULLPTR;
   if( inputFilename.length() > 3 )
     {
     ReadImage<ImageType>( inputImage, inputFilename.c_str() );
@@ -2024,13 +1936,11 @@ int SharpenImage(int argc, char *argv[])
 
   typedef float                                 PixelType;
   typedef itk::Image<PixelType, ImageDimension> ImageType;
-  typedef itk::ImageFileReader<ImageType>       ReaderType;
-  typedef itk::ImageFileWriter<ImageType>       WriterType;
 
   const std::string outputFilename = std::string( argv[2] );
   const std::string inputFilename = std::string( argv[4] );
 
-  typename ImageType::Pointer inputImage = NULL;
+  typename ImageType::Pointer inputImage = ITK_NULLPTR;
   ReadImage<ImageType>( inputImage, inputFilename.c_str() );
 
   typedef itk::LaplacianSharpeningImageFilter<ImageType, ImageType> FilterType;
@@ -2047,11 +1957,6 @@ int CenterImage2inImage1(int argc, char *argv[])
 {
   typedef float                                        PixelType;
   typedef itk::Image<PixelType, ImageDimension>        ImageType;
-  typedef itk::ImageFileReader<ImageType>              readertype;
-  typedef itk::ImageFileWriter<ImageType>              writertype;
-  typedef typename ImageType::IndexType                IndexType;
-  typedef typename ImageType::SizeType                 SizeType;
-  typedef typename ImageType::SpacingType              SpacingType;
   typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
 
   int               argct = 2;
@@ -2065,13 +1970,13 @@ int CenterImage2inImage1(int argc, char *argv[])
     }
   argct++;
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<ImageType>(image1, fn1.c_str() );
     }
   image1->FillBuffer(0);
-  typename ImageType::Pointer image2 = NULL;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
   if( fn2.length() > 3 )
     {
     ReadImage<ImageType>(image2, fn2.c_str() );
@@ -2144,7 +2049,6 @@ int TimeSeriesMask( int argc, char *argv[] )
   typedef float                                            PixelType;
   typedef itk::Image<PixelType, ImageDimension>            ImageType;
   typedef itk::Image<PixelType, ImageDimension - 1>        MaskImageType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>     TimeIterator;
   typedef itk::ImageRegionIteratorWithIndex<MaskImageType> Iterator;
 
   int               argct = 2;
@@ -2152,7 +2056,7 @@ int TimeSeriesMask( int argc, char *argv[] )
   argct += 2;
   std::string fn1 = std::string(argv[argct]);   argct++;
   std::string fn2 = std::string(argv[argct]);   argct++;
-  
+
   typename ImageType::Pointer timeseries = ImageType::New();
   ReadImage<ImageType>( timeseries, fn1.c_str() );
 
@@ -2160,14 +2064,14 @@ int TimeSeriesMask( int argc, char *argv[] )
   ReadImage<MaskImageType>( mask, fn2.c_str() );
 
   Iterator it( mask, mask->GetLargestPossibleRegion() );
-  while ( ! it.IsAtEnd() ) 
+  while ( ! it.IsAtEnd() )
     {
-    if ( it.Value() == 0 ) 
+    if ( it.Value() == 0 )
       {
       typename MaskImageType::IndexType maskIdx = it.GetIndex();
       typename ImageType::IndexType timeIdx;
 
-      for (unsigned int i=0; i<(ImageDimension-1); i++) 
+      for (unsigned int i=0; i<(ImageDimension-1); i++)
         {
         timeIdx[i] = maskIdx[i];
         }
@@ -2177,9 +2081,9 @@ int TimeSeriesMask( int argc, char *argv[] )
         timeIdx[ImageDimension-1] = t;
         timeseries->SetPixel(timeIdx, 0);
         }
-      
+
       }
-  
+
     ++it;
     }
 
@@ -2198,28 +2102,18 @@ int TimeSeriesDisassemble(int argc, char *argv[])
     }
 
   typedef float                                        PixelType;
-  typedef itk::Vector<float, ImageDimension>           VectorType;
-  typedef itk::Image<VectorType, ImageDimension>       FieldType;
   typedef itk::Image<PixelType, ImageDimension>        ImageType;
   typedef itk::Image<PixelType, ImageDimension - 1>    OutImageType;
-  typedef itk::ImageFileReader<ImageType>              readertype;
-  typedef itk::ImageFileWriter<ImageType>              writertype;
-  typedef typename ImageType::IndexType                IndexType;
-  typedef typename ImageType::SizeType                 SizeType;
-  typedef typename ImageType::SpacingType              SpacingType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
   argct += 2;
   std::string fn1 = std::string(argv[argct]);   argct++;
 
-  typename ImageType::Pointer image1 = NULL;
-  typename OutImageType::Pointer outimage = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename OutImageType::Pointer outimage = ITK_NULLPTR;
 
   typedef itk::ExtractImageFilter<ImageType, OutImageType> ExtractFilterType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>     ImageIt;
-  typedef itk::ImageRegionIteratorWithIndex<OutImageType>  SliceIt;
 
   if( fn1.length() > 3 )
     {
@@ -2237,7 +2131,6 @@ int TimeSeriesDisassemble(int argc, char *argv[])
     }
 
   unsigned int n_sub_vols = image1->GetLargestPossibleRegion().GetSize()[ImageDimension - 1];
-  std::cout << " Extract " << n_sub_vols << " subvolumes " << std::endl;
 
   // Extract filename while allowing directory names with '.' in them
   // (cluster temp dirs)
@@ -2251,7 +2144,7 @@ int TimeSeriesDisassemble(int argc, char *argv[])
     {
     std::string       s;
     std::stringstream out;
-    out << (100 + i);
+    out << (1000 + i);
     s = out.str();
     std::string kname = dirname + tempname + s + extension;
 
@@ -2284,12 +2177,6 @@ int TimeSeriesAssemble(int argc, char *argv[])
   typedef float                                        PixelType;
   typedef itk::Image<PixelType, ImageDimension - 1>    ImageType;
   typedef itk::Image<PixelType, ImageDimension>        OutImageType;
-  typedef itk::ImageFileReader<ImageType>              readertype;
-  typedef itk::ImageFileWriter<ImageType>              writertype;
-  typedef typename ImageType::IndexType                IndexType;
-  typedef typename ImageType::SizeType                 SizeType;
-  typedef typename ImageType::SpacingType              SpacingType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
@@ -2300,14 +2187,10 @@ int TimeSeriesAssemble(int argc, char *argv[])
   typename OutImageType::Pointer outimage = OutImageType::New();
 
   typedef itk::ImageRegionIteratorWithIndex<ImageType>    ImageIt;
-  typedef itk::ImageRegionIteratorWithIndex<OutImageType> SliceIt;
 
-  std::cout << " Merging " << argc - 6 << " subvolumes " << std::endl;
-  std::cout << " time spacing: " << time << std::endl;
-  std::cout << " time origin: " << origin << std::endl;
   for( int i = 6; i < argc; i++ )
     {
-    typename ImageType::Pointer image1 = NULL;
+    typename ImageType::Pointer image1 = ITK_NULLPTR;
     ReadImage<ImageType>(image1, argv[i] );
 
     if( i == 6 )
@@ -2375,34 +2258,23 @@ int TimeSeriesSubset(int argc, char *argv[])
     }
 
   typedef float                                        PixelType;
-  typedef itk::Vector<float, ImageDimension>           VectorType;
-  typedef itk::Image<VectorType, ImageDimension>       FieldType;
   typedef itk::Image<PixelType, ImageDimension>        ImageType;
   typedef itk::Image<PixelType, ImageDimension - 1>    OutImageType;
-  typedef itk::ImageFileReader<ImageType>              readertype;
-  typedef itk::ImageFileWriter<ImageType>              writertype;
-  typedef typename ImageType::IndexType                IndexType;
-  typedef typename ImageType::SizeType                 SizeType;
-  typedef typename ImageType::SpacingType              SpacingType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
   argct += 2;
   std::string  fn1 = std::string(argv[argct]);   argct++;
   unsigned int n_sub_vols = atoi(argv[argct]);   argct++;
-  std::cout << " Extract " << n_sub_vols << " subvolumes " << std::endl;
   std::string::size_type idx;
   idx = outname.find_first_of('.');
   std::string tempname = outname.substr(0, idx);
   std::string extension = outname.substr(idx, outname.length() );
 
-  typename ImageType::Pointer image1 = NULL;
-  typename OutImageType::Pointer outimage = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename OutImageType::Pointer outimage = ITK_NULLPTR;
 
   typedef itk::ExtractImageFilter<ImageType, OutImageType> ExtractFilterType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>     ImageIt;
-  typedef itk::ImageRegionIteratorWithIndex<OutImageType>  SliceIt;
 
   if( fn1.length() > 3 )
     {
@@ -2477,7 +2349,7 @@ int TimeSeriesSimpleSubtraction(int argc, char *argv[])
       }
     }
 
-  typename InputImageType::Pointer image1 = NULL;
+  typename InputImageType::Pointer image1 = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<InputImageType>(image1, fn1.c_str() );
@@ -2573,7 +2445,7 @@ int TimeSeriesInterpolationSubtraction(int argc, char *argv[])
       }
     }
 
-  typename InputImageType::Pointer image1 = NULL;
+  typename InputImageType::Pointer image1 = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<InputImageType>(image1, fn1.c_str() );
@@ -2646,7 +2518,7 @@ int SplitAlternatingTimeSeries(int argc, char *argv[])
   std::string outname1 = basename + one + extension;
 
   typename ImageFilterType::Pointer filter = ImageFilterType::New();
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<ImageType>(image1, fn1.c_str() );
@@ -2741,7 +2613,7 @@ int SliceTimingCorrection(int argc, char *argv[])
       }
     }
 
-  typename InputImageType::Pointer image1 = NULL;
+  typename InputImageType::Pointer image1 = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<InputImageType>(image1, fn1.c_str() );
@@ -2774,7 +2646,7 @@ int SliceTimingCorrection(int argc, char *argv[])
     try
       {
       filter->Update();
-      } 
+      }
     catch( itk::ExceptionObject& exp )
       {
       std::cout << "Exception caught!" << std::endl;
@@ -2809,7 +2681,7 @@ int AverageOverDimension(int argc, char *argv[])
   std::string  fn1 = std::string(argv[argct++]);
   unsigned int dim = atoi( argv[argct++] );
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<ImageType>(image1, fn1.c_str() );
@@ -2854,10 +2726,10 @@ int TimeSeriesRegionSCCA(int argc, char *argv[])
 
   // FIXME - add option for multi input for combined CCA
 
-  typename LabelImageType::Pointer labels = NULL;
+  typename LabelImageType::Pointer labels = ITK_NULLPTR;
   ReadImage<LabelImageType>( labels, labelName.c_str() );
 
-  typename InputImageType::Pointer time = NULL;
+  typename InputImageType::Pointer time = ITK_NULLPTR;
   ReadImage<InputImageType>( time, timeName.c_str() );
 
   typename LabelCalculatorType::Pointer calc = LabelCalculatorType::New();
@@ -3039,10 +2911,10 @@ int TimeSeriesRegionCorr(int argc, char *argv[])
 
   // FIXME - add option for multi input for combined CCA
 
-  typename LabelImageType::Pointer labels = NULL;
+  typename LabelImageType::Pointer labels = ITK_NULLPTR;
   ReadImage<LabelImageType>( labels, labelName.c_str() );
 
-  typename InputImageType::Pointer time = NULL;
+  typename InputImageType::Pointer time = ITK_NULLPTR;
   ReadImage<InputImageType>( time, timeName.c_str() );
 
   typename LabelCalculatorType::Pointer calc = LabelCalculatorType::New();
@@ -3199,7 +3071,7 @@ int PASLQuantifyCBF(int argc, char *argv[])
   // float m_alpha;
   // float m_sliceDelay;
 
-  typename TimeImageType::Pointer diff = NULL;
+  typename TimeImageType::Pointer diff = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<TimeImageType>(diff, fn1.c_str() );
@@ -3209,7 +3081,7 @@ int PASLQuantifyCBF(int argc, char *argv[])
     return 1;
     }
 
-  typename ImageType::Pointer m0 = NULL;
+  typename ImageType::Pointer m0 = ITK_NULLPTR;
   if( m0name.length() > 3 )
     {
     ReadImage<ImageType>(m0, m0name.c_str() );
@@ -3319,17 +3191,10 @@ int ComputeTimeSeriesLeverage(int argc, char *argv[])
     return 1;
     }
   typedef float                                        PixelType;
-  typedef itk::Vector<float, ImageDimension>           VectorType;
-  typedef itk::Image<VectorType, ImageDimension>       FieldType;
   typedef itk::Image<PixelType, ImageDimension>        ImageType;
   typedef itk::Image<PixelType, ImageDimension - 1>    OutImageType;
   typedef typename OutImageType::IndexType             OutIndexType;
-  typedef itk::ImageFileReader<ImageType>              readertype;
-  typedef itk::ImageFileWriter<ImageType>              writertype;
   typedef typename ImageType::IndexType                IndexType;
-  typedef typename ImageType::SizeType                 SizeType;
-  typedef typename ImageType::SpacingType              SpacingType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
 
   typedef double                                            Scalar;
   typedef itk::ants::antsMatrixUtilities<ImageType, Scalar> matrixOpType;
@@ -3340,7 +3205,7 @@ int ComputeTimeSeriesLeverage(int argc, char *argv[])
   argct += 2;
   std::string  fn1 = std::string(argv[argct]);   argct++;
   unsigned int k_neighbors = atoi(argv[argct]);   argct++;
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<ImageType>(image1, fn1.c_str() );
@@ -3367,7 +3232,6 @@ int ComputeTimeSeriesLeverage(int argc, char *argv[])
   typename OutImageType::Pointer outimage = extractFilter->GetOutput();
   outimage->FillBuffer(0);
 
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>    ImageIt;
   typedef itk::ImageRegionIteratorWithIndex<OutImageType> SliceIt;
 
   // step 1.  compute , for each image in the time series, the effect on the average.
@@ -3460,18 +3324,11 @@ int TimeSeriesToMatrix(int argc, char *argv[])
     return 1;
     }
   typedef float                                        PixelType;
-  typedef itk::Vector<float, ImageDimension>           VectorType;
-  typedef itk::Image<VectorType, ImageDimension>       FieldType;
   typedef itk::Image<PixelType, ImageDimension>        ImageType;
   typedef itk::Image<PixelType, 2>                     MatrixImageType;
   typedef itk::Image<PixelType, ImageDimension - 1>    OutImageType;
   typedef typename OutImageType::IndexType             OutIndexType;
-  typedef itk::ImageFileReader<ImageType>              readertype;
-  typedef itk::ImageFileWriter<ImageType>              writertype;
   typedef typename ImageType::IndexType                IndexType;
-  typedef typename ImageType::SizeType                 SizeType;
-  typedef typename ImageType::SpacingType              SpacingType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
 
   typedef double                                            Scalar;
   typedef itk::ants::antsMatrixUtilities<ImageType, Scalar> matrixOpType;
@@ -3490,9 +3347,9 @@ int TimeSeriesToMatrix(int argc, char *argv[])
   argct++;
   std::string fn1 = std::string(argv[argct]);   argct++;
   std::string maskfn = std::string(argv[argct]);   argct++;
-  typename ImageType::Pointer image1 = NULL;
-  typename OutImageType::Pointer mask = NULL;
-  typename MatrixImageType::Pointer matriximage = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename OutImageType::Pointer mask = ITK_NULLPTR;
+  typename MatrixImageType::Pointer matriximage = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<ImageType>(image1, fn1.c_str() );
@@ -3521,13 +3378,13 @@ int TimeSeriesToMatrix(int argc, char *argv[])
       voxct++;
       }
     }
-  // allocate the matrix image 
+  // allocate the matrix image
   typename MatrixImageType::SizeType size;
   size[0] = timedims;
   size[1] = voxct;
   typename MatrixImageType::RegionType newregion;
   newregion.SetSize(size);
-  if ( tomha ) matriximage = AllocImage<MatrixImageType>(newregion, 0); 
+  if ( tomha ) matriximage = AllocImage<MatrixImageType>(newregion, 0);
 
   typename ImageType::RegionType extractRegion = image1->GetLargestPossibleRegion();
   extractRegion.SetSize(ImageDimension - 1, 0);
@@ -3542,7 +3399,6 @@ int TimeSeriesToMatrix(int argc, char *argv[])
   typename OutImageType::Pointer outimage = extractFilter->GetOutput();
   outimage->FillBuffer(0);
 
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>    ImageIt;
   typedef itk::ImageRegionIteratorWithIndex<OutImageType> SliceIt;
 
   typedef vnl_vector<Scalar> timeVectorType;
@@ -3550,7 +3406,7 @@ int TimeSeriesToMatrix(int argc, char *argv[])
   typedef itk::Array2D<double> MatrixType;
   std::vector<std::string> ColumnHeaders;
   MatrixType               matrix;
-  if ( ! tomha ) 
+  if ( ! tomha )
     {
     matrix.set_size(timedims, voxct);
     matrix.Fill(0);
@@ -3580,7 +3436,7 @@ int TimeSeriesToMatrix(int argc, char *argv[])
         Scalar pix = image1->GetPixel(tind);
         mSample(t) = pix;
         if ( ! tomha ) matrix[t][voxct] = pix;
-        if ( tomha ) 
+        if ( tomha )
           {
 	  matriximage->SetPixel( matind, pix );
 	  }
@@ -3593,7 +3449,7 @@ int TimeSeriesToMatrix(int argc, char *argv[])
       } // check mask
     }
   //  std::cout << " Mean " << meanval / fullct << std::endl;
-  if ( ! tomha ) 
+  if ( ! tomha )
     {
     // write out the array2D object
     typedef itk::CSVNumericObjectFileWriter<double, 1, 1> WriterType;
@@ -3604,7 +3460,7 @@ int TimeSeriesToMatrix(int argc, char *argv[])
     try
       {
       writer->Write();
-      } 
+      }
     catch( itk::ExceptionObject& exp )
       {
       std::cout << "Exception caught!" << std::endl;
@@ -3612,7 +3468,7 @@ int TimeSeriesToMatrix(int argc, char *argv[])
       return EXIT_FAILURE;
       }
     }
-  if ( tomha ) 
+  if ( tomha )
     {
     WriteImage<MatrixImageType>( matriximage , outname.c_str() );
     }
@@ -3630,17 +3486,10 @@ int PASL(int argc, char *argv[])
     }
 
   typedef float                                        PixelType;
-  typedef itk::Vector<float, ImageDimension>           VectorType;
-  typedef itk::Image<VectorType, ImageDimension>       FieldType;
   typedef itk::Image<PixelType, ImageDimension>        ImageType;
   typedef itk::Image<PixelType, ImageDimension - 1>    OutImageType;
-  typedef itk::ImageFileReader<ImageType>              readertype;
-  typedef itk::ImageFileWriter<ImageType>              writertype;
   typedef typename ImageType::IndexType                IndexType;
   typedef typename OutImageType::IndexType             OutIndexType;
-  typedef typename ImageType::SizeType                 SizeType;
-  typedef typename ImageType::SpacingType              SpacingType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
   typedef double                                       RealType;
   typedef vnl_vector<RealType>                         timeVectorType;
   int               argct = 2;
@@ -3654,13 +3503,11 @@ int PASL(int argc, char *argv[])
     m0fn = std::string(argv[argct]);
     }
   argct++;
-  typename ImageType::Pointer image1 = NULL;
-  typename OutImageType::Pointer outimage = NULL;
-  typename OutImageType::Pointer M0image = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename OutImageType::Pointer outimage = ITK_NULLPTR;
+  typename OutImageType::Pointer M0image = ITK_NULLPTR;
 
   typedef itk::ExtractImageFilter<ImageType, OutImageType> ExtractFilterType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>     ImageIt;
-  typedef itk::ImageRegionIteratorWithIndex<OutImageType>  SliceIt;
 
   // RealType M0W = 1300; // FIXME
   // RealType TE = 4000;
@@ -3832,17 +3679,10 @@ int pCASL(int argc, char *argv[])
     }
 
   typedef float                                        PixelType;
-  typedef itk::Vector<float, ImageDimension>           VectorType;
-  typedef itk::Image<VectorType, ImageDimension>       FieldType;
   typedef itk::Image<PixelType, ImageDimension>        ImageType;
   typedef itk::Image<PixelType, ImageDimension - 1>    OutImageType;
-  typedef itk::ImageFileReader<ImageType>              readertype;
-  typedef itk::ImageFileWriter<ImageType>              writertype;
   typedef typename ImageType::IndexType                IndexType;
   typedef typename OutImageType::IndexType             OutIndexType;
-  typedef typename ImageType::SizeType                 SizeType;
-  typedef typename ImageType::SpacingType              SpacingType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
   typedef double                                       RealType;
   typedef vnl_vector<RealType>                         timeVectorType;
   int               argct = 2;
@@ -3861,8 +3701,6 @@ int pCASL(int argc, char *argv[])
   typename OutImageType::Pointer M0image;
 
   typedef itk::ExtractImageFilter<ImageType, OutImageType> ExtractFilterType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>     ImageIt;
-  typedef itk::ImageRegionIteratorWithIndex<OutImageType>  SliceIt;
 
   if( fn1.length() > 3 )
     {
@@ -4086,17 +3924,10 @@ int CompCorrAuto(int argc, char *argv[])
     }
 
   typedef float                                        PixelType;
-  typedef itk::Vector<float, ImageDimension>           VectorType;
-  typedef itk::Image<VectorType, ImageDimension>       FieldType;
   typedef itk::Image<PixelType, ImageDimension>        ImageType;
   typedef itk::Image<PixelType, ImageDimension - 1>    OutImageType;
   typedef typename OutImageType::IndexType             OutIndexType;
-  typedef itk::ImageFileReader<ImageType>              readertype;
-  typedef itk::ImageFileWriter<ImageType>              writertype;
   typedef typename ImageType::IndexType                IndexType;
-  typedef typename ImageType::SizeType                 SizeType;
-  typedef typename ImageType::SpacingType              SpacingType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
 
   typedef double                                            Scalar;
   typedef itk::ants::antsMatrixUtilities<ImageType, Scalar> matrixOpType;
@@ -4118,14 +3949,12 @@ int CompCorrAuto(int argc, char *argv[])
   std::string tempname = outname.substr(0, idx);
   std::string extension = outname.substr(idx, outname.length() );
 
-  typename ImageType::Pointer image1 = NULL;
-  typename OutImageType::Pointer outimage = NULL;
-  typename OutImageType::Pointer outimage2 = NULL;
-  typename OutImageType::Pointer label_image = NULL;
-  typename OutImageType::Pointer var_image = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename OutImageType::Pointer outimage = ITK_NULLPTR;
+  typename OutImageType::Pointer outimage2 = ITK_NULLPTR;
+  typename OutImageType::Pointer label_image = ITK_NULLPTR;
+  typename OutImageType::Pointer var_image = ITK_NULLPTR;
 
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>    ImageIt;
-  typedef itk::ImageRegionIteratorWithIndex<OutImageType> SliceIt;
 
   if( fn1.length() > 3 )
     {
@@ -4385,17 +4214,10 @@ int ThreeTissueConfounds(int argc, char *argv[])
     return 1;
     }
   typedef float                                        PixelType;
-  typedef itk::Vector<float, ImageDimension>           VectorType;
-  typedef itk::Image<VectorType, ImageDimension>       FieldType;
   typedef itk::Image<PixelType, ImageDimension>        ImageType;
   typedef itk::Image<PixelType, ImageDimension - 1>    OutImageType;
   typedef typename OutImageType::IndexType             OutIndexType;
-  typedef itk::ImageFileReader<ImageType>              readertype;
-  typedef itk::ImageFileWriter<ImageType>              writertype;
   typedef typename ImageType::IndexType                IndexType;
-  typedef typename ImageType::SizeType                 SizeType;
-  typedef typename ImageType::SpacingType              SpacingType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
 
   typedef double                                            Scalar;
   typedef itk::ants::antsMatrixUtilities<ImageType, Scalar> matrixOpType;
@@ -4423,14 +4245,12 @@ int ThreeTissueConfounds(int argc, char *argv[])
   std::string tempname = outname.substr(0, idx);
   std::string extension = outname.substr(idx, outname.length() );
 
-  typename ImageType::Pointer image1 = NULL;
-  typename OutImageType::Pointer outimage = NULL;
-  typename OutImageType::Pointer outimage2 = NULL;
-  typename OutImageType::Pointer label_image = NULL;
-  typename OutImageType::Pointer var_image = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename OutImageType::Pointer outimage = ITK_NULLPTR;
+  typename OutImageType::Pointer outimage2 = ITK_NULLPTR;
+  typename OutImageType::Pointer label_image = ITK_NULLPTR;
+  typename OutImageType::Pointer var_image = ITK_NULLPTR;
 
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>    ImageIt;
-  typedef itk::ImageRegionIteratorWithIndex<OutImageType> SliceIt;
 
   if( fn1.length() > 3 )
     {
@@ -4760,17 +4580,7 @@ int StackImage(int argc, char *argv[])
     return 1;
     }
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -4780,7 +4590,7 @@ int StackImage(int argc, char *argv[])
 
   unsigned int nSlices = argc - argct;
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<ImageType>(image1, fn1.c_str() );
@@ -4853,27 +4663,16 @@ int Stack2Images(int argc, char *argv[])
     return 1;
     }
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
   argct += 2;
   std::string fn1 = std::string(argv[argct]);  argct++;
   std::string fn2 = std::string(argv[argct]);  argct++;
-  typename ImageType::Pointer image1 = NULL;
-  typename ImageType::Pointer image2 = NULL;
-  typename ImageType::Pointer tiledimage = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
+  typename ImageType::Pointer tiledimage = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<ImageType>(image1, fn1.c_str() );
@@ -4895,8 +4694,8 @@ int Stack2Images(int argc, char *argv[])
     = TileImageFilterType::New ();
   tileFilter->SetLayout( layout );
   unsigned int inputImageNumber = 0;
-  tileFilter->SetInput( inputImageNumber++, image1 ); 
-  tileFilter->SetInput( inputImageNumber++, image2 ); 
+  tileFilter->SetInput( inputImageNumber++, image1 );
+  tileFilter->SetInput( inputImageNumber++, image2 );
   tileFilter->SetDefaultPixelValue( 0 );
   tiledimage = tileFilter->GetOutput();
   WriteImage<ImageType>(tiledimage, outname.c_str() );
@@ -4908,18 +4707,7 @@ template <unsigned int ImageDimension>
 int MakeImage(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
@@ -5324,17 +5112,8 @@ int ImageMath(int argc, char *argv[])
 {
   typedef float PixelType;
   //  const unsigned int ImageDimension = AvantsImageDimension;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
   typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -5347,9 +5126,9 @@ int ImageMath(int argc, char *argv[])
     fn2 = std::string(argv[argct]);
     }
 
-  typename ImageType::Pointer image1 = NULL;
-  typename ImageType::Pointer image2 = NULL;
-  typename ImageType::Pointer varimage = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
+  typename ImageType::Pointer varimage = ITK_NULLPTR;
 
   bool  isfloat = false;
   float floatval = 1.0;
@@ -5506,20 +5285,65 @@ int ImageMath(int argc, char *argv[])
 }
 
 template <unsigned int ImageDimension>
+int FuseNImagesIntoNDVectorField(int argc, char *argv[])
+{
+  typedef itk::Vector<float, ImageDimension>       VectorType;
+  typedef itk::Image<VectorType, ImageDimension>   FieldType;
+  typedef itk::Image<float, ImageDimension>        ImageType;
+  typedef  typename ImageType::IndexType           IndexType;
+  typedef itk::ImageRegionIteratorWithIndex<FieldType>   Iterator;
+  int               argct = 2;
+  const std::string outname = std::string(argv[argct]); argct++;
+  std::string       operation = std::string(argv[argct]);  argct++;
+  std::string       fn1 = std::string(argv[argct]);   argct++;
+  std::string       fn2 = "";
+  std::string       fn3 = "";
+  if( argc > argct )
+    {
+    fn2 = std::string(argv[argct++]);
+    }
+  if( argc > argct )
+    {
+    fn3 = std::string(argv[argct++]);
+    }
+
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
+  typename ImageType::Pointer image3 = ITK_NULLPTR;
+  if ( fn1.length() > 3 ) ReadImage<ImageType>(image1, fn1.c_str() );
+  if ( fn2.length() > 3 ) ReadImage<ImageType>(image2, fn2.c_str() );
+  if ( fn3.length() > 3 ) ReadImage<ImageType>(image3, fn3.c_str() );
+  typename FieldType::Pointer vimage =
+    AllocImage<FieldType>(image1->GetLargestPossibleRegion(),
+      image1->GetSpacing(),
+      image1->GetOrigin(),
+      image1->GetDirection() );
+
+  VectorType vec;
+  vec.Fill(0);
+  Iterator vfIter2( vimage,  vimage->GetLargestPossibleRegion() );
+  for(  vfIter2.GoToBegin(); !vfIter2.IsAtEnd(); ++vfIter2 )
+    {
+    IndexType ind = vfIter2.GetIndex();
+    vec[0] = image1->GetPixel(ind);
+    vec[1] = image2->GetPixel(ind);
+    if ( ImageDimension >  2 ) vec[2] = image3->GetPixel(ind);
+    vfIter2.Set(vec);
+    }
+  WriteImage<FieldType>(vimage, outname.c_str() );
+  return EXIT_SUCCESS;
+}
+
+
+
+template <unsigned int ImageDimension>
 int VImageMath(int argc, char *argv[])
 {
   typedef itk::Vector<float, ImageDimension>                              VectorType;
   typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef FieldType                                                       ImageType;
   typedef typename ImageType::PixelType                                   PixelType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
   typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -5532,9 +5356,9 @@ int VImageMath(int argc, char *argv[])
     fn2 = std::string(argv[argct++]);
     }
 
-  typename ImageType::Pointer image1 = NULL;
-  typename ImageType::Pointer image2 = NULL;
-  typename ImageType::Pointer varimage = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
+  typename ImageType::Pointer varimage = ITK_NULLPTR;
 
   bool  isfloat = false;
   float floatval = 1.0;
@@ -5663,7 +5487,7 @@ int SmoothTensorImage(int argc, char *argv[])
     fn2 = std::string(argv[argct++]);
     }
 
-  typename TensorImageType::Pointer inDT = NULL;
+  typename TensorImageType::Pointer inDT = ITK_NULLPTR;
   ReadTensorImage<TensorImageType>(inDT, fn1.c_str() );
 
   typename GaussianFilterType::Pointer gFilter = GaussianFilterType::New();
@@ -5689,29 +5513,25 @@ int TensorFunctions(int argc, char *argv[])
   typedef typename TensorImageType::IndexType                IndexType;
   typedef itk::Image<PixelType, ImageDimension>              ImageType;
   typedef itk::Image<RGBType, ImageDimension>                ColorImageType;
-  typedef itk::ImageFileReader<ImageType>                    readertype;
-  typedef itk::ImageFileWriter<ImageType>                    writertype;
   typedef itk::ImageFileWriter<ColorImageType>               ColorWriterType;
   typedef itk::ImageRegionIteratorWithIndex<TensorImageType> Iterator;
 
   typedef itk::Vector<float, ImageDimension>                 VectorType;
   typedef itk::Image<VectorType, ImageDimension>             VectorImageType;
-  typedef itk::ImageRegionIteratorWithIndex<VectorImageType> vecIterator;
-  typedef itk::Matrix<float, 3, 3>                           MatrixType;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]); argct++;
   std::string       operation = std::string(argv[argct]);  argct++;
   std::string       fn1 = std::string(argv[argct]);   argct++;
   std::string       fn2 = ""; // used for whichvec and mask file name below
-  float             backgroundMD = 0.0; // mean diffusivity of isotropic background voxels 
+  float             backgroundMD = 0.0; // mean diffusivity of isotropic background voxels
 
-  typename TensorImageType::Pointer timage = NULL;    // input tensor image
-  typename ImageType::Pointer       vimage = NULL;    // output scalar image
-  typename ColorImageType::Pointer  cimage = NULL;    // output color image
-  typename VectorImageType::Pointer vecimage = NULL;  // output vector image
-  typename TensorImageType::Pointer toimage = NULL;   // output tensor image
-  typename ImageType::Pointer       mimage = NULL;    // mask image
+  typename TensorImageType::Pointer timage = ITK_NULLPTR;    // input tensor image
+  typename ImageType::Pointer       vimage = ITK_NULLPTR;    // output scalar image
+  typename ColorImageType::Pointer  cimage = ITK_NULLPTR;    // output color image
+  typename VectorImageType::Pointer vecimage = ITK_NULLPTR;  // output vector image
+  typename TensorImageType::Pointer toimage = ITK_NULLPTR;   // output tensor image
+  typename ImageType::Pointer       mimage = ITK_NULLPTR;    // mask image
 
   if( strcmp(operation.c_str(), "4DTensorTo3DTensor") == 0 )
     {
@@ -5726,7 +5546,7 @@ int TensorFunctions(int argc, char *argv[])
     unsigned int dim = imageIO->GetNumberOfDimensions();
     if( dim == 4 )
       {
-      typename D4TensorImageType::Pointer d4img = NULL;
+      typename D4TensorImageType::Pointer d4img = ITK_NULLPTR;
       ReadImage<D4TensorImageType>(d4img, fn1.c_str() );
       unsigned int d4size = d4img->GetLargestPossibleRegion().GetSize()[3];
       if( d4size != 6 && d4size != 7 )
@@ -5985,8 +5805,8 @@ int TensorFunctions(int argc, char *argv[])
     {
     backgroundTensor[i] = 0.0;
     }
-  
-  if ( backgroundMD > 0.0 ) 
+
+  if ( backgroundMD > 0.0 )
     {
     std::cout << "Setting background voxels to isotropic tensors with mean diffusivity " << backgroundMD << std::endl;
     backgroundTensor[0] = backgroundMD;
@@ -6235,17 +6055,8 @@ int CompareHeadersAndImages(int argc, char *argv[])
 {
   typedef float PixelType;
   //  const unsigned int ImageDimension = AvantsImageDimension;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
   typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -6258,8 +6069,8 @@ int CompareHeadersAndImages(int argc, char *argv[])
     fn2 = std::string(argv[argct]);
     }
 
-  typename ImageType::Pointer image1 = NULL;
-  typename ImageType::Pointer image2 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
   bool isfloat = false;
   try
     {
@@ -6930,17 +6741,8 @@ template <unsigned int ImageDimension>
 int NegativeImage(int /*argc */, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
   typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -6948,7 +6750,7 @@ int NegativeImage(int /*argc */, char *argv[])
   argct += 2;
   std::string fn1 = std::string(argv[argct]);
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   ReadImage<ImageType>( image1, fn1.c_str() );
   Iterator vfIter2( image1,  image1->GetLargestPossibleRegion() );
   double   mx = -1.e12, mn = 1.e12;
@@ -7316,9 +7118,9 @@ itkMRIBiasFieldCorrectionFilter(typename TImage::Pointer image,
                                                           // filter->SetOptimizerInitialRadius( 0.02 ) ; // default
                                                           // value
                                                           // timing
-  long int t1 = time(NULL);
+  long int t1 = time(ITK_NULLPTR);
   filter->Update();
-  long int t2 = time(NULL);
+  long int t2 = time(ITK_NULLPTR);
   std::cout << "Run time (in s)" << t2 - t1  << std::endl;
 
   return filter->GetOutput();
@@ -7605,18 +7407,7 @@ template <unsigned int ImageDimension>
 int SmoothImage(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
@@ -7629,8 +7420,8 @@ int SmoothImage(int argc, char *argv[])
     sigmaVector = ConvertVector<float>( argv[argct] );
     }
 
-  typename ImageType::Pointer image1 = NULL;
-  typename ImageType::Pointer varimage = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer varimage = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
 
   typedef itk::DiscreteGaussianImageFilter<ImageType, ImageType> dgf;
@@ -7674,18 +7465,7 @@ template <unsigned int ImageDimension>
 int MorphImage(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]); argct++;
@@ -7727,7 +7507,7 @@ int MorphImage(int argc, char *argv[])
     morphopt = 7;
     }
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
 
   // SRD set dilatevalue
@@ -7750,14 +7530,6 @@ int MorphImage(int argc, char *argv[])
 template <unsigned int ImageDimension>
 int FastMarchingSegmentation( unsigned int argc, char *argv[] )
 {
-  typedef float                                         InternalPixelType;
-  typedef itk::Image<InternalPixelType, ImageDimension> InternalImageType;
-  typedef itk::Image<InternalPixelType, ImageDimension> ImageType;
-
-  typedef unsigned char                               OutputPixelType;
-  typedef itk::Image<OutputPixelType, ImageDimension> OutputImageType;
-
-  //  option->SetUsageOption( 0, "[speedImage,seedImage,<stoppingValue=max>,<topologyCheck=0>]" );
   unsigned int      argct = 2;
   const std::string outname = std::string(argv[argct]);
   std::cout << outname << argc << " This function has been disabled --- see PropagateLabelsThroughMask " << std::endl;
@@ -7769,17 +7541,7 @@ template <unsigned int ImageDimension>
 int PropagateLabelsThroughMask(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
   float             thresh = 0.5;
   int               argct = 2;
@@ -7806,13 +7568,13 @@ int PropagateLabelsThroughMask(int argc, char *argv[])
     topocheck = atoi(argv[argct]);   argct++;
     }
 
-  typename ImageType::Pointer speedimage = NULL;
+  typename ImageType::Pointer speedimage = ITK_NULLPTR;
   ReadImage<ImageType>(speedimage, fn1.c_str() );
-  typename ImageType::Pointer labimage = NULL;
+  typename ImageType::Pointer labimage = ITK_NULLPTR;
   ReadImage<ImageType>(labimage, fn2.c_str() );
-  typename ImageType::Pointer fastimage = NULL;
+  typename ImageType::Pointer fastimage = ITK_NULLPTR;
   ReadImage<ImageType>(fastimage, fn1.c_str() );
-  typename ImageType::Pointer outlabimage = NULL;
+  typename ImageType::Pointer outlabimage = ITK_NULLPTR;
   ReadImage<ImageType>(outlabimage, fn2.c_str() );
   fastimage->FillBuffer(1.e9);
   // compute max label
@@ -7854,7 +7616,7 @@ int PropagateLabelsThroughMask(int argc, char *argv[])
     typename ContourFilterType::Pointer contour = ContourFilterType::New();
     contour->SetInput( thresholder->GetOutput() );
     contour->FullyConnectedOff();
-    contour->SetBackgroundValue( itk::NumericTraits<typename LabelImageType::PixelType>::Zero );
+    contour->SetBackgroundValue( itk::NumericTraits<typename LabelImageType::PixelType>::ZeroValue() );
     contour->Update();
     typename ImageType::Pointer contourimage = contour->GetOutput();
 
@@ -7946,20 +7708,119 @@ int PropagateLabelsThroughMask(int argc, char *argv[])
 
 
 template <unsigned int ImageDimension>
+int FastMarchingExtension(int argc, char *argv[])
+{
+  typedef float                                     PixelType;
+  typedef itk::Image<PixelType, ImageDimension>     ImageType;
+  typedef itk::ImageRegionIteratorWithIndex<ImageType> Iterator;
+  int               argct = 2;
+  const std::string outname = std::string(argv[argct]);
+  argct += 2;
+  std::string fn1 = std::string(argv[argct]);   argct++; // speed image
+  std::string fn2 = ""; // label image
+  std::string fn3 = ""; // value image
+  if(  argc > argct )
+    {
+    fn2 = std::string(argv[argct]);   argct++;
+    }
+  else
+    {
+    std::cout << " not enough parameters -- need label image " << std::endl;
+    return 0;
+    }
+  if(  argc > argct )
+    {
+    fn3 = std::string(argv[argct]);   argct++;
+    }
+  else
+    {
+    std::cout << " not enough parameters -- need value image " << std::endl;
+    return 0;
+    }
+  typename ImageType::Pointer speedimage = ITK_NULLPTR;
+  ReadImage<ImageType>(speedimage, fn1.c_str() );
+  typename ImageType::Pointer labimage = ITK_NULLPTR;
+  ReadImage<ImageType>(labimage, fn2.c_str() );
+  typename ImageType::Pointer valimage = ITK_NULLPTR;
+  ReadImage<ImageType>(valimage, fn3.c_str() );
+  typedef itk::FastMarchingThresholdStoppingCriterion< ImageType, ImageType >
+    CriterionType;
+  typedef typename CriterionType::Pointer CriterionPointer;
+  CriterionPointer criterion = CriterionType::New();
+  criterion->SetThreshold( 1.e9 ); // something large
+  typedef  itk::FastMarchingExtensionImageFilterBase<ImageType, ImageType,
+    PixelType,1>  MarcherBaseType;
+  typedef  typename MarcherBaseType::LabelImageType LabelImageType;
+  typename MarcherBaseType::Pointer  fastMarching;
+  typedef itk::BinaryThresholdImageFilter<ImageType, ImageType> ThresholderType;
+  typename ThresholderType::Pointer thresholder = ThresholderType::New();
+  thresholder->SetInput( labimage );
+  thresholder->SetLowerThreshold( 0.5 );
+  thresholder->SetUpperThreshold( 1.001 );
+  thresholder->SetInsideValue( 1 );
+  thresholder->SetOutsideValue( 0 );
+
+  typedef itk::LabelContourImageFilter<ImageType, ImageType> ContourFilterType;
+  typename ContourFilterType::Pointer contour = ContourFilterType::New();
+  contour->SetInput( thresholder->GetOutput() );
+  contour->FullyConnectedOff();
+  contour->SetBackgroundValue( itk::NumericTraits<typename LabelImageType::PixelType>::ZeroValue() );
+  contour->Update();
+  typename ImageType::Pointer contourimage = contour->GetOutput();
+  // contour defines starting points
+
+  fastMarching = MarcherBaseType::New();
+  fastMarching->SetInput( speedimage );
+  typedef typename MarcherBaseType::NodePairType           NodePairType;
+  typedef typename MarcherBaseType::NodePairContainerType  NodePairContainerType;
+  typedef typename MarcherBaseType::AuxValueVectorType     AuxValueVectorType;
+  typedef typename MarcherBaseType::AuxValueContainerType  AuxValueContainerType;
+  typename AuxValueContainerType::Pointer auxAliveValues = AuxValueContainerType::New();
+  typename AuxValueContainerType::Pointer auxTrialValues = AuxValueContainerType::New();
+  typename NodePairContainerType::Pointer seeds = NodePairContainerType::New();
+  seeds->Initialize();
+  typename NodePairContainerType::Pointer alivePoints = NodePairContainerType::New();
+  alivePoints->Initialize();
+  unsigned int seedct = 0, alivect = 0;
+  Iterator vfIter2( labimage,  labimage->GetLargestPossibleRegion() );
+  for(  vfIter2.GoToBegin(); !vfIter2.IsAtEnd(); ++vfIter2 )
+    {
+    typename ImageType::IndexType ind = vfIter2.GetIndex();
+    double labval = labimage->GetPixel( ind );
+    double contourval = contourimage->GetPixel( ind );
+    if ( ( (unsigned int) contourval == 1 )  )
+      {
+      seeds->push_back( NodePairType(  ind, 0. ) );
+      AuxValueVectorType vector;
+      vector[0] = valimage->GetPixel( ind  );
+      auxTrialValues->push_back( vector );
+      seedct++;
+      }
+    if (  ( labval > 0  ) && ((unsigned int) contourval != 1 ) )
+      {
+      alivePoints->push_back( NodePairType(  ind, 0. ) );
+      AuxValueVectorType vector;
+      vector[0] = valimage->GetPixel( ind  );
+      auxAliveValues->push_back( vector );
+      alivect++;
+      }
+  }
+  fastMarching->SetTrialPoints(  seeds  );
+  fastMarching->SetAuxiliaryTrialValues( auxTrialValues );
+  fastMarching->SetAlivePoints( alivePoints );
+  fastMarching->SetAuxiliaryAliveValues( auxAliveValues );
+  fastMarching->SetStoppingCriterion( criterion );
+  fastMarching->Update();
+  WriteImage<ImageType>( fastMarching->GetAuxiliaryImage(0), outname.c_str() );
+  return 0;
+}
+
+
+template <unsigned int ImageDimension>
 int itkPropagateLabelsThroughMask(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
   float             thresh = 1.e-9;
   int               argct = 2;
@@ -7986,13 +7847,13 @@ int itkPropagateLabelsThroughMask(int argc, char *argv[])
     topocheck = atoi(argv[argct]);   argct++;
     }
 
-  typename ImageType::Pointer speedimage = NULL;
+  typename ImageType::Pointer speedimage = ITK_NULLPTR;
   ReadImage<ImageType>(speedimage, fn1.c_str() );
-  typename ImageType::Pointer labimage = NULL;
+  typename ImageType::Pointer labimage = ITK_NULLPTR;
   ReadImage<ImageType>(labimage, fn2.c_str() );
-  typename ImageType::Pointer fastimage = NULL;
+  typename ImageType::Pointer fastimage = ITK_NULLPTR;
   ReadImage<ImageType>(fastimage, fn1.c_str() );
-  typename ImageType::Pointer outlabimage = NULL;
+  typename ImageType::Pointer outlabimage = ITK_NULLPTR;
   ReadImage<ImageType>(outlabimage, fn2.c_str() );
   fastimage->FillBuffer(1.e9);
   // compute max label
@@ -8039,7 +7900,7 @@ int itkPropagateLabelsThroughMask(int argc, char *argv[])
     typename ContourFilterType::Pointer contour = ContourFilterType::New();
     contour->SetInput( thresholder->GetOutput() );
     contour->FullyConnectedOff();
-    contour->SetBackgroundValue( itk::NumericTraits<typename LabelImageType::PixelType>::Zero );
+    contour->SetBackgroundValue( itk::NumericTraits<typename LabelImageType::PixelType>::ZeroValue() );
     contour->Update();
     typename ImageType::Pointer contourimage = contour->GetOutput();
 
@@ -8059,7 +7920,6 @@ int itkPropagateLabelsThroughMask(int argc, char *argv[])
       }
     typedef typename FastMarchingFilterType::NodePairContainerType NodeContainer;
     typedef typename FastMarchingFilterType::NodePairType      NodePairType;
-    typedef typename FastMarchingFilterType::NodeType      NodeType;
     typename NodeContainer::Pointer seeds = NodeContainer::New();
     seeds->Initialize();
     typename NodeContainer::Pointer alivePoints = NodeContainer::New();
@@ -8125,18 +7985,7 @@ template <unsigned int ImageDimension>
 int DistanceMap(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int argct = 2;
   if( argc < 5 )
@@ -8148,7 +7997,7 @@ int DistanceMap(int argc, char *argv[])
   argct += 2;
   std::string fn1 = std::string(argv[argct]);   argct++;
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
 
   typedef itk::DanielssonDistanceMapImageFilter<ImageType, ImageType> FilterType;
@@ -8178,7 +8027,7 @@ int GenerateMaurerDistanceImage( int argc, char *argv[] )
   const std::string outputName = std::string( argv[2] );
   const std::string inputName = std::string( argv[4] );
 
-  typename ImageType::Pointer input = NULL;
+  typename ImageType::Pointer input = ITK_NULLPTR;
   ReadImage<ImageType>( input, inputName.c_str() );
 
   PixelType foreground = 1;
@@ -8212,19 +8061,8 @@ template <unsigned int ImageDimension>
 int FillHoles(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
   typedef itk::Image<int, ImageDimension>                                 LabelImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
   typedef itk::CastImageFilter<ImageType, LabelImageType>                 CastFilterType;
 
   int               argct = 2;
@@ -8237,9 +8075,9 @@ int FillHoles(int argc, char *argv[])
     holeparam = atof(argv[argct]);
     }
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
-  typename ImageType::Pointer imageout = NULL;
+  typename ImageType::Pointer imageout = ITK_NULLPTR;
   ReadImage<ImageType>(imageout, fn1.c_str() );
   image1 = BinaryThreshold<ImageType>(0.5, 1.e9, 1, image1);
 
@@ -8384,17 +8222,7 @@ template <unsigned int ImageDimension>
 int NormalizeImage(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -8407,7 +8235,7 @@ int NormalizeImage(int argc, char *argv[])
     option = atof(argv[argct]);
     }
 
-  typename ImageType::Pointer image = NULL;
+  typename ImageType::Pointer image = ITK_NULLPTR;
   ReadImage<ImageType>(image, fn1.c_str() );
 
   float         max = 0;
@@ -8457,14 +8285,8 @@ int NormalizeImage(int argc, char *argv[])
 template <unsigned int ImageDimension>
 int PrintHeader(int argc, char *argv[])
 {
-  typedef  float                                     outPixelType;
-  typedef  float                                     floatPixelType;
   typedef  float                                     inPixelType;
   typedef itk::Image<inPixelType, ImageDimension>    ImageType;
-  typedef itk::Image<floatPixelType, ImageDimension> IntermediateType;
-  typedef itk::Image<outPixelType, ImageDimension>   OutImageType;
-  typedef itk::ImageFileReader<ImageType>            readertype;
-  typedef itk::ImageFileWriter<OutImageType>         writertype;
 
   int         argct = 4;
   std::string fn1 = std::string(argv[argct]);
@@ -8497,18 +8319,7 @@ template <unsigned int ImageDimension>
 int GradientImage(      int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
@@ -8530,8 +8341,8 @@ int GradientImage(      int argc, char *argv[])
     normalize = atoi(argv[argct]);
     }
 
-  typename ImageType::Pointer image = NULL;
-  typename ImageType::Pointer image2 = NULL;
+  typename ImageType::Pointer image = ITK_NULLPTR;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
   ReadImage<ImageType>(image, fn1.c_str() );
 
   typedef itk::GradientMagnitudeRecursiveGaussianImageFilter<ImageType, ImageType> dgf;
@@ -8561,18 +8372,7 @@ template <unsigned int ImageDimension>
 int LaplacianImage(      int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
@@ -8593,8 +8393,8 @@ int LaplacianImage(      int argc, char *argv[])
     normalize = atoi(argv[argct]);
     }
 
-  typename ImageType::Pointer image = NULL;
-  typename ImageType::Pointer image2 = NULL;
+  typename ImageType::Pointer image = ITK_NULLPTR;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
   ReadImage<ImageType>(image, fn1.c_str() );
 
   typedef itk::LaplacianRecursiveGaussianImageFilter<ImageType, ImageType> dgf;
@@ -8618,6 +8418,95 @@ int LaplacianImage(      int argc, char *argv[])
   WriteImage<ImageType>( rescaler->GetOutput(), outname.c_str() );
   return 0;
 }
+
+
+template <unsigned int ImageDimension>
+int CropBinaryImage(      int argc, char *argv[])
+{
+  if( argc < 6 )
+    {
+    std::cerr << "Not enough args.  See help." << std::endl;
+    return EXIT_FAILURE;
+    }
+  typedef float  PixelType;
+  typedef itk::Image<PixelType, ImageDimension> ImageType;
+  int               argct = 2;
+  const std::string outname = std::string(argv[argct]);
+  argct += 2;
+  std::string fn1 = std::string(argv[argct]);   argct++;
+  typename ImageType::Pointer image = ITK_NULLPTR;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
+  ReadImage<ImageType>(image, fn1.c_str() );
+/*
+  typedef itk::LabelGeometryImageFilter<ImageType, ImageType> GeometryFilterType;
+  typename GeometryFilterType::Pointer geometryFilter = GeometryFilterType::New();
+  geometryFilter->SetInput( image );
+  geometryFilter->CalculatePixelIndicesOff();
+  geometryFilter->CalculateOrientedBoundingBoxOff();
+  geometryFilter->CalculateOrientedLabelRegionsOff();
+  geometryFilter->Update();
+*/
+  return 0;
+}
+
+template <unsigned int ImageDimension>
+int CannyImage(      int argc, char *argv[])
+{
+  typedef float                                                           PixelType;
+  typedef itk::Image<PixelType, ImageDimension>                           ImageType;
+
+  int               argct = 2;
+  const std::string outname = std::string(argv[argct]);
+  argct += 2;
+  std::string fn1 = std::string(argv[argct]);   argct++;
+  float       sig = 1;
+  if( argc > argct )
+    {
+    sig = atof(argv[argct]); argct++;
+    }
+  if( sig <= 0 )
+    {
+    sig = 0.5;
+    }
+  PixelType lowerThreshold = 0.5;
+  if( argc > argct )
+    {
+    lowerThreshold = atof(argv[argct]); argct++;
+    }
+  PixelType upperThreshold = 1;
+  if( argc > argct )
+    {
+    upperThreshold = atof(argv[argct]); argct++;
+    }
+
+  typename ImageType::Pointer image = ITK_NULLPTR;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
+  ReadImage<ImageType>(image, fn1.c_str() );
+  typedef itk::RescaleIntensityImageFilter<ImageType, ImageType> RescaleFilterType;
+  typename RescaleFilterType::Pointer rescaler0 =
+    RescaleFilterType::New();
+  rescaler0->SetOutputMinimum(   0 );
+  rescaler0->SetOutputMaximum( 1 );
+  rescaler0->SetInput( image );
+  rescaler0->Update();
+  typedef itk::CannyEdgeDetectionImageFilter< ImageType, ImageType >
+  FilterType;
+  typename FilterType::Pointer filter = FilterType::New();
+  filter->SetInput( rescaler0->GetOutput() );
+  filter->SetVariance( sig );
+  filter->SetUpperThreshold( upperThreshold );
+  filter->SetLowerThreshold( lowerThreshold );
+  filter->Update();
+  image2 = filter->GetOutput();
+  typename RescaleFilterType::Pointer rescaler = RescaleFilterType::New();
+  rescaler->SetOutputMinimum(   0 );
+  rescaler->SetOutputMaximum( 1 );
+  rescaler->SetInput( image2 );
+  rescaler->Update();
+  WriteImage<ImageType>( rescaler->GetOutput(), outname.c_str() );
+  return 0;
+}
+
 
 template <unsigned int ImageDimension>
 int PoissonDiffusion( int argc, char *argv[])
@@ -8777,25 +8666,14 @@ RemoveLabelInterfaces(int argc, char *argv[])
     std::cout << " too few options " << std::endl; return;
     }
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
   argct += 2;
   std::string fn1 = std::string(argv[argct]);   argct++;
 
-  typename ImageType::Pointer input = NULL;
+  typename ImageType::Pointer input = ITK_NULLPTR;
   ReadImage<ImageType>(input, fn1.c_str() );
 
   typedef itk::NeighborhoodIterator<ImageType> iteratorType;
@@ -8856,7 +8734,7 @@ ReplaceVoxelValue( int argc, char *argv[] )
   const PixelType   highThreshold = atof( argv[6] );
   const PixelType   replacementValue = atof( argv[7] );
 
-  typename ImageType::Pointer inputImage = NULL;
+  typename ImageType::Pointer inputImage = ITK_NULLPTR;
   ReadImage<ImageType>( inputImage, inputFile.c_str() );
 
   typename ImageType::Pointer outputImage = ImageType::New();
@@ -8888,17 +8766,7 @@ void
 EnumerateLabelInterfaces(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -8918,12 +8786,12 @@ EnumerateLabelInterfaces(int argc, char *argv[])
     }
   argct++;
 
-  typename ImageType::Pointer input = NULL;
+  typename ImageType::Pointer input = ITK_NULLPTR;
   ReadImage<ImageType>(input, fn1.c_str() );
-  typename ImageType::Pointer output = NULL;
+  typename ImageType::Pointer output = ITK_NULLPTR;
   ReadImage<ImageType>(output, fn1.c_str() );
   output->FillBuffer(0);
-  typename ImageType::Pointer colored = NULL;
+  typename ImageType::Pointer colored = ITK_NULLPTR;
   ReadImage<ImageType>(colored, fn1.c_str() );
   colored->FillBuffer(0);
 
@@ -8959,7 +8827,6 @@ EnumerateLabelInterfaces(int argc, char *argv[])
   typename myInterfaceImageType::Pointer colorimage =
     AllocImage<myInterfaceImageType>(region, spacing, origin, direction, 0);
 
-  typedef itk::ImageRegionIteratorWithIndex<myInterfaceImageType> FIterator;
 
 // we can use this to compute a 4-coloring of the brain
 
@@ -9151,18 +9018,7 @@ template <unsigned int ImageDimension>
 int CountVoxelDifference(      int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::Image<unsigned char, ImageDimension>                       ByteImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ByteImageType>                             writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -9180,9 +9036,9 @@ int CountVoxelDifference(      int argc, char *argv[])
     maskfn = std::string(argv[argct]);   argct++;
     }
 
-  typename ImageType::Pointer image1 = NULL;
-  typename ImageType::Pointer image2 = NULL;
-  typename ImageType::Pointer mask = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
+  typename ImageType::Pointer mask = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
   ReadImage<ImageType>(image2, fn2.c_str() );
   ReadImage<ImageType>(mask, maskfn.c_str() );
@@ -9225,18 +9081,7 @@ template <unsigned int ImageDimension>
 int DiceAndMinDistSum(      int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::Image<unsigned char, ImageDimension>                       ByteImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ByteImageType>                             writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -9256,9 +9101,9 @@ int DiceAndMinDistSum(      int argc, char *argv[])
   std::string diceimagename = ANTSGetFilePrefix(outname.c_str() ) + std::string("dice.nii.gz");
   std::string mdsimagename = ANTSGetFilePrefix(outname.c_str() ) + std::string("mds.nii.gz");
 
-  typename ImageType::Pointer image1 = NULL;
-  typename ImageType::Pointer image2 = NULL;
-  typename ImageType::Pointer outdist = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
+  typename ImageType::Pointer outdist = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
   if( fn2.length() > 3 )
     {
@@ -9327,9 +9172,9 @@ int DiceAndMinDistSum(      int argc, char *argv[])
   for( it = myLabelSet2.begin(); it != myLabelSet2.end(); ++it )
     {
     typename ImageType::Pointer mask1 = BinaryThreshold<ImageType>(*it, *it, 1, image1);
-    typename ImageType::Pointer surf = NULL;
-    typename ImageType::Pointer d1 = NULL;
-    typename ImageType::Pointer d2 = NULL;
+    typename ImageType::Pointer surf = ITK_NULLPTR;
+    typename ImageType::Pointer d1 = ITK_NULLPTR;
+    typename ImageType::Pointer d2 = ITK_NULLPTR;
 
     float count1 = 0; // count vox in label 1
     float count2 = 0; // count vox in label 2
@@ -9825,21 +9670,225 @@ int InvId( int argc, char *argv[] )
 }
 
 template <unsigned int ImageDimension>
+int ReplicateDisplacement( int argc, char *argv[] )
+{
+  if( argc > 6 )
+    {
+    std::cout << " Replicate a ND displacement to ND+1 dimensions " << std::endl;
+    }
+  else
+    {
+    std::cout << "ImageMath 3 out4DWarp.nii.gz ReplicateDisplacement in3DWarp.nii.gz nreplications time-spacing time-origin" << std::endl;
+    std::cout << "ImageMath 3 out4DWarp.nii.gz ReplicateDisplacement in3DWarp.nii.gz 10 2.5 0.0" << std::endl;
+    return 1;
+    }
+  typedef float                                              RealType;
+  typedef itk::Vector<RealType, ImageDimension>              VectorType;
+  typedef itk::Image<VectorType, ImageDimension>             VectorImageType;
+  typedef itk::ImageRegionIteratorWithIndex<VectorImageType> Iterator;
+
+  typedef itk::Vector<RealType, ImageDimension+1>            VectorRType;
+  typedef itk::Image<VectorRType, ImageDimension+1>          VectorRImageType;
+
+  int               argct = 2;
+  const std::string outname = std::string(argv[argct]);
+  argct += 2;
+  std::string vecname1 = std::string(argv[argct]);   argct++;
+  unsigned int timedims = atoi(argv[argct]);  argct++;
+  unsigned int tr = atof(argv[argct]);  argct++;
+  unsigned int torigin = atof(argv[argct]);  argct++;
+  /**
+   * Read in vector field
+   */
+  typedef itk::ImageFileReader<VectorImageType> ReaderType;
+  typename ReaderType::Pointer reader1 = ReaderType::New();
+  reader1->SetFileName( vecname1.c_str() );
+  reader1->Update();
+  typename VectorImageType::Pointer vecimage1 = reader1->GetOutput();
+  typename VectorRImageType::Pointer outputImage = VectorRImageType::New();
+  typename VectorRImageType::RegionType outRegion;
+  typename VectorRImageType::SizeType outSize;
+  typename VectorRImageType::SpacingType outSpacing;
+  typename VectorRImageType::PointType outOrigin;
+  typename VectorRImageType::DirectionType outDirection;
+  for( unsigned int d = 0; d < ImageDimension; d++ )
+    {
+    outSize[d] = vecimage1->GetLargestPossibleRegion().GetSize()[d];
+    outSpacing[d] = vecimage1->GetSpacing()[d];
+    outOrigin[d] = vecimage1->GetOrigin()[d];
+    for( unsigned int e = 0; e < ImageDimension; e++ )
+      {
+      outDirection(e, d) = vecimage1->GetDirection() (e, d);
+      }
+    }
+  for( unsigned int d = 0; d < ImageDimension; d++ )
+    {
+    outDirection(d, ImageDimension) = 0;
+    outDirection(ImageDimension, d) = 0;
+    }
+  outDirection(ImageDimension, ImageDimension) = 1.0;
+  outSize[ImageDimension] = timedims;
+  outSpacing[ImageDimension] = tr;
+  outOrigin[ImageDimension] = torigin;
+  outRegion.SetSize( outSize );
+  outputImage->SetRegions( outRegion );
+  outputImage->SetSpacing( outSpacing );
+  outputImage->SetOrigin( outOrigin );
+  outputImage->SetDirection( outDirection );
+  outputImage->Allocate();
+  VectorRType vec;
+  vec.Fill( 0 );
+  outputImage->FillBuffer( vec );
+  // perform the replication
+  typename VectorImageType::IndexType ind;
+  typename VectorRImageType::IndexType indp1;
+  Iterator It1( vecimage1, vecimage1->GetLargestPossibleRegion() );
+  for( It1.GoToBegin(); !It1.IsAtEnd(); ++It1 )
+    {
+    ind = It1.GetIndex();
+    typename VectorImageType::PixelType vecx = It1.Get();
+    for( unsigned int i = 0; i < ImageDimension; i++ )
+      {
+      vec[i] = vecx[i];
+      indp1[i] = ind[i];
+      }
+    for( unsigned int i = 0; i < timedims; i++ )
+      {
+      indp1[ImageDimension] = i;
+      outputImage->SetPixel( indp1, vec );
+      }
+    }
+  WriteImage<VectorRImageType>( outputImage, outname.c_str() );
+  return 0;
+}
+
+
+template <unsigned int ImageDimension>
+int ShiftImageSlicesInTime( int argc, char *argv[] )
+{
+  if( argc < 4 )
+    {
+    return 1;
+    }
+  typedef float                                              RealType;
+  typedef itk::Image<RealType, ImageDimension>               ImageType;
+  int               argct = 2;
+  const std::string outname = std::string(argv[argct]);
+  argct += 2;
+  std::string fn1 = std::string(argv[argct]);   argct++;
+  unsigned int shiftamount = 1;
+  if(  argc > argct )
+    {
+    shiftamount = atoi( argv[argct] );  argct++;
+    }
+  unsigned int shiftdim = ImageDimension - 1;
+  if(  argc > argct )
+    {
+    shiftdim = atoi( argv[argct] );  argct++;
+    }
+  typename ImageType::Pointer image = ITK_NULLPTR;
+  ReadImage<ImageType>(image, fn1.c_str() );
+  typedef itk::CyclicShiftImageFilter<ImageType, ImageType> FilterType;
+  typename  FilterType::Pointer cyfilter = FilterType::New();
+  cyfilter->SetInput(image);
+  typename FilterType::OffsetType myshift;
+  myshift.Fill( 0 );
+  myshift[shiftdim]=shiftamount;
+  cyfilter->SetShift( myshift );
+  WriteImage<ImageType>(cyfilter->GetOutput(), outname.c_str() );
+  return 0;
+}
+
+
+template <unsigned int ImageDimension>
+int ReplicateImage( int argc, char *argv[] )
+{
+  if( argc > 6 )
+    {
+    std::cout << " Replicate a ND image to ND+1 dimensions " << std::endl;
+    }
+  else
+    {
+    std::cout << "ImageMath 3 out4D.nii.gz ReplicateImage in3D.nii.gz nreplications time-spacing time-origin" << std::endl;
+    std::cout << "ImageMath 3 out4D.nii.gz ReplicateImage in3D.nii.gz 10 2.5 0.0" << std::endl;
+    return 1;
+    }
+  typedef float                                              RealType;
+  typedef itk::Image<RealType, ImageDimension>               ImageType;
+  typedef itk::ImageRegionIteratorWithIndex<ImageType>       Iterator;
+  typedef itk::Image<RealType, ImageDimension+1>             RImageType;
+
+  int               argct = 2;
+  const std::string outname = std::string(argv[argct]);
+  argct += 2;
+  std::string vecname1 = std::string(argv[argct]);   argct++;
+  unsigned int timedims = atoi(argv[argct]);  argct++;
+  unsigned int tr = atof(argv[argct]);  argct++;
+  unsigned int torigin = atof(argv[argct]);  argct++;
+  typedef itk::ImageFileReader<ImageType> ReaderType;
+  typename ReaderType::Pointer reader1 = ReaderType::New();
+  reader1->SetFileName( vecname1.c_str() );
+  reader1->Update();
+  typename ImageType::Pointer vecimage1 = reader1->GetOutput();
+  typename RImageType::Pointer outputImage = RImageType::New();
+  typename RImageType::RegionType outRegion;
+  typename RImageType::SizeType outSize;
+  typename RImageType::SpacingType outSpacing;
+  typename RImageType::PointType outOrigin;
+  typename RImageType::DirectionType outDirection;
+  for( unsigned int d = 0; d < ImageDimension; d++ )
+    {
+    outSize[d] = vecimage1->GetLargestPossibleRegion().GetSize()[d];
+    outSpacing[d] = vecimage1->GetSpacing()[d];
+    outOrigin[d] = vecimage1->GetOrigin()[d];
+    for( unsigned int e = 0; e < ImageDimension; e++ )
+      {
+      outDirection(e, d) = vecimage1->GetDirection() (e, d);
+      }
+    }
+  for( unsigned int d = 0; d < ImageDimension; d++ )
+    {
+    outDirection(d, ImageDimension) = 0;
+    outDirection(ImageDimension, d) = 0;
+    }
+  outDirection(ImageDimension, ImageDimension) = 1.0;
+  outSize[ImageDimension] = timedims;
+  outSpacing[ImageDimension] = tr;
+  outOrigin[ImageDimension] = torigin;
+  outRegion.SetSize( outSize );
+  outputImage->SetRegions( outRegion );
+  outputImage->SetSpacing( outSpacing );
+  outputImage->SetOrigin( outOrigin );
+  outputImage->SetDirection( outDirection );
+  outputImage->Allocate();
+  outputImage->FillBuffer( 0 );
+  // perform the replication
+  typename ImageType::IndexType ind;
+  typename RImageType::IndexType indp1;
+  ind.Fill(0);
+  indp1.Fill( 0 );
+
+  Iterator It1( vecimage1, vecimage1->GetLargestPossibleRegion() );
+  for( It1.GoToBegin(); !It1.IsAtEnd(); ++It1 )
+    {
+    ind = It1.GetIndex();
+    typename ImageType::PixelType vecx = It1.Get();
+    for( unsigned int i = 0; i < timedims; i++ )
+      {
+      indp1[ImageDimension] = i;
+      outputImage->SetPixel( indp1, vecx );
+      }
+    }
+  WriteImage<RImageType>( outputImage, outname.c_str() );
+  return 0;
+}
+
+
+template <unsigned int ImageDimension>
 int LabelStats(      int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::Image<unsigned char, ImageDimension>                       ByteImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ByteImageType>                             writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -9853,8 +9902,8 @@ int LabelStats(      int argc, char *argv[])
     fn2 = std::string(argv[argct]);   argct++;
     }
 
-  typename ImageType::Pointer image = NULL;
-  typename ImageType::Pointer valimage = NULL;
+  typename ImageType::Pointer image = ITK_NULLPTR;
+  typename ImageType::Pointer valimage = ITK_NULLPTR;
   ReadImage<ImageType>(image, fn1.c_str() );
   if( fn2.length() > 3 )
     {
@@ -9947,14 +9996,14 @@ int LabelStats(      int argc, char *argv[])
 
     if( !valimage )
       {
-      std::cout << " Volume Of Label " << *it << " is " << totalvolume <<   "  Avg-Location " << myCenterOfMass
-                << std::endl;
+//      std::cout << " Volume Of Label " << *it << " is " << totalvolume <<   "  Avg-Location " << myCenterOfMass
+          //      << std::endl;
       }
     else // if ( totalvolume > 500 &&  totalmass/totalct > 1/500 )  {
       {
-      std::cout << " Volume Of Label " << *it << " is " << totalvolume <<   "  Avg-Location " << myCenterOfMass
-                << " mass is " << totalmass << " average-val is " << totalmass / totalct << std::endl;
-      //      std::cout << *it << "  " <<  totalvolume <<  " & " <<  totalmass/totalct   << " \ " << std::endl;
+//      std::cout << " Volume Of Label " << *it << " is " << totalvolume <<   "  Avg-Location " << myCenterOfMass
+//                << " mass is " << totalmass << " average-val is " << totalmass / totalct << std::endl;
+//      //      std::cout << *it << "  " <<  totalvolume <<  " & " <<  totalmass/totalct   << " \ " << std::endl;
       }
 
 // square image
@@ -9977,7 +10026,7 @@ int LabelStats(      int argc, char *argv[])
 
   logfile.close();
 
-  WriteImage<TwoDImageType>(squareimage, imagename.c_str() );
+  //WriteImage<TwoDImageType>(squareimage, imagename.c_str() );
 
   return 0;
 }
@@ -10007,18 +10056,7 @@ template <unsigned int ImageDimension>
 int LabelThickness(      int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::Image<unsigned char, ImageDimension>                       ByteImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ByteImageType>                             writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
   if( argc < 5 )
     {
@@ -10029,8 +10067,8 @@ int LabelThickness(      int argc, char *argv[])
   const std::string outname = std::string(argv[argct]);
   argct += 2;
   std::string fn1 = std::string(argv[argct]);   argct++;
-  typename ImageType::Pointer image = NULL;
-  typename ImageType::Pointer eimage = NULL;
+  typename ImageType::Pointer image = ITK_NULLPTR;
+  typename ImageType::Pointer eimage = ITK_NULLPTR;
   ReadImage<ImageType>(image, fn1.c_str() );
   ReadImage<ImageType>(eimage, fn1.c_str() );
   // typename TImage::Pointer  Morphological( typename TImage::Pointer input, float rad, unsigned int option,
@@ -10152,7 +10190,7 @@ int LabelThickness2( int argc, char *argv[] )
 
   std::string fn = std::string( argv[argct++] );
 
-  typename LabelImageType::Pointer labelImage = NULL;
+  typename LabelImageType::Pointer labelImage = ITK_NULLPTR;
   ReadImage<LabelImageType>( labelImage, fn.c_str() );
 
   typename LabelImageType::SpacingType spacing = labelImage->GetSpacing();
@@ -10226,18 +10264,7 @@ template <unsigned int ImageDimension>
 int ROIStatistics(      int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::Image<unsigned char, ImageDimension>                       ByteImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ByteImageType>                             writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   //  if(grade_list.find("Tim") == grade_list.end()) {  std::cout<<"Tim is not in the map!"<<endl; }
@@ -10279,11 +10306,11 @@ int ROIStatistics(      int argc, char *argv[])
     fn5 = std::string(argv[argct]);   argct++;
     }
 
-  typename ImageType::Pointer image = NULL;
-  typename ImageType::Pointer valimage = NULL;
-  typename ImageType::Pointer valimage3 = NULL;
-  typename ImageType::Pointer valimage4 = NULL;
-  typename ImageType::Pointer valimage5 = NULL;
+  typename ImageType::Pointer image = ITK_NULLPTR;
+  typename ImageType::Pointer valimage = ITK_NULLPTR;
+  typename ImageType::Pointer valimage3 = ITK_NULLPTR;
+  typename ImageType::Pointer valimage4 = ITK_NULLPTR;
+  typename ImageType::Pointer valimage5 = ITK_NULLPTR;
   ReadImage<ImageType>(image, fn1.c_str() );
   if( fn2.length() > 3 )
     {
@@ -10586,27 +10613,16 @@ template <unsigned int ImageDimension>
 int ByteImage(      int /*argc */, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
   typedef itk::Image<unsigned char, ImageDimension>                       ByteImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ByteImageType>                             writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
   argct += 2;
   std::string fn1 = std::string(argv[argct]);
 
-  typename ImageType::Pointer image = NULL;
-  typename ByteImageType::Pointer image2 = NULL;
+  typename ImageType::Pointer image = ITK_NULLPTR;
+  typename ByteImageType::Pointer image2 = ITK_NULLPTR;
   ReadImage<ImageType>(image, fn1.c_str() );
 
   typedef itk::RescaleIntensityImageFilter<ImageType, ByteImageType> RescaleFilterType;
@@ -10624,18 +10640,7 @@ template <unsigned int ImageDimension>
 int PValueImage(      int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::Image<unsigned char, ImageDimension>                       ByteImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
@@ -10649,7 +10654,7 @@ int PValueImage(      int argc, char *argv[])
     }
   argct++;
 
-  typename ImageType::Pointer image = NULL;
+  typename ImageType::Pointer image = ITK_NULLPTR;
   ReadImage<ImageType>(image, fn1.c_str() );
 
   std::cout << " read Image" << fn1 << " dof " << dof << std::endl;
@@ -10692,17 +10697,8 @@ template <unsigned int ImageDimension>
 int ConvertImageSetToMatrix(unsigned int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
   typedef itk::Image<PixelType, 2>                                        MatrixImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int argct = 2;
@@ -10716,7 +10712,7 @@ int ConvertImageSetToMatrix(unsigned int argc, char *argv[])
   unsigned int rowcoloption = atoi(argv[argct]);   argct++;
   std::string  maskfn = std::string(argv[argct]); argct++;
   unsigned int numberofimages = 0;
-  typename ImageType::Pointer mask = NULL;
+  typename ImageType::Pointer mask = ITK_NULLPTR;
   ReadImage<ImageType>(mask, maskfn.c_str() );
   unsigned long voxct = 0;
   Iterator      mIter( mask, mask->GetLargestPossibleRegion() );
@@ -10728,7 +10724,7 @@ int ConvertImageSetToMatrix(unsigned int argc, char *argv[])
       }
     }
 
-  typename ImageType::Pointer image2 = NULL;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
   typename ImageType::SizeType size;
   size.Fill(0);
   for( unsigned int j = argct; j < argc; j++ )
@@ -10886,17 +10882,7 @@ template <unsigned int ImageDimension>
 int RandomlySampleImageSetToCSV(unsigned int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::Image<PixelType, 2>                                        MatrixImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRandomConstIteratorWithIndex<ImageType>               Iterator;
 
   int argct = 2;
@@ -10917,7 +10903,7 @@ int RandomlySampleImageSetToCSV(unsigned int argc, char *argv[])
   */
   unsigned int numberofimages = 0;
 
-  typename ImageType::Pointer image2 = NULL;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
   for( unsigned int j = argct; j < argc; j++ )
     {
     numberofimages++;
@@ -10990,17 +10976,7 @@ template <unsigned int ImageDimension>
 int ConvertImageSetToEigenvectors(unsigned int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::Image<PixelType, 2>                                        MatrixImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef typename ImageType::IndexType                                   IndexType;
-  typedef typename ImageType::SizeType                                    SizeType;
-  typedef typename ImageType::SpacingType                                 SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int argct = 2;
@@ -11015,7 +10991,7 @@ int ConvertImageSetToEigenvectors(unsigned int argc, char *argv[])
   unsigned int rowcoloption = 1;
   std::string  maskfn = std::string(argv[argct]); argct++;
   unsigned int numberofimages = 0;
-  typename ImageType::Pointer mask = NULL;
+  typename ImageType::Pointer mask = ITK_NULLPTR;
   ReadImage<ImageType>(mask, maskfn.c_str() );
   /** 1. compute max value in mask */
   unsigned long maxval = 0;
@@ -11034,7 +11010,7 @@ int ConvertImageSetToEigenvectors(unsigned int argc, char *argv[])
     }
 
   typedef itk::Array2D<double> MatrixType;
-  typename ImageType::Pointer image2 = NULL;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
   typename ImageType::SizeType size;
   size.Fill(0);
   for( unsigned int j = argct; j < argc; j++ )
@@ -11192,19 +11168,7 @@ template <unsigned int ImageDimension>
 int ConvertImageToFile(      int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::Image<unsigned char, ImageDimension>                       ByteImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
   argct += 2;
@@ -11216,9 +11180,9 @@ int ConvertImageToFile(      int argc, char *argv[])
     }
   argct++;
 
-  typename ImageType::Pointer image = NULL;
+  typename ImageType::Pointer image = ITK_NULLPTR;
   ReadImage<ImageType>(image, fn1.c_str() );
-  typename ImageType::Pointer mask = NULL;
+  typename ImageType::Pointer mask = ITK_NULLPTR;
   if( fn2.length() > 3 )
     {
     ReadImage<ImageType>(mask, fn2.c_str() );
@@ -11255,19 +11219,7 @@ template <unsigned int ImageDimension>
 int CorrelationUpdate(      int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::Image<unsigned char, ImageDimension>                       ByteImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
   argct += 2;
@@ -11289,12 +11241,12 @@ int CorrelationUpdate(      int argc, char *argv[])
     }
   argct++;
 
-  typename ImageType::Pointer image1 = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
-  typename ImageType::Pointer imageout = NULL;
+  typename ImageType::Pointer imageout = ITK_NULLPTR;
   ReadImage<ImageType>(imageout, fn1.c_str() );
   imageout->FillBuffer(0);
-  typename ImageType::Pointer image2 = NULL;
+  typename ImageType::Pointer image2 = ITK_NULLPTR;
   ReadImage<ImageType>(image2, fn2.c_str() );
 
   typedef itk::NeighborhoodIterator<ImageType> iteratorType;
@@ -11347,8 +11299,6 @@ int MajorityVoting( int argc, char *argv[] )
 {
   typedef int                                           PixelType;
   typedef itk::Image<PixelType, ImageDimension>         ImageType;
-  typedef itk::ImageFileReader<ImageType>               ImageReaderType;
-  typedef itk::ImageFileWriter<ImageType>               ImageWriterType;
   typedef itk::MinimumMaximumImageCalculator<ImageType> CalculatorType;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>  IteratorType;
 
@@ -11420,7 +11370,6 @@ int MostLikely( int argc, char *argv[] )
   typedef float                                               PixelType;
   typedef itk::Image<PixelType, ImageDimension>               ImageType;
   typedef itk::Image<int, ImageDimension>                     LabeledImageType;
-  typedef itk::MinimumMaximumImageCalculator<ImageType>       CalculatorType;
   typedef itk::ImageRegionIteratorWithIndex<LabeledImageType> IteratorType;
 
   if( argc < 5 )
@@ -11484,7 +11433,6 @@ int STAPLE( int argc, char *argv[] )
   typedef itk::Image<float, ImageDimension>     OutputImageType;
 
   typedef itk::MinimumMaximumImageCalculator<ImageType>      CalculatorType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>       IteratorType;
   typedef itk::STAPLEImageFilter<ImageType, OutputImageType> StapleFilterType;
 
   if( argc < 5 )
@@ -11505,7 +11453,7 @@ int STAPLE( int argc, char *argv[] )
   stapler->SetConfidenceWeight( confidence );
 
   // Read input segmentations
-  typename ImageType::Pointer              nullimage( NULL );
+  typename ImageType::Pointer              nullimage( ITK_NULLPTR );
   std::vector<typename ImageType::Pointer> images(argc - 5, nullimage );
   typename CalculatorType::Pointer calc = CalculatorType::New();
   int maxLabel = 0;
@@ -11562,7 +11510,7 @@ int AverageLabels( int argc, char *argv[] )
   std::string extension = outputName.substr(idx, outputName.length() );
 
   // Read input segmentations
-  typename ImageType::Pointer              nullimage( NULL );
+  typename ImageType::Pointer              nullimage( ITK_NULLPTR );
   std::vector<typename ImageType::Pointer> images(argc - 4, nullimage );
 
   typename CalculatorType::Pointer calc = CalculatorType::New();
@@ -11582,7 +11530,7 @@ int AverageLabels( int argc, char *argv[] )
     }
 
   std::cout << "Examining " << maxLabel << " labels" << std::endl;
-  typename OutputImageType::Pointer              nullout( NULL );
+  typename OutputImageType::Pointer              nullout( ITK_NULLPTR );
   std::vector<typename OutputImageType::Pointer> outimages;
   for( int label = 0; label < maxLabel; label++ )
     {
@@ -11626,9 +11574,6 @@ int CorrelationVoting( int argc, char *argv[] )
   typedef int                                                LabelType;
   typedef itk::Image<PixelType, ImageDimension>              ImageType;
   typedef itk::Image<LabelType, ImageDimension>              LabelImageType;
-  typedef itk::ImageFileReader<ImageType>                    ImageReaderType;
-  typedef itk::ImageFileReader<LabelImageType>               LabelImageReaderType;
-  typedef itk::ImageFileWriter<LabelImageType>               LabelImageWriterType;
   typedef itk::MinimumMaximumImageCalculator<LabelImageType> CalculatorType;
   typedef itk::ImageRegionIteratorWithIndex<LabelImageType>  IteratorType;
   typedef itk::NeighborhoodIterator<ImageType>               NeighborhoodIteratorType;
@@ -12113,11 +12058,8 @@ int MinMaxMean( int argc, char *argv[] )
 {
   typedef float                                         PixelType;
   typedef itk::Image<PixelType, ImageDimension>         ImageType;
-  typedef itk::ImageFileReader<ImageType>               ImageReaderType;
-  typedef itk::ImageFileWriter<ImageType>               ImageWriterType;
   typedef itk::MinimumMaximumImageCalculator<ImageType> CalculatorType;
   typedef itk::ImageMomentsCalculator<ImageType>        MomentsCalculatorType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>  IteratorType;
 
   if( argc < 5 )
     {
@@ -12359,7 +12301,6 @@ int PureTissueN4WeightMask( int argc, char *argv[] )
   typedef float PixelType;
 
   typedef itk::Image<PixelType, ImageDimension> ImageType;
-  typedef itk::ImageFileReader<ImageType>       ReaderType;
 
   std::vector<typename ImageType::Pointer> images;
   for( int n = 4; n < argc; n++ )
@@ -12405,18 +12346,7 @@ template <unsigned int ImageDimension>
 int PMSmoothImage(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
 
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
@@ -12432,8 +12362,8 @@ int PMSmoothImage(int argc, char *argv[])
     {
     conductance = atof(argv[argct]); argct++;
     }
-  typename ImageType::Pointer image1 = NULL;
-  typename ImageType::Pointer varimage = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer varimage = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
   PixelType     spacingsize = 0;
   for( unsigned int d = 0; d < ImageDimension; d++ )
@@ -12463,17 +12393,7 @@ template <unsigned int ImageDimension>
 int InPaint(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
@@ -12484,8 +12404,8 @@ int InPaint(int argc, char *argv[])
     {
     sigma = atof(argv[argct]); argct++;
     }
-  typename ImageType::Pointer image1 = NULL;
-  typename ImageType::Pointer varimage = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer varimage = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
   PixelType     spacingsize = 0;
   PixelType     minsp = image1->GetSpacing()[0];
@@ -12589,17 +12509,7 @@ int InPaint2(int argc, char *argv[])
 {
   //  I_t = \nabla ( \Delta I ) \cdot N   where N is \perpto the normal direction
   typedef float                                                           PixelType;
-  typedef itk::Vector<float, ImageDimension>                              VectorType;
-  typedef itk::Image<VectorType, ImageDimension>                          FieldType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
-  typedef itk::ImageFileReader<ImageType>                                 readertype;
-  typedef itk::ImageFileWriter<ImageType>                                 writertype;
-  typedef  typename ImageType::IndexType                                  IndexType;
-  typedef  typename ImageType::SizeType                                   SizeType;
-  typedef  typename ImageType::SpacingType                                SpacingType;
-  typedef itk::AffineTransform<double, ImageDimension>                    AffineTransformType;
-  typedef itk::LinearInterpolateImageFunction<ImageType, double>          InterpolatorType1;
-  typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> InterpolatorType2;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>                    Iterator;
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
@@ -12734,9 +12644,7 @@ int Check3TissueLabeling( int argc, char *argv[] )
   const unsigned int NumberOfLabels = 3;
 
   typedef itk::Image<PixelType, ImageDimension> ImageType;
-  typedef itk::ImageFileReader<ImageType>       ReaderType;
   typedef itk::Image<LabelType, ImageDimension> LabelImageType;
-  typedef itk::ImageFileReader<LabelImageType>  LabelReaderType;
 
   typename LabelImageType::Pointer labelImage;
   ReadImage<LabelImageType>( labelImage, argv[2] );
@@ -12938,12 +12846,6 @@ void getBlobCorrespondenceMatrix( unsigned int radval, typename TImage::Pointer 
   typedef float                                                                   PixelType;
   typedef float                                                                   RealType;
   typedef itk::Image<PixelType, ImageDimension>                                   ImageType;
-  typedef itk::ImageFileReader<ImageType>                                         ImageReaderType;
-  typedef itk::ImageFileWriter<ImageType>                                         ImageWriterType;
-  typedef itk::MinimumMaximumImageCalculator<ImageType>                           CalculatorType;
-  typedef itk::ImageMomentsCalculator<ImageType>                                  MomentsCalculatorType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                            IteratorType;
-  typedef itk::SurfaceImageCurvature<ImageType>                                   ParamType;
   typedef itk::CovariantVector<RealType, ImageDimension>                          GradientPixelType;
   typedef itk::Image<GradientPixelType, ImageDimension>                           GradientImageType;
   typedef itk::SmartPointer<GradientImageType>                                    GradientImagePointer;
@@ -13000,7 +12902,7 @@ void getBlobCorrespondenceMatrix( unsigned int radval, typename TImage::Pointer 
     {
     weights[ii] = weights[ii] / weightsum;
     }
-  BlobPointer bestblob = NULL;
+  BlobPointer bestblob = ITK_NULLPTR;
   if( ( !blobs2.empty() ) && ( !blobs1.empty() ) )
     {
     unsigned int count2;
@@ -13019,7 +12921,7 @@ void getBlobCorrespondenceMatrix( unsigned int radval, typename TImage::Pointer 
       if( image->GetPixel( indexi ) > smallval )
         {
         GHood.SetLocation( indexi );
-        bestblob = NULL;
+        bestblob = ITK_NULLPTR;
         count2 = 0;
         for( unsigned int j = 0; j < blobs2.size(); j++ )
           {
@@ -13063,17 +12965,7 @@ int BlobDetector( int argc, char *argv[] )
   typedef float                                                                   PixelType;
   typedef float                                                                   RealType;
   typedef itk::Image<PixelType, ImageDimension>                                   ImageType;
-  typedef itk::ImageFileReader<ImageType>                                         ImageReaderType;
-  typedef itk::ImageFileWriter<ImageType>                                         ImageWriterType;
-  typedef itk::MinimumMaximumImageCalculator<ImageType>                           CalculatorType;
-  typedef itk::ImageMomentsCalculator<ImageType>                                  MomentsCalculatorType;
-  typedef itk::ImageRegionIteratorWithIndex<ImageType>                            IteratorType;
-  typedef itk::SurfaceImageCurvature<ImageType>                                   ParamType;
-  typedef itk::CovariantVector<RealType, ImageDimension>                          GradientPixelType;
-  typedef itk::Image<GradientPixelType, ImageDimension>                           GradientImageType;
-  typedef itk::SmartPointer<GradientImageType>                                    GradientImagePointer;
-  typedef itk::GradientRecursiveGaussianImageFilter<ImageType, GradientImageType> GradientImageFilterType;
-  typedef typename GradientImageFilterType::Pointer                               GradientImageFilterPointer;
+
   if( argc < 5 )
     {
     std::cout << " Not enough inputs " << std::endl;
@@ -13081,9 +12973,9 @@ int BlobDetector( int argc, char *argv[] )
     }
   // sensitive parameters are set here - begin
   RealType     gradsig = 1.0;      // sigma for gradient filter
-  unsigned int stepsperoctave = 4; // number of steps between doubling of scale
+  unsigned int stepsperoctave = 10; // number of steps between doubling of scale
   RealType     minscale = vcl_pow( 1.0, 1.0 );
-  RealType     maxscale = vcl_pow( 2.0, 8.0 );
+  RealType     maxscale = vcl_pow( 2.0, 10.0 );
   RealType     uniqfeat_thresh = 0.01;
   RealType     smallval = 1.e-2; // assumes images are normalizes in [ 0, 1 ]
   bool         dosinkhorn = false;
@@ -13111,6 +13003,14 @@ int BlobDetector( int argc, char *argv[] )
   if( argc > argct )
     {
     corrthresh = atof(argv[argct]); argct++;
+    }
+  if( argc > argct )
+    {
+    radval = atoi(argv[argct]); argct++;
+    }
+  if( argc > argct )
+    {
+    dthresh = atof(argv[argct]); argct++;
     }
   typename ImageType::Pointer image;
   typename ImageType::Pointer image2;
@@ -13168,7 +13068,7 @@ int BlobDetector( int argc, char *argv[] )
   // now compute some feature characteristics in each blob
   typedef typename ImageType::IndexType IndexType;
   IndexType   zeroind;  zeroind.Fill( radval );
-  BlobPointer bestblob = NULL;
+  BlobPointer bestblob = ITK_NULLPTR;
   if( ( !blobs2.empty() ) && ( !blobs1.empty() ) )
     {
     getBlobCorrespondenceMatrix<ImageDimension, ImageType, BlobsListType>
@@ -13321,15 +13221,7 @@ int MatchBlobs( int argc, char *argv[] )
   typedef float                                                      PixelType;
   typedef float                                                      RealType;
   typedef itk::Image<PixelType, ImageDimension>                      ImageType;
-  typedef itk::ImageFileReader<ImageType>                            ImageReaderType;
-  typedef itk::ImageFileWriter<ImageType>                            ImageWriterType;
-  typedef itk::MinimumMaximumImageCalculator<ImageType>              CalculatorType;
-  typedef itk::ImageMomentsCalculator<ImageType>                     MomentsCalculatorType;
   typedef itk::ImageRegionIteratorWithIndex<ImageType>               IteratorType;
-  typedef itk::SurfaceImageCurvature<ImageType>                      ParamType;
-  typedef itk::CovariantVector<RealType, ImageDimension>             GradientPixelType;
-  typedef itk::Image<GradientPixelType, ImageDimension>              GradientImageType;
-  typedef itk::SmartPointer<GradientImageType>                       GradientImagePointer;
   typedef itk::MultiScaleLaplacianBlobDetectorImageFilter<ImageType> BlobFilterType;
   typedef typename BlobFilterType::BlobPointer                       BlobPointer;
   typedef typename BlobFilterType::BlobRadiusImageType               BlobRadiusImageType;
@@ -13690,6 +13582,11 @@ ImageMathHelper3DOnly(int argc, char **argv)
     TensorFunctions<DIM>(argc, argv);
     return EXIT_SUCCESS;
     }
+  if( operation == "FuseNImagesIntoNDVectorField" )
+    {
+    FuseNImagesIntoNDVectorField<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
   if( operation == "ExtractComponentFrom3DTensor" )
     {
     TensorFunctions<DIM>(argc, argv);
@@ -14031,6 +13928,16 @@ ImageMathHelperAll(int argc, char **argv)
     LaplacianImage<DIM>(argc, argv);
     return EXIT_SUCCESS;
     }
+  if( operation == "Canny" )
+    {
+      CannyImage<DIM>(argc, argv);
+      return EXIT_SUCCESS;
+    }
+  if( operation == "CropBinaryImage" )
+    {
+      CropBinaryImage<DIM>(argc, argv);
+      return EXIT_SUCCESS;
+    }
   if( operation == "PH" )
     {
     PrintHeader<DIM>(argc, argv);
@@ -14049,6 +13956,11 @@ ImageMathHelperAll(int argc, char **argv)
   if( operation == "ReflectionMatrix" )
     {
     ReflectionMatrix<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "MakeAffineTransform" )
+    {
+    MakeAffineTransform<DIM>(argc, argv);
     return EXIT_SUCCESS;
     }
   if( operation == "ClosestSimplifiedHeaderMatrix" )
@@ -14089,6 +14001,21 @@ ImageMathHelperAll(int argc, char **argv)
   if( operation == "InvId" )
     {
     InvId<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ShiftImageSlicesInTime" )
+    {
+    ShiftImageSlicesInTime<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ReplicateImage" )
+    {
+    ReplicateImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "ReplicateDisplacement" )
+    {
+    ReplicateDisplacement<DIM>(argc, argv);
     return EXIT_SUCCESS;
     }
   if( operation == "GetLargestComponent" )
@@ -14139,6 +14066,16 @@ ImageMathHelperAll(int argc, char **argv)
   if( operation == "RescaleImage" )
     {
     RescaleImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "WindowImage" )
+    {
+    WindowImage<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
+  if( operation == "WindowImage" )
+    {
+    WindowImage<DIM>(argc, argv);
     return EXIT_SUCCESS;
     }
   if( operation == "NeighborhoodStats" )
@@ -14246,6 +14183,11 @@ ImageMathHelperAll(int argc, char **argv)
     itkPropagateLabelsThroughMask<DIM>(argc, argv);
     return EXIT_SUCCESS;
     }
+  if( operation == "FastMarchingExtension" )
+    {
+    FastMarchingExtension<DIM>(argc, argv);
+    return EXIT_SUCCESS;
+    }
   if( operation == "FastMarchingSegmentation" )
     {
     FastMarchingSegmentation<DIM>(argc, argv);
@@ -14340,7 +14282,7 @@ ImageMathHelperAll(int argc, char **argv)
 
 template <unsigned DIM>
 int
-ImageMathHelper(int argc, char **argv)
+ImageMathHelper(int , char **)
 {
   return 1;
 }
@@ -14417,7 +14359,7 @@ int ImageMath( std::vector<std::string> args, std::ostream * itkNotUsed( out_str
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = 0;
+  argv[argc] = ITK_NULLPTR;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {
@@ -14632,6 +14574,8 @@ private:
     std::cout << "    Usage        : TensorToVectorComponent DTImage.ext WhichVec" << std::endl;
     std::cout << "  TensorMask     : Mask a tensor image, sets background tensors to zero or to isotropic tensors with specified mean diffusivity " << std::endl;
     std::cout << "    Usage        : TensorMask DTImage.ext mask.ext [ backgroundMD = 0 ] " << std::endl;
+    std::cout << "  FuseNImagesIntoNDVectorField     : Create ND field from N input scalar images" << std::endl;
+    std::cout << "    Usage        : FuseNImagesIntoNDVectorField imagex imagey imagez" << std::endl;
 
     std::cout << "\nLabel Fusion:" << std::endl;
     std::cout << "  MajorityVoting : Select label with most votes from candidates" << std::endl;
@@ -14664,7 +14608,9 @@ private:
     std::cout << "\nUnclassified Operators:" << std::endl;
 
     std::cout << "  ReflectionMatrix : Create a reflection matrix about an axis" << std::endl;
-    std::cout << " out.mat ReflectionMatrix axis " << std::endl << std::endl;
+    std::cout << " out.mat ReflectionMatrix image_in axis " << std::endl << std::endl;
+
+  std::cout << "  MakeAffineTransform : Create an itk affine transform matrix " << std::endl;
 
     std::cout << "  ClosestSimplifiedHeaderMatrix : does what it says ... image-in, image-out" << std::endl;
 
@@ -14805,6 +14751,11 @@ private:
       <<
       "      Usage        : RescaleImage InputImage min max"
       << std::endl;
+    std::cout << "\n  WindowImage    : " << std::endl;
+    std::cout
+      <<
+      "      Usage        : WindowImage InputImage windowMinimum windowMaximum outputMinimum outputMaximum"
+      << std::endl;
     std::cout << "\n  NeighborhoodStats    : " << std::endl;
     std::cout
       <<
@@ -14818,6 +14769,24 @@ private:
       << std::endl;
     std::cout << "      Usage        : InvId VectorFieldName VectorFieldName" << std::endl;
 
+  std::cout
+    <<
+    "\n  ReplicateDisplacement            : replicate a ND displacement to a ND+1 image"
+    << std::endl;
+  std::cout << "      Usage        : ReplicateDisplacement VectorFieldName TimeDims TimeSpacing TimeOrigin" << std::endl;
+
+  std::cout
+    <<
+    "\n  ReplicateImage            : replicate a ND image to a ND+1 image"
+    << std::endl;
+  std::cout << "      Usage        : ReplicateImage ImageName TimeDims TimeSpacing TimeOrigin" << std::endl;
+
+  std::cout
+    <<
+    "\n  ShiftImageSlicesInTime            : shift image slices by one "
+    << std::endl;
+  std::cout << "      Usage        : ShiftImageSlicesInTime ImageName shift-amount-default-1 shift-dim-default-last-dim" << std::endl;
+
     std::cout << "\n  LabelStats        : Compute volumes / masses of objects in a label image. Writes to text file"
               << std::endl;
     std::cout << "      Usage        : LabelStats labelimage.ext valueimage.nii" << std::endl;
@@ -14826,6 +14795,14 @@ private:
       << "\n  Laplacian        : Laplacian computed with sigma s (if normalize, then output in range [0, 1])"
       << std::endl;
     std::cout << "      Usage        : Laplacian Image.ext s normalize?" << std::endl;
+
+    std::cout
+    << "\n  Canny        : Canny edge detector"
+    << std::endl;
+    std::cout << "      Usage        : Canny Image.ext signa lowerThresh upperThresh" << std::endl;
+
+    std::cout
+    << "\n  CropBinaryImage        : returns cropped image"    << std::endl;
 
     std::cout << "\n  Lipschitz        : Computes the Lipschitz norm of a vector field " << std::endl;
     std::cout << "      Usage        : Lipschitz VectorFieldName" << std::endl;

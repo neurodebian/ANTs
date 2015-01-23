@@ -46,9 +46,9 @@ public:
 
   /** Write the Input mesh to the Output file.
    * Use either Update() or Write(). */
-  void Update( void );
+  void Update();
 
-  void Write( void );
+  void Write();
 
   /** Extract dimension from the output mesh. */
   itkStaticConstMacro( Dimension, unsigned int,
@@ -125,7 +125,7 @@ protected:
   ImageOriginType    m_ImageOrigin;
   ImageDirectionType m_ImageDirection;
 
-  void PrintSelf(std::ostream& os, Indent indent) const;
+  void PrintSelf(std::ostream& os, Indent indent) const ITK_OVERRIDE;
 
 private:
   LabeledPointSetFileWriter(const Self &); // purposely not implemented

@@ -34,10 +34,10 @@ template <class TInputMesh>
 LabeledPointSetFileWriter<TInputMesh>
 ::LabeledPointSetFileWriter()
 {
-  this->m_Input = NULL;
+  this->m_Input = ITK_NULLPTR;
   this->m_FileName = "";
-  this->m_MultiComponentScalars = NULL;
-  this->m_Lines = NULL;
+  this->m_MultiComponentScalars = ITK_NULLPTR;
+  this->m_Lines = ITK_NULLPTR;
 
   this->m_ImageSize.Fill( 0 );
 }
@@ -380,7 +380,7 @@ LabeledPointSetFileWriter<TInputMesh>
   outputImage->SetOrigin( this->m_ImageOrigin );
   outputImage->SetSpacing( this->m_ImageSpacing );
   outputImage->Allocate();
-  outputImage->FillBuffer( NumericTraits<PixelType>::Zero );
+  outputImage->FillBuffer( NumericTraits<PixelType>::ZeroValue() );
 
   if( this->m_Input->GetNumberOfPoints() > 0 )
     {
