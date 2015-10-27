@@ -1,3 +1,12 @@
+ants (2.1.0-2) unstable; urgency=medium
+
+  * Upload to unstable
+  * debian/rules
+    - specify CMAKE_INSTALL_RPARTH
+    - symlink into /usr/bin other tools which shouldn't conflict in names
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 27 Oct 2015 09:24:51 -0400
+
 ants (2.1.0-1) experimental; urgency=medium
 
   * New upstream release

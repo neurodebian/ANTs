@@ -26,6 +26,8 @@ export DH_VERBOSE=1
 BOGOMIPS = $(shell awk '/^bogomips/{print $$3;}' /proc/cpuinfo | sed -ne '1s,\..*,,gp' )
 CTEST_EXCLUDE = $(shell [ "$(BOGOMIPS)" -gt 2000 ] || echo "-E '^ANTS(_|PSE)'")
 
+export SHELL=/bin/bash
+
 # Default mega-rule
 %:
 	dh $@ --parallel
@@ -43,6 +45,7 @@ override_dh_auto_configure:
 		-DRUN_SHORT_TESTS:BOOL=ON \
 		-DRUN_LONG_TESTS:BOOL=OFF \
 		-DEXECUTABLE_OUTPUT_PATH:PATH=$(DESTBINDIR) \
+		-DCMAKE_INSTALL_RPATH:STRING="/usr/lib/ants/lib" \
 		--debug-output
 
 %modules: %modules.in
@@ -73,8 +76,9 @@ override_dh_auto_install:
 	rm debian/ants/usr/lib/*.so
 	: Move binaries under usr/lib/ants
 	mv debian/ants/usr/bin/* debian/ants/usr/lib/ants
-	: Symlink binaries of primary importance into /usr/bin
-	for f in ANTS WarpImageMultiTransform; do \
+	: Symlink binaries of primary importance and with ants prefix into /usr/bin
+	for fp in debian/ants/usr/lib/ants/{ants*,ANTS*,WarpImageMultiTransform,WarpTimeSeriesImageMultiTransform,Atropos,LaplacianThickness,joinfusion}; do \
+		f=$$(basename $$fp); \
 		dh_link usr/lib/ants/$$f usr/bin/$$f; \
 	done
 	: Install shell scripts
