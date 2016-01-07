@@ -1,3 +1,12 @@
+ants (2.1.0-3) unstable; urgency=medium
+
+  * debian/control
+    - add libpng16-dev | libpng-dev to build-depends (Closes: #810165)
+  * if builds/uploaded fine, it means that all the compatibility issues with
+    g++-5 were resolved (Closes: #777771)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Thu, 07 Jan 2016 08:45:47 -0500
+
 ants (2.1.0-2) unstable; urgency=medium
 
   * Upload to unstable

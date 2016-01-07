@@ -15,7 +15,7 @@ Build-Depends: debhelper (>= 9),
                libdcmtk2-dev,
                libfftw3-dev,
                libhdf5-dev,
-               libpng12-dev,
+               libpng16-dev | libpng-dev | libpng12-dev,
 Standards-Version: 3.9.5
 Homepage: http://www.picsl.upenn.edu/ANTS/
 Vcs-Git: git://git.debian.org/pkg-exppsy/ants.git
