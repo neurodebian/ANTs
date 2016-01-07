@@ -4,7 +4,8 @@ ants (2.1.0-3) unstable; urgency=medium
     - add libpng16-dev | libpng-dev to build-depends
       (Closes: #810165, #809860)
   * debian/{control,rules}
-    - enable VTK (both 5 or 6) support (Closes: #798166)
+    - drop any VTK dependency for now and still build without VTK support
+      (Closes: #798166)
   * if builds/uploaded fine, it means that all the compatibility issues with
     g++-5 were resolved (Closes: #777771)
 
