@@ -1,3 +1,12 @@
+ants (2.1.0-4) unstable; urgency=medium
+
+  * debian/control
+    - removed first versioned libpng16-dev which is apparently still
+      in experimental. So now libpng-dev virtual is the first among
+      libpng build-depends (Closes: #810165)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Sat, 09 Jan 2016 22:55:52 -0500
+
 ants (2.1.0-3) unstable; urgency=medium
 
   * debian/control
