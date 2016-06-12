@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: PermuteFlipImageOrientationAxes.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009/01/30 16:40:33 $
-  Version:   $Revision: 1.19 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -210,12 +206,12 @@ private:
     {
     case 2:
       {
-      PermuteFlipImageOrientationAxes<2>(argc - 1, argv + 1);
+      return PermuteFlipImageOrientationAxes<2>(argc - 1, argv + 1);
       }
       break;
     case 3:
       {
-      PermuteFlipImageOrientationAxes<3>(argc - 1, argv + 1);
+      return PermuteFlipImageOrientationAxes<3>(argc - 1, argv + 1);
       }
       break;
     default:

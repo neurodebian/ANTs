@@ -34,7 +34,7 @@ endif()
 
 option( ${PROJECT_NAME}_BUILD_DISTRIBUTE "Remove '-g#####' from version. ( for official distribution only )" OFF )
 mark_as_advanced( ${PROJECT_NAME}_BUILD_DISTRIBUTE )
-if( NOT ${PROJECT_NAME}_BUILD_DISTRIBUTE )
+if( NOT ${PROJECT_NAME}_BUILD_DISTRIBUTE AND NOT ${PROJECT_NAME}_VERSION_HASH STREQUAL "GITDIR-NOTFOUND")
   set(${PROJECT_NAME}_VERSION "${${PROJECT_NAME}_VERSION}-g${${PROJECT_NAME}_VERSION_HASH}")
 endif()
 
@@ -44,6 +44,11 @@ message(STATUS "Building ${PROJECT_NAME} version \"${${PROJECT_NAME}_VERSION}\""
 # Set up ITK
 find_package(ITK 4 REQUIRED)
 include(${ITK_USE_FILE})
+
+
+# Set up which ANTs apps to build
+option(BUILD_ALL_ANTS_APPS "Use All ANTs Apps" ON)
+
 
 # Set up VTK
 option(USE_VTK "Use VTK Libraries" OFF)
@@ -93,7 +98,25 @@ set(DART_TESTING_TIMEOUT ${CTEST_TEST_TIMEOUT} CACHE STRING "Maximum seconds all
 configure_file(${CMAKE_CURRENT_LIST_DIR}/CTestCustom.cmake
   ${CMAKE_CURRENT_BINARY_DIR}/CTestCustom.cmake COPYONLY)
 
+include_directories( ${BOOST_INCLUDE_DIR} ) #Define where to find Boost includes
+link_directories( ${ITK_LIBRARY_PATH}  )
+# message("${ITK_LIBRARIES}")
+
+#----------------------------------------------------------------------------
+# Setup ants build environment
+set(PICSL_INCLUDE_DIRS
+  ${CMAKE_CURRENT_SOURCE_DIR}/Utilities
+  ${CMAKE_CURRENT_SOURCE_DIR}/ImageRegistration
+  ${CMAKE_CURRENT_SOURCE_DIR}/ImageSegmentation
+#  ${CMAKE_CURRENT_SOURCE_DIR}/GraphTheory
+  ${CMAKE_CURRENT_SOURCE_DIR}/Tensor
+  ${CMAKE_CURRENT_SOURCE_DIR}/Temporary
+  ${CMAKE_CURRENT_SOURCE_DIR}/Examples
+  ${CMAKE_CURRENT_BINARY_DIR}
+)
+include_directories(${PICSL_INCLUDE_DIRS})
+
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/ANTsVersionConfig.h.in"
+               "${CMAKE_CURRENT_BINARY_DIR}/ANTsVersionConfig.h" @ONLY IMMEDIATE)
+
 add_subdirectory(Examples)
-if(BUILD_EXTERNAL_APPLICATIONS)
-  add_subdirectory(ExternalApplications)
-endif()

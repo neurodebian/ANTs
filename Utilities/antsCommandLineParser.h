@@ -1,10 +1,6 @@
 /*=========================================================================
 
   Program:   Insight Segmentation & Registration Toolkit
-  Module:    $RCSfile: antsCommandLineParser.h,v $
-  Language:  C++
-  Date:      $Date: 2009/01/22 22:43:11 $
-  Version:   $Revision: 1.1 $
 
   Copyright (c) Insight Software Consortium. All rights reserved.
   See ITKCopyright.txt or http://www.itk.org/HTML/Copyright.htm for details.
@@ -40,7 +36,7 @@ namespace ants
    * A untilty function to convert internal typeid(???).name() to
    * the human readable equivalent format.
    */
-  extern std::string ConvertToHumanReadable(const std::string input);
+  extern std::string ConvertToHumanReadable(const std::string & input);
 
 /** \class CommandLineParser
     \brief Simple command line parser.

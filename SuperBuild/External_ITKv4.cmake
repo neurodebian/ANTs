@@ -73,6 +73,13 @@ if(NOT DEFINED ${extProjName}_DIR AND NOT ${USE_SYSTEM_${extProjName}})
       -DITK_USE_FFTWD:BOOL=ON
       )
   endif()
+  if(${extProjName}_BUILD_MINC_SUPPORT)
+    set(${proj}_MINC_ARGS
+        -DModule_ITKIOMINC:BOOL=ON
+        -DModule_ITKIOTransformMINC:BOOL=ON
+        -DModule_ITKMINC:BOOL=ON
+       )
+  endif()
 
   set(${proj}_WRAP_ARGS)
   #if(foo)
@@ -112,6 +119,10 @@ if(NOT DEFINED ${extProjName}_DIR AND NOT ${USE_SYSTEM_${extProjName}})
       -DITK_FUTURE_LEGACY_REMOVE:=BOOL=ON
       -DITKV3_COMPATIBILITY:BOOL=ON
       -DITK_BUILD_DEFAULT_MODULES:BOOL=ON
+#      -DITK_MODULE_Core:BOOL=ON
+#      -DITK_MODULE_IO:BOOL=ON
+#      -DITK_MODULE_Filtering:BOOL=ON
+#      -DITK_MODULE_Registration:BOOL=ON
       #-DITK_INSTALL_NO_DEVELOPMENT:BOOL=ON
       -DKWSYS_USE_MD5:BOOL=ON # Required by SlicerExecutionModel
       -DITK_WRAPPING:BOOL=OFF #${BUILD_SHARED_LIBS} ## HACK:  QUICK CHANGE
@@ -122,6 +133,7 @@ if(NOT DEFINED ${extProjName}_DIR AND NOT ${USE_SYSTEM_${extProjName}})
       ${${proj}_WRAP_ARGS}
       ${${proj}_FFTWF_ARGS}
       ${${proj}_FFTWD_ARGS}
+      ${${proj}_MINC_ARGS}
     )
 
     if( USE_VTK STREQUAL "ON" )
@@ -148,10 +160,9 @@ if(NOT DEFINED ${extProjName}_DIR AND NOT ${USE_SYSTEM_${extProjName}})
 
 
   ### --- End Project specific additions
-  set(${proj}_REPOSITORY ${git_protocol}://itk.org/ITK.git)
-  set(${proj}_REPOSITORY "https://github.com/InsightSoftwareConsortium/ITK.git")
-  set(${proj}_GIT_TAG 6e55ef004c197d0e0850c9a65fe553c4156d3bcf)
-  set(ITK_VERSION_ID ITK-4.7)
+  set(${proj}_REPOSITORY ${git_protocol}://github.com/InsightSoftwareConsortium/ITK.git)
+  set(${proj}_GIT_TAG fc03bcc92b11326b87c232c14eb234fc1f791f9f) ##
+  set(ITK_VERSION_ID ITK-4.9) ### NOTE: When updating GIT_TAG, also update ITK_VERSION_ID
 
   ExternalProject_Add(${proj}
     GIT_REPOSITORY ${${proj}_REPOSITORY}

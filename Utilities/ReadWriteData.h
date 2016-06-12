@@ -11,6 +11,7 @@
 #include "itkImageRegionIteratorWithIndex.h"
 #include "itkLabeledPointSetFileReader.h"
 #include "itkLabeledPointSetFileWriter.h"
+#include "itkImageIntensityAndGradientToPointSetFilter.h"
 #include "itkWarpImageFilter.h"
 // #include "itkInverseWarpImageFilter.h"
 #include "itkAffineTransform.h"
@@ -213,7 +214,6 @@ bool ReadImage(itk::SmartPointer<TImageType> & target, const char *file)
   enum { ImageDimension = TImageType::ImageDimension };
   if( std::string(file).length() < 3 )
     {
-    std::cerr << " bad file name " << std::string(file) << std::endl;
     target = ITK_NULLPTR;
     return false;
     }
@@ -289,8 +289,8 @@ typename ImageType::Pointer ReadImage(char* fn )
     return NULL;
     }
 
-  typename ImageType::DirectionType dir;
-  dir.SetIdentity();
+  //typename ImageType::DirectionType dir;
+  //dir.SetIdentity();
   //  reffilter->GetOutput()->SetDirection(dir);
 
   typename ImageType::Pointer target = reffilter->GetOutput();
@@ -337,12 +337,11 @@ typename ImageType::Pointer ReadTensorImage(char* fn, bool takelog = true )
 
 template <class TPointSet>
 // void ReadImage(typename TPointSet::Pointer target, const char *file)
-bool ReadPointSet( itk::SmartPointer<TPointSet> & target, const char *file,
+bool ReadLabeledPointSet( itk::SmartPointer<TPointSet> & target, const char *file,
   bool boundaryPointsOnly = false, float samplingPercentage = 1.0 )
 {
   if( std::string( file ).length() < 3 )
     {
-    std::cerr << " bad file name " << std::string(file) << std::endl;
     target = ITK_NULLPTR;
     return false;
     }
@@ -375,8 +374,70 @@ bool ReadPointSet( itk::SmartPointer<TPointSet> & target, const char *file,
   return true;
 }
 
+template <class TImage, class TMask, class TPointSet>
+bool ReadImageIntensityPointSet( itk::SmartPointer<TPointSet> & target, const char *imageFile,
+  const char *maskFile, std::vector<unsigned int> neighborhoodRadius, double sigma )
+{
+  if( std::string( imageFile ).length() < 3 )
+    {
+    std::cerr << " bad image file name " << std::string( imageFile ) << std::endl;
+    target = ITK_NULLPTR;
+    return false;
+    }
+
+  if( !ANTSFileExists( std::string( imageFile ) ) )
+    {
+    std::cerr << " image file " << std::string( imageFile ) << " does not exist . " << std::endl;
+    target = ITK_NULLPTR;
+    return false;
+    }
+
+  if( std::string( maskFile ).length() < 3 )
+    {
+    std::cerr << " bad mask file name " << std::string( maskFile ) << std::endl;
+    target = ITK_NULLPTR;
+    return false;
+    }
+
+  if( !ANTSFileExists( std::string( maskFile ) ) )
+    {
+    std::cerr << " mask file " << std::string( maskFile ) << " does not exist . " << std::endl;
+    target = ITK_NULLPTR;
+    return false;
+    }
+
+  if( neighborhoodRadius.size() != TImage::ImageDimension )
+    {
+    std::cerr << " size of the neighborhood radius is not equal to the image dimension." << std::endl;
+    target = ITK_NULLPTR;
+    return false;
+    }
+
+  typename TImage::Pointer intensityImage = ReadImage<TImage>( (char *)imageFile );
+  typename TMask::Pointer maskImage = ReadImage<TMask>( (char *)maskFile );
+
+  typedef itk::ImageIntensityAndGradientToPointSetFilter<TImage, TMask, TPointSet> FilterType;
+
+  typename FilterType::NeighborhoodRadiusType radius;
+  for( unsigned int d = 0; d < TImage::ImageDimension; d++ )
+    {
+    radius[d] = neighborhoodRadius[d];
+    }
+
+  typename FilterType::Pointer filter = FilterType::New();
+  filter->SetInput1( intensityImage );
+  filter->SetInput2( maskImage );
+  filter->SetSigma( sigma );
+  filter->SetNeighborhoodRadius( radius );
+  filter->Update();
+
+  target = filter->GetOutput();
+
+  return true;
+}
+
 template <class TPointSet>
-typename TPointSet::Pointer ReadPointSet( char* fn )
+typename TPointSet::Pointer ReadLabeledPointSet( char* fn )
 {
   if( !ANTSFileExists( std::string( fn ) ) )
     {
@@ -427,7 +488,7 @@ bool WritePointSet( itk::SmartPointer<TPointSet> pointSet, const char *file )
 }
 
 template <class TImageType>
-bool WriteImage(itk::SmartPointer<TImageType> image, const char *file)
+bool WriteImage(const itk::SmartPointer<TImageType> image, const char *file)
 {
   if( std::string(file).length() < 3 )
     {
@@ -459,6 +520,7 @@ bool WriteImage(itk::SmartPointer<TImageType> image, const char *file)
       std::exception();
       }
     writer->SetInput(image);
+    writer->SetUseCompression( true );
     writer->Update();
     }
   return true;
@@ -495,6 +557,7 @@ void WriteTensorImage(itk::SmartPointer<TImageType> image, const char *file, boo
   else
     {
     writer->SetInput(writeImage);
+    writer->SetUseCompression( true );
     writer->Update();
     }
 }
@@ -651,5 +714,29 @@ WriteDisplacementField2(TField* field, std::string filename, std::string app)
   std::cout << "...done" << std::endl;
   return;
 }
+
+class nullBuf
+: public std::streambuf
+{
+public:
+  virtual std::streamsize xsputn( const char * itkNotUsed( s ), std::streamsize n )
+    {
+    return n;
+    }
+
+  virtual int overflow( int itkNotUsed( c ) )
+    {
+    return 1;
+    }
+};
+
+class nullStream
+: public std::ostream
+{
+  public:
+    nullStream() : std::ostream( &buf ) {}
+  private:
+    nullBuf buf;
+};
 
 #endif

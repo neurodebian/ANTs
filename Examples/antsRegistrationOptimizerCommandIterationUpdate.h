@@ -142,7 +142,7 @@ public:
         }
       else
         {
-        std::cout << " "; // if the output of current iteration is written to disk, and star
+        this->Logger() << " "; // if the output of current iteration is written to disk, and star
         }                 // will appear before line, else a free space will be printed to keep visual alignment.
 
       this->Logger() << "2DIAGNOSTIC, "
@@ -151,7 +151,7 @@ public:
                      << std::scientific << std::setprecision(12) << this->m_Optimizer->GetConvergenceValue() << ", "
                      << std::setprecision(4) << now << ", "
                      << std::setprecision(4) << (now - this->m_lastTotalTime)  << ", ";
-      if( ( this->m_ComputeFullScaleCCInterval != 0 ) && vcl_fabs(metricValue) > 1e-7 )
+      if( ( this->m_ComputeFullScaleCCInterval != 0 ) && std::fabs(metricValue) > 1e-7 )
         {
         this->Logger() << std::scientific << std::setprecision(12) << metricValue
                        << std::flush << std::endl;
@@ -257,7 +257,7 @@ public:
         // Copy the information to each sub transform and add this transform to the final composite transform.
         const typename TransformBaseType::ParametersType & fixedImage_paras =
           inputFixedTransform->GetNthTransform(i)->GetParameters();
-        const typename TransformBaseType::ParametersType & fixedImage_fixed_paras =
+        const typename TransformBaseType::FixedParametersType & fixedImage_fixed_paras =
           inputFixedTransform->GetNthTransform(i)->GetFixedParameters();
         subTransform->SetParameters( fixedImage_paras );
         subTransform->SetFixedParameters( fixedImage_fixed_paras );
@@ -289,7 +289,7 @@ public:
         dynamic_cast<TransformBaseType *>( inputMovingTransform->GetNthTransform(i)->CreateAnother().GetPointer() ) );
       const typename TransformBaseType::ParametersType & moving_paras =
         inputMovingTransform->GetNthTransform(i)->GetParameters();
-      const typename TransformBaseType::ParametersType & moving_fixed_paras =
+      const typename TransformBaseType::FixedParametersType & moving_fixed_paras =
         inputMovingTransform->GetNthTransform(i)->GetFixedParameters();
       subTransform->SetParameters( moving_paras );
       subTransform->SetFixedParameters( moving_fixed_paras );
@@ -323,7 +323,7 @@ public:
         dynamic_cast<TransformBaseType *>( inputMovingTransform->GetNthTransform(i)->CreateAnother().GetPointer() ) );
       const typename TransformBaseType::ParametersType & moving_paras =
         inputMovingTransform->GetNthTransform(i)->GetParameters();
-      const typename TransformBaseType::ParametersType & moving_fixed_paras =
+      const typename TransformBaseType::FixedParametersType & moving_fixed_paras =
         inputMovingTransform->GetNthTransform(i)->GetFixedParameters();
       subTransform->SetParameters( moving_paras );
       subTransform->SetFixedParameters( moving_fixed_paras );

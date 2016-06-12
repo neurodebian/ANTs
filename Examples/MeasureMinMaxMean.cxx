@@ -1,13 +1,9 @@
 /*=========================================================================
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: MeasureMinMaxMean.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008/12/16 17:56:34 $
-  Version:   $Revision: 1.20 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -196,6 +192,8 @@ private:
   imageIO->ReadImageInformation();
   unsigned int ncomponents = imageIO->GetNumberOfComponents();
 
+  int returnValue = EXIT_FAILURE;
+  
   // Get the image dimension
   switch( atoi(argv[1]) )
     {
@@ -205,17 +203,17 @@ private:
         {
         case 3:
           {
-          MeasureMinMaxMean<2, 3>(argc, argv);
+          returnValue = MeasureMinMaxMean<2, 3>(argc, argv);
           }
           break;
         case 2:
           {
-          MeasureMinMaxMean<2, 2>(argc, argv);
+          returnValue = MeasureMinMaxMean<2, 2>(argc, argv);
           }
           break;
         default:
           {
-          MeasureMinMaxMean<2, 1>(argc, argv);
+          returnValue = MeasureMinMaxMean<2, 1>(argc, argv);
           }
           break;
         }
@@ -227,22 +225,22 @@ private:
         {
         case 7:
           {
-          MeasureMinMaxMean<3, 7>(argc, argv);
+          returnValue = MeasureMinMaxMean<3, 7>(argc, argv);
           }
           break;
         case 6:
           {
-          MeasureMinMaxMean<3, 6>(argc, argv);
+          returnValue = MeasureMinMaxMean<3, 6>(argc, argv);
           }
           break;
         case 3:
           {
-          MeasureMinMaxMean<3, 3>(argc, argv);
+          returnValue = MeasureMinMaxMean<3, 3>(argc, argv);
           }
           break;
         default:
           {
-          MeasureMinMaxMean<3, 1>(argc, argv);
+          returnValue = MeasureMinMaxMean<3, 1>(argc, argv);
           }
           break;
         }
@@ -254,32 +252,32 @@ private:
         {
         case 7:
           {
-          MeasureMinMaxMean<4, 7>(argc, argv);
+          returnValue = MeasureMinMaxMean<4, 7>(argc, argv);
           }
           break;
         case 6:
           {
-          MeasureMinMaxMean<4, 6>(argc, argv);
+          returnValue = MeasureMinMaxMean<4, 6>(argc, argv);
           }
           break;
         case 4:
           {
-          MeasureMinMaxMean<4, 4>(argc, argv);
+          returnValue = MeasureMinMaxMean<4, 4>(argc, argv);
           }
           break;
         case 3:
           {
-          MeasureMinMaxMean<4, 3>(argc, argv);
+          returnValue = MeasureMinMaxMean<4, 3>(argc, argv);
           }
           break;
         case 2:
           {
-          MeasureMinMaxMean<4, 2>(argc, argv);
+          returnValue = MeasureMinMaxMean<4, 2>(argc, argv);
           }
           break;
         default:
           {
-          MeasureMinMaxMean<4, 1>(argc, argv);
+          returnValue = MeasureMinMaxMean<4, 1>(argc, argv);
           }
           break;
         }
@@ -289,6 +287,7 @@ private:
       std::cout << " not supported " << dim  << std::endl;
       return EXIT_FAILURE;
     }
-  return EXIT_SUCCESS;
+  return returnValue;
+ 
 }
 } // namespace ants

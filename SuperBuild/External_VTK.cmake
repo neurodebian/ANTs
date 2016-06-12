@@ -19,7 +19,7 @@ ProjectDependancyPush(CACHED_proj ${proj})
 # SlicerMacroCheckExternalProjectDependency
 set(extProjName VTK) #The find_package known name
 set(proj        VTK) #This local name
-set(${extProjName}_REQUIRED_VERSION "6")  #If a required version is necessary, then set this, else leave blank
+set(${extProjName}_REQUIRED_VERSION "6.2")  #If a required version is necessary, then set this, else leave blank
 
 #if(${USE_SYSTEM_${extProjName}})
 #  unset(${extProjName}_DIR CACHE)
@@ -147,6 +147,7 @@ if(NOT ( DEFINED "USE_SYSTEM_${extProjName}" AND "${USE_SYSTEM_${extProjName}}" 
       -DBUILD_EXAMPLES:BOOL=OFF
       -DBUILD_TESTING:BOOL=OFF
       -DVTK_USE_PARALLEL:BOOL=ON
+      -DBUILD_SHARED_LIBS:OFF
       -DVTK_DEBUG_LEAKS:BOOL=${${PROJECT_NAME}_USE_VTK_DEBUG_LEAKS}
       -DVTK_LEGACY_REMOVE:BOOL=OFF
       -DVTK_WRAP_TCL:BOOL=${VTK_WRAP_TCL}
@@ -159,8 +160,8 @@ if(NOT ( DEFINED "USE_SYSTEM_${extProjName}" AND "${USE_SYSTEM_${extProjName}}" 
       ${VTK_MAC_ARGS}
     )
   ### --- End Project specific additions
-  set(${proj}_REPOSITORY https://github.com/Kitware/VTK.git)
-  set(${proj}_GIT_TAG 836c511abf0b8d97599b25f9b26658b8636ed8d7 )
+  set(${proj}_REPOSITORY ${git_protocol}://github.com/Kitware/VTK.git)
+  set(${proj}_GIT_TAG acc5f269186e3571fb2a10af4448076ecac75e8e )
   ExternalProject_Add(${proj}
     GIT_REPOSITORY ${${proj}_REPOSITORY}
     GIT_TAG ${${proj}_GIT_TAG}

@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: antsAtroposSegmentationImageFilter.h,v $
-  Language:  C++
-  Date:      $Date: $
-  Version:   $Revision: $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
-  http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt
+  https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt
   for details.
 
   This software is distributed WITHOUT ANY WARRANTY; without even
@@ -587,18 +583,6 @@ public:
   const MaskImageType * GetMaskImage() const;
 
   /**
-   * Set mask label function.  If a binary mask image is specified, only those
-   * input image voxels corresponding with mask image values equal to
-   * m_MaskLabel are used in estimating the bias field.  Default = 1.
-   */
-  itkSetMacro( MaskLabel, MaskLabelType );
-
-  /**
-   * Get mask label.
-   */
-  itkGetConstMacro( MaskLabel, MaskLabelType );
-
-  /**
    * Set the label propagation type.  Euclidean distance uses the Maurer distance
    * transform to calculate the distance transform image. Otherwise the fast
    * marching filter is used to produce the geodesic distance.  The former option
@@ -811,7 +795,7 @@ private:
 
   void EvaluateMRFNeighborhoodWeights( ConstNeighborhoodIterator<ClassifiedImageType>, Array<RealType> & );
 
-  RealType PerformLocalLabelingUpdate(NeighborhoodIterator<ClassifiedImageType> );
+  RealType PerformLocalLabelingUpdate( NeighborhoodIterator<ClassifiedImageType> );
 
   // ivars
 
@@ -826,8 +810,6 @@ private:
   unsigned int m_MaximumNumberOfIterations;
   RealType     m_CurrentPosteriorProbability;
   RealType     m_ConvergenceThreshold;
-
-  MaskLabelType m_MaskLabel;
 
   std::vector<LikelihoodFunctionPointer> m_MixtureModelComponents;
   Array<RealType>                        m_MixtureModelProportions;

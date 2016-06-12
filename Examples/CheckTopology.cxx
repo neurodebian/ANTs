@@ -1,10 +1,6 @@
 /*=========================================================================
 
   Program:   Insight Segmentation & Registration Toolkit
-  Module:    $RCSfile: CheckTopology.cxx,v $
-  Language:  C++
-$Date: 2008/12/07 03:06:27 $
-$Revision: 1.8 $
   Copyright (c) 2002 Insight Consortium. All rights reserved.
   See ITKCopyright.txt or http://www.itk.org/HTML/Copyright.htm for details.
 
@@ -86,7 +82,6 @@ template <class TImage>
 float GetImageTopology(typename TImage::Pointer image)
 {
   typedef TImage      ImageType;
-  typedef vtkPolyData MeshType;
   double aaParm = 0.024;
   typedef BinaryImageToMeshFilter<ImageType> FilterType;
   typename  FilterType::Pointer fltMesh = FilterType::New();
@@ -130,7 +125,6 @@ NormalizeImage(typename TImage::Pointer image)
 template <class TImage>
 typename TImage::Pointer SmoothImage( typename TImage::Pointer image, float sig )
 {
-  typedef float  PixelType;
   typedef TImage ImageType;
   enum { ImageDimension = ImageType::ImageDimension };
 
@@ -153,7 +147,6 @@ GetLargestComponent(typename TImage::Pointer image)
 
   typedef int                                                                      InternalPixelType;
   typedef itk::Image<InternalPixelType, ImageDimension>                            InternalImageType;
-  typedef TImage                                                                   OutputImageType;
   typedef itk::BinaryThresholdImageFilter<TImage, InternalImageType>               ThresholdFilterType;
   typedef itk::ConnectedComponentImageFilter<InternalImageType, InternalImageType> FilterType;
   typedef itk::RelabelComponentImageFilter<InternalImageType, InternalImageType>   RelabelType;
@@ -325,7 +318,6 @@ private:
   typedef float PixelType;
   const unsigned int ImageDimension = 3; // AvantsImageDimension;
   typedef itk::Image<PixelType, ImageDimension> ImageType;
-  typedef float                                 FieldValueType;
 
   ImageType::Pointer image = ImageType::New();
   ReadImage<ImageType>(image, argv[1]);
@@ -388,6 +380,6 @@ private:
     {
     WriteImage<ImageType>(image, argv[2]);
     }
-  return 0;
+  return EXIT_SUCCESS;
 }
 } // namespace ants

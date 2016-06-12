@@ -1,10 +1,6 @@
 /*=========================================================================
 
   Program:   Insight Segmentation & Registration Toolkit
-  Module:    $RCSfile: itkFEMConformalMap.cxx,v $
-  Language:  C++
-  Date:      $Date: 2005/11/08 15:34:16 $
-  Version:   $Revision: 1.1.1.1 $
 
   Copyright (c) 2002 Insight Consortium. All rights reserved.
   See ITKCopyright.txt or http://www.itk.org/HTML/Copyright.htm for detailm_Solver.
@@ -24,8 +20,10 @@
 #include "vtkCleanPolyData.h"
 #include "vtkPolyDataConnectivityFilter.h"
 
-#include <vcl_cmath.h>
-#include <vcl_iostream.h>
+#include <vcl_compiler.h>
+#include <iostream>
+#include <cmath>
+#include <iostream>
 #include <vnl/vnl_real_polynomial.h>
 #include <vnl/vnl_vector.h>
 #include <vnl/vnl_vector_fixed.h>

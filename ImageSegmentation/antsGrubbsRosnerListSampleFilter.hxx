@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: antsGrubbsRosnerListSampleFilter.hxx,v $
-  Language:  C++
-  Date:      $Date:  $
-  Version:   $Revision: $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
-  http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt
+  https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt
   for details.
 
   This software is distributed WITHOUT ANY WARRANTY; without even
@@ -147,8 +143,8 @@ GrubbsRosnerListSampleFilter<TScalarListSample>
         1.0 - 0.5 * this->m_WinsorizingLevel,
         this->GetInput()->Size() - this->m_OutlierInstanceIdentifiers.size() );
 
-    lowerWinsorBound = mean - t * vcl_sqrt( variance );
-    upperWinsorBound = mean + t * vcl_sqrt( variance );
+    lowerWinsorBound = mean - t * std::sqrt( variance );
+    upperWinsorBound = mean + t * std::sqrt( variance );
     }
 
   It = this->GetInput()->Begin();
@@ -235,9 +231,9 @@ GrubbsRosnerListSampleFilter<TScalarListSample>
   RealType t = tdistribution->EvaluateInverseCDF( 1.0 - sig, N - 2 );
 
   RealType nu = static_cast<RealType>( N - 1 );
-  RealType g = nu / vcl_sqrt( nu + 1.0 ) * vcl_sqrt( t * t / ( nu - 1 + t * t ) );
+  RealType g = nu / std::sqrt( nu + 1.0 ) * std::sqrt( t * t / ( nu - 1 + t * t ) );
 
-  return g < ( vnl_math_abs( x - mean ) / vcl_sqrt( variance ) );
+  return g < ( vnl_math_abs( x - mean ) / std::sqrt( variance ) );
 }
 
 template <class TScalarListSample>

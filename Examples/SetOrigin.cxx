@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: SetOrigin.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008/11/15 23:46:06 $
-  Version:   $Revision: 1.19 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -150,12 +146,12 @@ private:
     {
     case 2:
       {
-      SetOrigin<2>(argc - 1, argv + 1);
+      return SetOrigin<2>(argc - 1, argv + 1);
       }
       break;
     case 3:
       {
-      SetOrigin<3>(argc - 1, argv + 1);
+      return SetOrigin<3>(argc - 1, argv + 1);
       }
       break;
     default:

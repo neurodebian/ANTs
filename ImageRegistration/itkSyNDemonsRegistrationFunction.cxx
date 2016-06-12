@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: itkSyNDemonsRegistrationFunction.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008/11/15 23:46:06 $
-  Version:   $Revision: 1.18 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -357,7 +353,7 @@ SyNDemonsRegistrationFunction<TFixedImage, TMovingImage, TDisplacementField>
     {
     m_Metric = m_SumOfSquaredDifference
       / static_cast<double>( m_NumberOfPixelsProcessed );
-    m_RMSChange = vcl_sqrt( m_SumOfSquaredChange
+    m_RMSChange = std::sqrt( m_SumOfSquaredChange
                             / static_cast<double>( m_NumberOfPixelsProcessed ) );
     }
 

@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: MemoryTest.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008/11/15 23:46:06 $
-  Version:   $Revision: 1.18 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -183,12 +179,12 @@ private:
     {
     case 2:
       {
-      MemoryTest<2>(argc, argv);
+      return MemoryTest<2>(argc, argv);
       }
       break;
     case 3:
       {
-      MemoryTest<3>(argc, argv);
+      return MemoryTest<3>(argc, argv);
       }
       break;
     default:

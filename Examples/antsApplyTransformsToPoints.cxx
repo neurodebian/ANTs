@@ -24,7 +24,8 @@
 namespace ants
 {
 template <unsigned int Dimension, class RealType>
-int antsApplyTransformsToPoints( itk::ants::CommandLineParser::Pointer & parser )
+int antsApplyTransformsToPoints(
+  itk::ants::CommandLineParser::Pointer & parser )
 {
   typedef vnl_matrix<RealType> MatrixType;
   MatrixType points_out;
@@ -36,16 +37,26 @@ int antsApplyTransformsToPoints( itk::ants::CommandLineParser::Pointer & parser 
   StringVectorType colheadernames;
   typename ImageType::Pointer pointimage = ITK_NULLPTR;
 
+  itk::ants::CommandLineParser::OptionType::Pointer antsrOption =
+    parser->GetOption( "forantsr" );
+  unsigned int forANTsR = 0;
+  if( antsrOption && antsrOption->GetNumberOfFunctions() > 0 )
+    {
+    forANTsR = parser->Convert<unsigned int>(
+      antsrOption->GetFunction( 0 )->GetName() );
+    }
+
   /**
-   * Input object option - for now, we're limiting this to images.
+   * Input object option
    */
   typename itk::ants::CommandLineParser::OptionType::Pointer inputOption = parser->GetOption( "input" );
   typename itk::ants::CommandLineParser::OptionType::Pointer outputOption = parser->GetOption( "output" );
   if( inputOption && inputOption->GetNumberOfFunctions() > 0 )
     {
-    std::string ext =
-      itksys::SystemTools::GetFilenameExtension(  ( inputOption->GetFunction( 0 )->GetName() ).c_str()  );
-    if( strcmp(ext.c_str(), ".csv") == 0 )
+    std::size_t lengthInputFileName = std::strlen( inputOption->GetFunction( 0 )->GetName().c_str() );
+    std::string ext = ( inputOption->GetFunction( 0 )->GetName() ).substr( lengthInputFileName - 4 );
+
+    if( strcmp( ext.c_str(), ".csv") == 0 )
       {
       typename ReaderType::Pointer reader = ReaderType::New();
       reader->SetFileName(  ( inputOption->GetFunction( 0 )->GetName() ).c_str()  );
@@ -76,7 +87,7 @@ int antsApplyTransformsToPoints( itk::ants::CommandLineParser::Pointer & parser 
       points_in = dfo->GetMatrix();
       points_out.set_size( points_in.rows(),  points_in.cols() );
       }
-    else if( strcmp(ext.c_str(), ".mha") == 0 )
+    else if( strcmp(ext.c_str(), ".mha" ) == 0 || forANTsR )
       {
       std::string fn1 = inputOption->GetFunction( 0 )->GetName();
       ReadImage<ImageType>( pointimage, fn1.c_str() );
@@ -88,12 +99,14 @@ int antsApplyTransformsToPoints( itk::ants::CommandLineParser::Pointer & parser 
       points_in.set_size( sz[0],  sz[1] );
       points_out.set_size( points_in.rows(),  points_in.cols() );
       for ( unsigned int d = 0; d < sz[0]; d++ )
+        {
         for ( unsigned int dd = 0; dd < sz[1]; dd++ )
           {
           ind[0] = d;
           ind[1] = dd;
           points_in( d, dd ) = pointimage->GetPixel( ind );
           }
+        }
       }
     else
       {
@@ -146,7 +159,7 @@ int antsApplyTransformsToPoints( itk::ants::CommandLineParser::Pointer & parser 
 
     std::vector<bool> isDerivedTransform;
     typename CompositeTransformType::Pointer compositeTransform =
-      GetCompositeTransformFromParserOption<RealType, Dimension>( parser, transformOption, isDerivedTransform );
+      GetCompositeTransformFromParserOption<RealType, Dimension>( parser, transformOption, isDerivedTransform, forANTsR );
 
     if ( compositeTransform->GetNumberOfTransforms() == 0 )
       compositeTransform->AddTransform( aff );
@@ -188,8 +201,8 @@ int antsApplyTransformsToPoints( itk::ants::CommandLineParser::Pointer & parser 
         {
         outputFileName = outputOption->GetFunction( 0 )->GetName();
         }
-      std::string exto =
-        itksys::SystemTools::GetFilenameExtension( outputFileName.c_str() );
+      std::size_t lengthOutputFileName = std::strlen( outputFileName.c_str() );
+      std::string exto = outputFileName.substr( lengthOutputFileName - 4 );
 
       if( strcmp(exto.c_str(), ".csv" ) == 0 )
         {
@@ -210,8 +223,9 @@ int antsApplyTransformsToPoints( itk::ants::CommandLineParser::Pointer & parser 
           return EXIT_FAILURE;
           }
         }
-      if( ( strcmp(exto.c_str(), ".mha" ) == 0 ) &&
-          (  ! pointimage.IsNull() ) )
+      if( ( strcmp(exto.c_str(), ".mha" ) == 0 ||
+            forANTsR )
+         &&  (  ! pointimage.IsNull() ) )
         {
         typename ImageType::IndexType ind;
         ind.Fill(0);
@@ -261,6 +275,17 @@ static void antsApplyTransformsToPointsInitializeCommandLineOptions( itk::ants::
     OptionType::Pointer option = OptionType::New();
     option->SetLongName( "precision" );
     option->SetShortName( 'p' );
+    option->SetUsageOption( 0, "0/1" );
+    option->SetDescription( description );
+    parser->AddOption( option );
+    }
+
+    {
+    std::string description =
+      std::string( "set true for ANTsR IO" );
+    OptionType::Pointer option = OptionType::New();
+    option->SetLongName( "forantsr" );
+    option->SetShortName( 'f' );
     option->SetUsageOption( 0, "0/1" );
     option->SetDescription( description );
     parser->AddOption( option );
@@ -472,17 +497,17 @@ private:
       {
       case 2:
         {
-        antsApplyTransformsToPoints<2,double>( parser );
+        return antsApplyTransformsToPoints<2,double>( parser );
         }
         break;
       case 3:
         {
-        antsApplyTransformsToPoints<3,double>( parser );
+        return antsApplyTransformsToPoints<3,double>( parser );
         }
         break;
       case 4:
         {
-        antsApplyTransformsToPoints<4,double>( parser );
+        return antsApplyTransformsToPoints<4,double>( parser );
         }
         break;
       default:
@@ -496,17 +521,17 @@ private:
       {
       case 2:
         {
-        antsApplyTransformsToPoints<2,float>( parser );
+        return antsApplyTransformsToPoints<2,float>( parser );
         }
         break;
       case 3:
         {
-        antsApplyTransformsToPoints<3,float>( parser );
+        return antsApplyTransformsToPoints<3,float>( parser );
         }
         break;
       case 4:
         {
-        antsApplyTransformsToPoints<4,float>( parser );
+        return antsApplyTransformsToPoints<4,float>( parser );
         }
         break;
       default:

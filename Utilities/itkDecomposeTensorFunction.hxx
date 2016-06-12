@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: itkDecomposeTensorFunction.hxx,v $
-  Language:  C++
-  Date:      $Date: 2009/05/11 13:55:21 $
-  Version:   $Revision: 1.17 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -67,7 +63,7 @@ DecomposeTensorFunction<TInput, TRealType, TOutput>
       V[i][j] = static_cast<RealType>( (eig.Vreal).get( i, j ) );
       if( i == j )
         {
-        D[i][j] = static_cast<RealType>( vcl_real( eig.D(j) ) );
+        D[i][j] = static_cast<RealType>( std::real( eig.D(j) ) );
         }
       }
     }

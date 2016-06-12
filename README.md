@@ -1,9 +1,10 @@
-[![Build Status](https://travis-ci.org/stnava/ANTs.svg?branch=master)](https://travis-ci.org/stnava/ANTs)
 ============================
 Advanced Normalization Tools
 ============================
 
-Questions: [Discussion Site](http://sourceforge.net/p/advants/discussion/) or *new* [ANTsDoc](http://stnava.github.io/ANTsDoc/) or try [this version](http://issuu.com/brianavants/docs/ants2)
+[![Build Status](https://travis-ci.org/stnava/ANTs.svg?branch=master)](https://travis-ci.org/stnava/ANTs) [ ![Codeship Status for stnava/ANTs](https://codeship.com/projects/1d8dc570-dbb9-0132-934e-42ca4e970282/status?branch=master)](https://codeship.com/projects/79731) [![Coverage Status](https://coveralls.io/repos/stnava/ANTs/badge.svg)](https://coveralls.io/r/stnava/ANTs)
+
+Questions: [Discussion Site](http://sourceforge.net/p/advants/discussion/) or *new* [ANTsDoc](http://stnava.github.io/ANTsDoc/) or try [this version](http://issuu.com/brianavants/docs/ants2) ... also read our [guide to evaluation strategies and addressing new problems with ANTs or other software](http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3766821/).  *New* [ANTs handout](https://github.com/stnava/ANTsTutorial/raw/master/handout/antsHandout.pdf), part of forthcoming [ANTs tutorial]() material.
 
 [ANTsTalk - subject to change at any moment](http://stnava.github.io/ANTsTalk/)
 
@@ -12,13 +13,15 @@ Questions: [Discussion Site](http://sourceforge.net/p/advants/discussion/) or *n
  Email: [antsr.me at gmail dot com](mailto:antsr.me@gmail.com)
 
  Install ANTs via pre-built:
-[Packages](http://sourceforge.net/projects/advants/files/ANTS/)
+[Packages @ github](https://github.com/stnava/ANTs/releases) older
+versions [@ sourceforge](http://sourceforge.net/projects/advants/files/ANTS/) ... also,
+[Github Releases are here](https://github.com/stnava/ANTs/releases) thanks to Arman Eshaghi.
 
  Build [ANTs](https://github.com/stnava/ANTs) from:
 [Source-Code](http://brianavants.wordpress.com/2012/04/13/updated-ants-compile-instructions-april-12-2012/)
 (recommended)
 
-[ANTs Dashboard](http://testing.psychiatry.uiowa.edu/CDash/index.php?project=ANTS) maintained by Hans J. Johnson
+[ANTs Dashboard](https://travis-ci.org/stnava/ANTs/) thanks to Arman Eshaghi and  Hans J. Johnson
 
 ANTs extracts information from complex datasets that include imaging
 ([Word Cloud](http://brianavants.files.wordpress.com/2013/05/avants_wordcloud.jpg)).
@@ -30,7 +33,7 @@ considered a state-of-the-art medical image registration and
 segmentation toolkit. ANTsR is an emerging tool supporting standardized
 multimodality image analysis. ANTs depends on the Insight ToolKit
 [(ITK)](http://www.itk.org), a widely used medical image processing
-library to which ANTs developers contribute.
+library to which ANTs developers contribute.  A summary of some ANTs findings and tutorial material (most of which is on this page) is [here](http://rpubs.com/stnava/ANTsTut).
 
 Authors
 -------
@@ -51,8 +54,7 @@ Authors
 
 ### Team Members
 
-**Core:** Gang Song (Originator), Philip A. Cook, Jeffrey T. Duda (DTI), Ben M. Kandel (Perfusion, multivariate analysis), Kent Williams (software engineer, UIowa)
-
+**Core:** Gang Song (Originator), Philip A. Cook, Jeffrey T. Duda (DTI), Ben M. Kandel (Perfusion, multivariate analysis)
 
 Image Registration
 ------------------
@@ -148,14 +150,6 @@ Background & Theory
 ANTs has won several unbiased & international competitions
 ----------------------------------------------------------
 
--   New *antsRegistration* [bash
-    example](https://github.com/stnava/ANTs/blob/master/Scripts/newAntsExample.sh)
-
--   New *Eigenanatomy* for [multivariate neuroimage
-    analysis](http://www.ncbi</a>.nlm.nih.gov/pubmed/23269595) via
-    [PCA](http://www.ncbi.nlm.nih.gov/pubmed/23286132) &
-    [CCA](http://www.ncbi.nlm.nih.gov/pubmed/20083207)
-
 -   ANTs finished in 1st rank in [Klein 2009 intl. brain mapping
     competition](http://www.ncbi.nlm.nih.gov/pubmed/19195496)
 
@@ -176,6 +170,11 @@ ANTs has won several unbiased & international competitions
 
 Learning about ANTs
 ----------------------------------------------------------
+**antsRegistration** [bash example](https://github.com/stnava/ANTs/blob/master/Scripts/newAntsExample.sh)
+
+**Eigenanatomy** for [multivariate neuroimage analysis](http://www.ncbi</a>.nlm.nih.gov/pubmed/23269595) via
+    [PCA](http://www.ncbi.nlm.nih.gov/pubmed/23286132) &
+    [CCA](http://www.ncbi.nlm.nih.gov/pubmed/20083207)
 
 **ANTs and ITK** [paper](http://www.ncbi.nlm.nih.gov/pmc/articles/PMC4009425/)
 
@@ -197,7 +196,9 @@ Learning about ANTs
 
 **Asymmetry** [example](http://stnava.github.io/asymmetry/)
 
-**Point-set** [mapping](http://stnava.github.io/chicken/)
+**Point-set** [mapping](http://stnava.github.io/chicken/) which includes the
+PSE metric and affine and deformable registration with (labeled) pointsets or
+iterative closest point
 
 **Feature matching** [example](http://stnava.github.io/featureMatching/) ... not up to date ...
 
@@ -222,6 +223,8 @@ Learning about ANTs
 **Cortical thickness** [example](https://github.com/ntustison/antsCorticalThicknessExample)
 
 **MALF labeling example** [example](https://github.com/ntustison/MalfLabelingExample)
+
+**Lung and lobe estimation** [example](https://github.com/ntustison/LungAndLobeEstimationExample)
 
 **Bibliography** [bibtex of ANTs-related papers](https://github.com/stnava/ANTsBibliography)
 
@@ -249,7 +252,7 @@ Scholar](http://scholar.google.com/scholar?q=Advanced+Normalization+Tools+%22ANT
 
 [Pubmed](http://www.ncbi.nlm.nih.gov/pubmed?term=%22Avants%20B%22%20OR%20%22Tustison%20N%22)
 
-Boilerplate ANTs 
+Boilerplate ANTs
 ------------------
 
 Here is some boilerplate regarding ants image processing:
@@ -306,8 +309,4 @@ References
 
 
 
-ANTs was supported by: R01-EB006266-01
-
-
-
-[![githalytics.com alpha](https://cruel-carlota.pagodabox.com/a912f82c8178a07889f508871d94e77d "githalytics.com")](http://githalytics.com/stnava/ANTs)
+ANTs was supported by: R01-EB006266-01 and by K01-ES025432-01

@@ -75,8 +75,8 @@ nmA=${prefix}_A_norm
 nmB=${prefix}_B_norm
 nm=${prefix}_B_to_A
 nminv=${prefix}_A_to_B
-initAmat=${prefix}_A_norm0GenericAffine.mat
-initBmat=${prefix}_B_norm0GenericAffine.mat
+initAmat=${prefix}_initA0GenericAffine.mat
+initBmat=${prefix}_initB0GenericAffine.mat
 FWD=" -t [ $initAmat , 1 ] -t ${nm}1Warp.nii.gz -t  $initB -r $A "
 INV=" -t [ $initBmat , 1 ] -t ${nm}1InverseWarp.nii.gz -t  $initA -r $B  "
 echo  FWD   $FWD
@@ -119,7 +119,7 @@ antsApplyTransforms -d $dim -i $B -o ${nm}_aff.nii.gz -t [ $initAmat, 1 ] -t  $i
                          -c [${synits},1.e-8,10]  \
                         -s 1x0 \
                         -f 2x1 \
-                       -u $uval -b 0 -z 1 \
+                       -u $uval -z 1 \
                        -o [${nm},${nm}_diff_symm.nii.gz]
 #    $reg -d $dim  --initial-fixed-transform $initBmat  --initial-moving-transform $initAmat \
 #                         -m cc[  $B, $A , 1 , 4 ] \

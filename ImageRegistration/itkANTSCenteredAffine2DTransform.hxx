@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: itkANTSCenteredAffine2DTransform.hxx,v $
-  Language:  C++
-  Date:      $Date: 2008/11/15 23:46:06 $
-  Version:   $Revision: 1.18 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -131,7 +127,7 @@ ANTSCenteredAffine2DTransform<TScalarType>
 //    std::cout << "R=" << R << std::endl;
 //    std::cout << "dq=" << dq << std::endl;
 
-  m_Angle = vcl_acos(R[0][0]);
+  m_Angle = std::acos(R[0][0]);
 
   if( this->GetMatrix()[1][0] < 0.0 )
     {
@@ -250,7 +246,7 @@ void
 ANTSCenteredAffine2DTransform<TScalarType>
 ::SetAngleInDegrees(TScalarType angle)
 {
-  const TScalarType angleInRadians = angle * vcl_atan(1.0) / 45.0;
+  const TScalarType angleInRadians = angle * std::atan(1.0) / 45.0;
 
   this->SetAngle( angleInRadians );
 }
@@ -261,8 +257,8 @@ void
 ANTSCenteredAffine2DTransform<TScalarType>
 ::ComputeMatrix( void )
 {
-  const double ca = vcl_cos(m_Angle );
-  const double sa = vcl_sin(m_Angle );
+  const double ca = std::cos(m_Angle );
+  const double sa = std::sin(m_Angle );
 
   const double s1 = m_S1;
   const double s2 = m_S2;
@@ -364,8 +360,8 @@ GetParameters( void ) const
 // GetJacobian( const InputPointType & p ) const
 // {
 //
-//    const double ca = vcl_cos(this->GetAngle() );
-//    const double sa = vcl_sin(this->GetAngle() );
+//    const double ca = std::cos(this->GetAngle() );
+//    const double sa = std::sin(this->GetAngle() );
 //    const double s1 = m_S1;
 //    const double s2 = m_S2;
 //    const double k = m_K;
@@ -424,8 +420,8 @@ void
 ANTSCenteredAffine2DTransform<TScalarType>::ComputeJacobianWithRespectToParameters(const InputPointType  & p,
                                                                                    JacobianType & j) const
 {
-  const double ca = vcl_cos(this->GetAngle() );
-  const double sa = vcl_sin(this->GetAngle() );
+  const double ca = std::cos(this->GetAngle() );
+  const double sa = std::sin(this->GetAngle() );
   const double s1 = m_S1;
   const double s2 = m_S2;
   const double k = m_K;

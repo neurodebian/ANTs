@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: SmoothImage.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008/11/15 23:46:06 $
-  Version:   $Revision: 1.18 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -178,17 +174,17 @@ private:
     {
     case 2:
       {
-      SmoothImage<2>(argc, argv);
+      return SmoothImage<2>(argc, argv);
       }
       break;
     case 3:
       {
-      SmoothImage<3>(argc, argv);
+      return SmoothImage<3>(argc, argv);
       }
       break;
     case 4:
       {
-      SmoothImage<4>(argc, argv);
+      return SmoothImage<4>(argc, argv);
       }
       break;
     default:

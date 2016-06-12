@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: itkANTSImageRegistrationOptimizer.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009/04/22 01:00:16 $
-  Version:   $Revision: 1.47 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -227,7 +223,7 @@ ANTSImageRegistrationOptimizer<TDimension, TReal>
     {
     bool onboundary = false;
     typename DisplacementFieldType::IndexType index = outIter.GetIndex();
-    for( int i = 0; i < ImageDimension; i++ )
+    for( unsigned int i = 0; i < ImageDimension; i++ )
       {
       if( index[i] < 1 || index[i] >= static_cast<int>( size[i] ) - 1 )
         {
@@ -328,7 +324,7 @@ ANTSImageRegistrationOptimizer<TDimension, TReal>
     {
     bool onboundary = false;
     typename TimeVaryingVelocityFieldType::IndexType index = outIter.GetIndex();
-    for( int i = 0; i < ImageDimension; i++ )
+    for( unsigned int i = 0; i < ImageDimension; i++ )
       {
       if( index[i] < 1 || index[i] >= static_cast<int>( size[i] ) - 1 )
         {
@@ -494,7 +490,7 @@ ANTSImageRegistrationOptimizer<TDimension, TReal>
       {
       fieldtowarpby->TransformIndexToPhysicalPoint( index, pointIn1 );
       DispVectorType disp = m_FieldIter.Get();
-      for( int jj = 0; jj < ImageDimension; jj++ )
+      for( unsigned int jj = 0; jj < ImageDimension; jj++ )
         {
         pointIn2[jj] = disp[jj] + pointIn1[jj];
         }
@@ -507,13 +503,13 @@ ANTSImageRegistrationOptimizer<TDimension, TReal>
         {
         disp2.Fill(0);
         }
-      for( int jj = 0; jj < ImageDimension; jj++ )
+      for( unsigned int jj = 0; jj < ImageDimension; jj++ )
         {
         pointIn3[jj] = disp2[jj] * timesign + pointIn2[jj];
         }
 
       DispVectorType out;
-      for( int jj = 0; jj < ImageDimension; jj++ )
+      for( unsigned int jj = 0; jj < ImageDimension; jj++ )
         {
         out[jj] = pointIn3[jj] - pointIn1[jj];
         }
@@ -1854,7 +1850,7 @@ ANTSImageRegistrationOptimizer<TDimension, TReal>
     }
   else
     {
-    for( int jj = 0; jj < ImageDimension; jj++ )
+    for( unsigned int jj = 0; jj < ImageDimension; jj++ )
       {
       if( this->m_CurrentDomainSize[jj] !=  this->m_TimeVaryingVelocity->GetLargestPossibleRegion().GetSize()[jj] )
         {
@@ -2100,7 +2096,7 @@ ANTSImageRegistrationOptimizer<TDimension, TReal>
     }
   else
     {
-    for( int jj = 0; jj < ImageDimension; jj++ )
+    for( unsigned int jj = 0; jj < ImageDimension; jj++ )
       {
       if( this->m_CurrentDomainSize[jj] !=  this->m_TimeVaryingVelocity->GetLargestPossibleRegion().GetSize()[jj] )
         {

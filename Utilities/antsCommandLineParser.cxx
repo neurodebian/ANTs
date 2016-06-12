@@ -1,10 +1,6 @@
 /*=========================================================================
 
   Program:   Insight Segmentation & Registration Toolkit
-  Module:    $RCSfile: antsCommandLineParser.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009/01/22 22:43:11 $
-  Version:   $Revision: 1.1 $
 
   Copyright (c) Insight Software Consortium. All rights reserved.
   See ITKCopyright.txt or http://www.itk.org/HTML/Copyright.htm for details.
@@ -23,7 +19,7 @@ namespace itk
 namespace ants
 {
 
-  std::string ConvertToHumanReadable(const std::string input)
+  std::string ConvertToHumanReadable(const std::string & input)
     {
     typedef std::map<std::string,std::string> TypeMapType;
     TypeMapType cnvtMap;

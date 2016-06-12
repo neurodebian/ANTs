@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: itkLabelOverlapMeasuresImageFilter.hxx,v $
-  Language:  C++
-  Date:      $Date: $
-  Version:   $Revision: $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -885,7 +881,7 @@ DiReCTImageFilter<TInputImage, TOutputImage>
     {
     RealType domain = static_cast<RealType>(
       inputField->GetLargestPossibleRegion().GetSize()[d] - 1 ) * inputField->GetSpacing()[d];
-    ncps[d] = static_cast<unsigned int>( vcl_ceil( domain / isotropicMeshSpacing ) );
+    ncps[d] = static_cast<unsigned int>( std::ceil( domain / isotropicMeshSpacing ) );
     }
 
   typename BSplineFilterType::Pointer bspliner = BSplineFilterType::New();

@@ -68,6 +68,7 @@
 #include "itkNearestNeighborInterpolateImageFunction.h"
 #include "itkWindowedSincInterpolateImageFunction.h"
 #include "itkLabelImageGaussianInterpolateImageFunction.h"
+#include "itkLabelImageGenericInterpolateImageFunction.h"
 #include <sstream>
 
 namespace ants
@@ -765,7 +766,7 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
     A(z,0) = zz;
     for ( unsigned int lcol = 1; lcol < A.cols(); lcol++ )
       {
-      A( z, lcol ) = vcl_pow( zz, static_cast<RealType>(lcol+1) );
+      A( z, lcol ) = std::pow( zz, static_cast<RealType>(lcol+1) );
       }
     }
   for ( unsigned int lcol = 0; lcol < A.cols(); lcol++ )
@@ -810,7 +811,7 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
   for ( unsigned int i = 0; i < transformList.size(); i++)
     {
     typename TranslationTransformType::ParametersType p = transformList[i]->GetParameters();
-    err += vcl_sqrt( vcl_pow( p[0] - solnx[i] , 2.0 ) + vcl_pow( p[1] - solny[i] , 2.0 ) );
+    err += std::sqrt( std::pow( p[0] - solnx[i] , 2.0 ) + std::pow( p[1] - solny[i] , 2.0 ) );
     p[ 0 ] = solnx[i] * eulerparam + p[0] * (1.0 - eulerparam);
     p[ 1 ] = solny[i] * eulerparam + p[1] * (1.0 - eulerparam);
     param_values(i,0) = p[0];
@@ -921,40 +922,49 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
         }
       }
 
-// now apply to the inverse mapﬁ
-      for( unsigned int timedim = 0; timedim < timedims; timedim++ )
+// now apply to the inverse map
+      unsigned int timedimX = 0;
+      for( timedimX = 0; timedimX < timedims; timedimX++ )
         {
         typedef typename itk::TransformToDisplacementFieldFilter<DisplacementFieldType, RealType>
           _ConverterType;
         typename _ConverterType::Pointer converter = _ConverterType::New();
-        converter->SetOutputOrigin( movingSliceList[timedim]->GetOrigin() );
-        converter->SetOutputStartIndex( movingSliceList[timedim]->GetBufferedRegion().GetIndex() );
-        converter->SetSize( movingSliceList[timedim]->GetBufferedRegion().GetSize() );
-        converter->SetOutputSpacing( movingSliceList[timedim]->GetSpacing() );
-        converter->SetOutputDirection( movingSliceList[timedim]->GetDirection() );
-        typename TranslationTransformType::Pointer invtx = TranslationTransformType::New();
+        converter->SetOutputOrigin( movingSliceList[ timedimX ]->GetOrigin() );
+        converter->SetOutputStartIndex(
+          movingSliceList[ timedimX ]->GetBufferedRegion().GetIndex() );
+        converter->SetSize( movingSliceList[
+          timedimX ]->GetBufferedRegion().GetSize() );
+        converter->SetOutputSpacing(
+          movingSliceList[ timedimX ]->GetSpacing() );
+        converter->SetOutputDirection(
+          movingSliceList[ timedimX ]->GetDirection() );
+        typename TranslationTransformType::Pointer invtx =
+         TranslationTransformType::New();
         invtx->SetIdentity();
-        transformList[timedim]->GetInverse( invtx );
+        transformList[ timedimX ]->GetInverse( invtx );
         converter->SetTransform( invtx );
         converter->Update();
 
         // resample the moving image and then put it in its place
         typedef itk::ResampleImageFilter<FixedImageType, FixedImageType> ResampleFilterType;
-        typename ResampleFilterType::Pointer resampler = ResampleFilterType::New();
+        typename ResampleFilterType::Pointer resampler =
+          ResampleFilterType::New();
         resampler->SetTransform( invtx );
-        interpolator->SetInputImage( fixedSliceList[timedim] );
+        interpolator->SetInputImage( fixedSliceList[ timedimX ] );
         resampler->SetInterpolator( interpolator );
-        resampler->SetInput( fixedSliceList[timedim] );
-        resampler->SetOutputParametersFromImage( movingSliceList[timedim] );
+        resampler->SetInput( fixedSliceList[ timedimX ] );
+        resampler->SetOutputParametersFromImage( movingSliceList[ timedimX ] );
         resampler->SetDefaultPixelValue( 0 );
         resampler->Update();
 
         /** Here, we put the resampled 2D image into the 3D volume */
         typedef itk::ImageRegionIteratorWithIndex<FixedImageType> Iterator;
-        Iterator vfIter2(  resampler->GetOutput(), resampler->GetOutput()->GetLargestPossibleRegion() );
+        Iterator vfIter2(  resampler->GetOutput(),
+          resampler->GetOutput()->GetLargestPossibleRegion() );
         for(  vfIter2.GoToBegin(); !vfIter2.IsAtEnd(); ++vfIter2 )
           {
-          VectorType vec = converter->GetOutput()->GetPixel( vfIter2.GetIndex() );
+          VectorType vec = converter->GetOutput()->GetPixel(
+            vfIter2.GetIndex() );
           VectorIOType vecout;
           vecout.Fill( 0 );
           typename MovingIOImageType::IndexType ind;
@@ -963,7 +973,7 @@ int ants_slice_regularized_registration( itk::ants::CommandLineParser *parser )
             ind[xx] = vfIter2.GetIndex()[xx];
             vecout[xx] = vec[xx];
             }
-          unsigned int tdim = timedim;
+          unsigned int tdim = timedimX;
           if( tdim > ( timedims - 1 ) )
             {
             tdim = timedims - 1;
@@ -1070,6 +1080,7 @@ void antsSliceRegularizedRegistrationInitializeCommandLineOptions( itk::ants::Co
     option->SetUsageOption( 6, "WelchWindowedSinc" );
     option->SetUsageOption( 7, "HammingWindowedSinc" );
     option->SetUsageOption( 8, "LanczosWindowedSinc" );
+    option->SetUsageOption( 9, "GenericLabel[<interpolator=Linear>]" );
     option->SetDescription( description );
     parser->AddOption( option );
     }
@@ -1262,14 +1273,14 @@ private:
     {
     case 3:
       {
-      ants_slice_regularized_registration<3>( parser );
+      return ants_slice_regularized_registration<3>( parser );
       }
       break;
     default:
       std::cerr << "Unsupported dimension" << std::endl;
       return EXIT_FAILURE;
     }
-  return 0;
+  return EXIT_SUCCESS;
 }
 
 } // namespace ants

@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: ResetDirection.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008/11/15 23:46:06 $
-  Version:   $Revision: 1.3 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -148,17 +144,17 @@ private:
     {
     case 2:
       {
-      ResetDirection<2>(argc, argv);
+      return ResetDirection<2>(argc, argv);
       }
       break;
     case 3:
       {
-      ResetDirection<3>(argc, argv);
+      return ResetDirection<3>(argc, argv);
       }
       break;
     case 4:
       {
-      ResetDirection<4>(argc, argv);
+      return ResetDirection<4>(argc, argv);
       }
       break;
     default:

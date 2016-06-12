@@ -1,10 +1,6 @@
 /*=========================================================================
 
   Program:   Insight Segmentation & Registration Toolkit
-  Module:    $RCSfile: itkDeformationFieldGradientTensorImageFilter.h,v $
-  Language:  C++
-  Date:      $Date: 2008/10/18 00:16:52 $
-  Version:   $Revision: 1.1.1.1 $
 
   Copyright (c) Insight Software Consortium. All rights reserved.
   See ITKCopyright.txt or http://www.itk.org/HTML/Copyright.htm for details.
@@ -39,10 +35,10 @@ class ITK_EXPORT DeformationFieldGradientTensorImageFilter :
 {
 public:
   /** Standard class typedefs. */
-  typedef DeformationFieldGradientTensorImageFilter Self;
-  typedef ImageToImageFilter< TInputImage, TOutputImage > Superclass;
-  typedef SmartPointer<Self> Pointer;
-  typedef SmartPointer<const Self>  ConstPointer;
+  typedef DeformationFieldGradientTensorImageFilter       Self;
+  typedef ImageToImageFilter<TInputImage, TOutputImage>   Superclass;
+  typedef SmartPointer<Self>                              Pointer;
+  typedef SmartPointer<const Self>                        ConstPointer;
 
   /** Method for creation through the object factory. */
   itkNewMacro(Self);
@@ -70,16 +66,11 @@ public:
                       InputPixelType::Dimension);
 
   /** Define the data type and the vector of data type used in calculations. */
-  typedef TRealType                                            RealType;
-  typedef Image<RealType,
-                itkGetStaticConstMacro( ImageDimension )>      RealImageType;
-  typedef Vector<RealType,
-                 itkGetStaticConstMacro( VectorDimension )>    RealVectorType;
-  typedef Image<RealVectorType,
-                itkGetStaticConstMacro( ImageDimension )>      RealVectorImageType;
-  typedef Matrix<RealType,
-                 itkGetStaticConstMacro( ImageDimension ),
-                 itkGetStaticConstMacro( VectorDimension )>    RealMatrixType;
+  typedef TRealType                                             RealType;
+  typedef Image<RealType, ImageDimension>                       RealImageType;
+  typedef Vector<RealType, VectorDimension>                     RealVectorType;
+  typedef Image<RealVectorType, ImageDimension>                 RealVectorImageType;
+  typedef Matrix<RealType, ImageDimension, VectorDimension>     RealMatrixType;
 
 
   /** Type of the iterator that will be used to move through the image.  Also

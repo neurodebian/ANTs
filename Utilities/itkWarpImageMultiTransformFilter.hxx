@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: itkWarpImageMultiTransformFilter.hxx,v $
-  Language:  C++
-  Date:      $Date: 2009/01/08 21:36:48 $
-  Version:   $Revision: 1.18 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -442,7 +438,7 @@ WarpImageMultiTransformFilter<TInputImage, TOutputImage, TDisplacementField, TTr
 
   bool b = false;
 
-  for( int i = 0; i < ImageDimension; i++ )
+  for( unsigned int i = 0; i < ImageDimension; i++ )
     {
     if( p[i] >= kMaxDisp )
       {

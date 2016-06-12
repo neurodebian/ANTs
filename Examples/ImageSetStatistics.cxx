@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: ImageSetStatistics.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009/05/15 13:23:53 $
-  Version:   $Revision: 1.2 $
 
   Copriyght (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -686,7 +682,7 @@ int ImageSetStatistics(int argc, char *argv[])
     if( !inputStreamA.is_open() )
       {
       std::cout << "Can't open parameter file: " << fn1 << std::endl;
-      return -1;
+      return EXIT_FAILURE;
       }
     while( !inputStreamA.eof() )
       {
@@ -715,7 +711,7 @@ int ImageSetStatistics(int argc, char *argv[])
     if( !inputStreamA.is_open() )
       {
       std::cout << "Can't open parameter file: " << fn1 << std::endl;
-      return -1;
+      return EXIT_FAILURE;
       }
     while( !inputStreamA.eof() )
       {
@@ -740,7 +736,7 @@ int ImageSetStatistics(int argc, char *argv[])
         <<
         " the number of similarity images does not match the number of label images --- thus, we have to get out of here !! i.e. something's wrong. "
         << std::endl;
-      return 1;
+      return EXIT_FAILURE;
       }
     } // fi simimagelist
   std::cout << " NFiles2 " << filecount2 << std::endl;
@@ -756,7 +752,7 @@ int ImageSetStatistics(int argc, char *argv[])
   if( !inputStreamA.is_open() )
     {
     std::cout << "Can't open parameter file: " << fn1 << std::endl;
-    return -1;
+    return EXIT_FAILURE;
     }
   while( !inputStreamA.eof() )
     {
@@ -958,7 +954,7 @@ int ImageSetStatistics(int argc, char *argv[])
   WriteImage<ImageType>(StatImage, outfn.c_str() );
 
   std::cout << " Done " << std::endl;
-  return 0;
+  return EXIT_SUCCESS;
 }
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
@@ -1037,12 +1033,12 @@ private:
     {
     case 2:
       {
-      ImageSetStatistics<2>(argc, argv);
+      return ImageSetStatistics<2>(argc, argv);
       }
       break;
     case 3:
       {
-      ImageSetStatistics<3>(argc, argv);
+      return ImageSetStatistics<3>(argc, argv);
       }
       break;
     default:

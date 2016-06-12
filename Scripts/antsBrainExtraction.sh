@@ -371,7 +371,7 @@ if [[ ! -f ${EXTRACTION_MASK} || ! -f ${EXTRACTION_WM} ]];
           then
             logCmd ${ANTSPATH}/ImageMath ${DIMENSION} ${N4_TRUNCATED_IMAGE} TruncateImageIntensity ${ANATOMICAL_IMAGES[$i]} 0.01 0.999 256
 
-            exe_n4_correction="${N4} -d ${DIMENSION} -i ${N4_TRUNCATED_IMAGE} -s ${N4_SHRINK_FACTOR_1} -c ${N4_CONVERGENCE_1} -b ${N4_BSPLINE_PARAMS} -o ${N4_CORRECTED_IMAGE}"
+            exe_n4_correction="${N4} -d ${DIMENSION} -i ${N4_TRUNCATED_IMAGE} -s ${N4_SHRINK_FACTOR_1} -c ${N4_CONVERGENCE_1} -b ${N4_BSPLINE_PARAMS} -o ${N4_CORRECTED_IMAGE} --verbose 1"
             logCmd $exe_n4_correction
           fi
       done
@@ -413,7 +413,7 @@ if [[ ! -f ${EXTRACTION_MASK} || ! -f ${EXTRACTION_WM} ]];
         echo
 
         ## Step 1 ##
-        if [[ ! -f ${EXTRACTION_WARP} ]];
+        if [[ ! -f ${EXTRACTION_INVERSE_WARP} ]];
           then
             logCmd ${ANTSPATH}/ResampleImageBySpacing ${DIMENSION} ${EXTRACTION_TEMPLATE} ${EXTRACTION_INITIAL_AFFINE_FIXED} 4 4 4 1
             logCmd ${ANTSPATH}/ResampleImageBySpacing ${DIMENSION} ${N4_CORRECTED_IMAGES[0]} ${EXTRACTION_INITIAL_AFFINE_MOVING} 4 4 4 1
@@ -421,15 +421,24 @@ if [[ ! -f ${EXTRACTION_MASK} || ! -f ${EXTRACTION_WM} ]];
             logCmd ${ANTSPATH}/ImageMath ${DIMENSION} ${EXTRACTION_LAPLACIAN} Laplacian ${N4_CORRECTED_IMAGES[0]} 1.5 1
             logCmd ${ANTSPATH}/ImageMath ${DIMENSION} ${EXTRACTION_TEMPLATE_LAPLACIAN} Laplacian ${EXTRACTION_TEMPLATE} 1.5 1
 
-            exe_initial_align="${ANTSPATH}/antsAffineInitializer ${DIMENSION} ${EXTRACTION_INITIAL_AFFINE_FIXED} ${EXTRACTION_INITIAL_AFFINE_MOVING} ${EXTRACTION_INITIAL_AFFINE} 15 0.1 0 10"
+#             exe_initial_align="${ANTSPATH}/antsAffineInitializer ${DIMENSION} ${EXTRACTION_INITIAL_AFFINE_FIXED} ${EXTRACTION_INITIAL_AFFINE_MOVING} ${EXTRACTION_INITIAL_AFFINE} 15 0.1 0 10"
+            exe_initial_align="${ANTSPATH}/antsAI -d ${DIMENSION} -v 1"
+            exe_initial_align="${exe_initial_align} -m Mattes[${EXTRACTION_INITIAL_AFFINE_FIXED},${EXTRACTION_INITIAL_AFFINE_MOVING},32,Regular,0.25]"
+            exe_initial_align="${exe_initial_align} -t Affine[0.1]"
+            exe_initial_align="${exe_initial_align} -s [15,0.1]"
+            exe_initial_align="${exe_initial_align} -p 0"
+            exe_initial_align="${exe_initial_align} -c 10"
+            exe_initial_align="${exe_initial_align} -o ${EXTRACTION_INITIAL_AFFINE}"
+
             if [[ -f ${EXTRACTION_REGISTRATION_MASK} ]];
               then
-                exe_initial_align="${exe_initial_align} ${EXTRACTION_REGISTRATION_MASK}"
+#                 exe_initial_align="${exe_initial_align} ${EXTRACTION_REGISTRATION_MASK}"
+                exe_initial_align="${exe_initial_align} -x ${EXTRACTION_REGISTRATION_MASK}"
               fi
 
             logCmd $exe_initial_align
 
-            basecall="${ANTS} -d ${DIMENSION} -u 1 -w [0.025,0.975] -o ${EXTRACTION_WARP_OUTPUT_PREFIX} -r ${EXTRACTION_INITIAL_AFFINE} -z 1 --float ${USE_FLOAT_PRECISION}"
+            basecall="${ANTS} -d ${DIMENSION} -u 1 -w [0.025,0.975] -o ${EXTRACTION_WARP_OUTPUT_PREFIX} -r ${EXTRACTION_INITIAL_AFFINE} -z 1 --float ${USE_FLOAT_PRECISION} --verbose 1"
             if [[ -f ${EXTRACTION_REGISTRATION_MASK} ]];
               then
                 basecall="${basecall} -x [${EXTRACTION_REGISTRATION_MASK}]"
@@ -460,7 +469,7 @@ if [[ ! -f ${EXTRACTION_MASK} || ! -f ${EXTRACTION_WM} ]];
 
         ## Step 2 ##
 
-        exe_brain_extraction_2="${WARP} -d ${DIMENSION} -i ${EXTRACTION_PRIOR} -o ${EXTRACTION_MASK_PRIOR_WARPED} -r ${ANATOMICAL_IMAGES[0]} -n Gaussian -t [${EXTRACTION_GENERIC_AFFINE},1] -t ${EXTRACTION_INVERSE_WARP} --float ${USE_FLOAT_PRECISION}"
+        exe_brain_extraction_2="${WARP} -d ${DIMENSION} -i ${EXTRACTION_PRIOR} -o ${EXTRACTION_MASK_PRIOR_WARPED} -r ${ANATOMICAL_IMAGES[0]} -n Gaussian -t [${EXTRACTION_GENERIC_AFFINE},1] -t ${EXTRACTION_INVERSE_WARP} --float ${USE_FLOAT_PRECISION} --verbose 1"
         logCmd $exe_brain_extraction_2
 
         ## superstep 1b ##
@@ -475,7 +484,7 @@ if [[ ! -f ${EXTRACTION_MASK} || ! -f ${EXTRACTION_WM} ]];
             ATROPOS_ANATOMICAL_IMAGES_COMMAND_LINE="${ATROPOS_ANATOMICAL_IMAGES_COMMAND_LINE} -a ${N4_CORRECTED_IMAGES[$i]}";
           done
 
-        exe_brain_extraction_3="${ATROPOS} -d ${DIMENSION} -o ${EXTRACTION_SEGMENTATION} ${ATROPOS_ANATOMICAL_IMAGES_COMMAND_LINE} -x ${EXTRACTION_MASK} -i ${ATROPOS_BRAIN_EXTRACTION_INITIALIZATION} -c ${ATROPOS_BRAIN_EXTRACTION_CONVERGENCE} -m ${ATROPOS_BRAIN_EXTRACTION_MRF} -k ${ATROPOS_BRAIN_EXTRACTION_LIKELIHOOD} -r ${USE_RANDOM_SEEDING}"
+        exe_brain_extraction_3="${ATROPOS} -d ${DIMENSION} -o ${EXTRACTION_SEGMENTATION} ${ATROPOS_ANATOMICAL_IMAGES_COMMAND_LINE} -x ${EXTRACTION_MASK} -i ${ATROPOS_BRAIN_EXTRACTION_INITIALIZATION} -c ${ATROPOS_BRAIN_EXTRACTION_CONVERGENCE} -m ${ATROPOS_BRAIN_EXTRACTION_MRF} -k ${ATROPOS_BRAIN_EXTRACTION_LIKELIHOOD} -r ${USE_RANDOM_SEEDING} --verbose 1"
         logCmd $exe_brain_extraction_3
 
         # Pad image here to avoid errors from dilating into the edge of the image
@@ -528,7 +537,7 @@ if [[ ! -f ${EXTRACTION_MASK} || ! -f ${EXTRACTION_WM} ]];
             ATROPOS_ANATOMICAL_IMAGES_COMMAND_LINE="${ATROPOS_ANATOMICAL_IMAGES_COMMAND_LINE} -a ${N4_CORRECTED_IMAGES[$i]}";
           done
 
-        exe_brain_extraction_3="${ATROPOS} -d ${DIMENSION} -o ${EXTRACTION_SEGMENTATION} ${ATROPOS_ANATOMICAL_IMAGES_COMMAND_LINE} -x ${EXTRACTION_MASK} -i ${ATROPOS_BRAIN_EXTRACTION_INITIALIZATION} -c ${ATROPOS_BRAIN_EXTRACTION_CONVERGENCE} -m ${ATROPOS_BRAIN_EXTRACTION_MRF} -k ${ATROPOS_BRAIN_EXTRACTION_LIKELIHOOD} -r ${USE_RANDOM_SEEDING}"
+        exe_brain_extraction_3="${ATROPOS} -d ${DIMENSION} -o ${EXTRACTION_SEGMENTATION} ${ATROPOS_ANATOMICAL_IMAGES_COMMAND_LINE} -x ${EXTRACTION_MASK} -i ${ATROPOS_BRAIN_EXTRACTION_INITIALIZATION} -c ${ATROPOS_BRAIN_EXTRACTION_CONVERGENCE} -m ${ATROPOS_BRAIN_EXTRACTION_MRF} -k ${ATROPOS_BRAIN_EXTRACTION_LIKELIHOOD} -r ${USE_RANDOM_SEEDING} --verbose 1"
         logCmd $exe_brain_extraction_3
 
         logCmd ${ANTSPATH}/ThresholdImage ${DIMENSION} ${EXTRACTION_SEGMENTATION} ${EXTRACTION_WM} 3 3 1 0
