@@ -5,17 +5,17 @@ Maintainer: NeuroDebian Team <team@neuro.debian.net>
 Uploaders: Yaroslav Halchenko <debian@onerussian.com>, Michael Hanke <michael.hanke@gmail.com>
 Build-Depends: debhelper (>= 9),
                help2man, cmake,
-               libopenjpeg-dev, libinsighttoolkit4-dev (>> 4.7.0~), uuid-dev,
+               libinsighttoolkit4-dev (>> 4.7.0~), uuid-dev,
                libboost-dev,
                libtiff-dev,
-               libdcmtk2-dev,
+               libdcmtk-dev | libdcmtk2-dev,
                libfftw3-dev,
                libhdf5-dev,
-               libpng-dev | libpng12-dev,
-Standards-Version: 3.9.5
+               libpng-dev
+Standards-Version: 3.9.8
 Homepage: http://www.picsl.upenn.edu/ANTS/
-Vcs-Git: git://git.debian.org/pkg-exppsy/ants.git
-Vcs-Browser: http://git.debian.org/?p=pkg-exppsy/ants.git;a=summary
+Vcs-Git: https://anonscm.debian.org/git/pkg-exppsy/ants.git
+Vcs-Browser: https://anonscm.debian.org/cgit/pkg-exppsy/ants.git
 
 Package: ants
 Architecture: any
