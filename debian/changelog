@@ -1,3 +1,9 @@
+ants (2.1.0+git715-ge56f961-1) unstable; urgency=medium
+
+  * New upstream snapshot from v2.1.0-715-ge56f961
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 09 Dec 2016 09:14:30 -0500
+
 ants (2.1.0+git635-g0752c29-1) experimental; urgency=medium
 
   * New upstream snapshot from v2.1.0-635-g0752c29
