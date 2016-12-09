@@ -1,6 +1,8 @@
 ants (2.1.0+git715-ge56f961-1) unstable; urgency=medium
 
   * New upstream snapshot from v2.1.0-715-ge56f961
+  * Absorbing and acknowleding NMUs for 2.1.0-4
+    (Thank you Mattia and Gianfranco!)
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 09 Dec 2016 09:14:30 -0500
 
@@ -9,6 +11,32 @@ ants (2.1.0+git635-g0752c29-1) experimental; urgency=medium
   * New upstream snapshot from v2.1.0-635-g0752c29
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 12 Jun 2016 12:21:41 -0400
+
+ants (2.1.0-4.3) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Remove openjpeg from Build-Depends.  Closes: #826806
+
+ -- Mattia Rizzolo <mattia@debian.org>  Thu, 11 Aug 2016 08:47:06 +0000
+
+ants (2.1.0-4.2) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Really fix dcmtk dependency (Closes: #811166)
+  * Bump std-version to 3.9.8.
+  * Remove libpng12-dev alternative dependency.
+  * Fix insecure VCS fields.
+
+ -- Gianfranco Costamagna <locutusofborg@debian.org>  Sat, 16 Apr 2016 16:25:13 +0200
+
+ants (2.1.0-4.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * debian/patches/5608ed64ee9993882e99781172568238933170d6.patch:
+    fix build failure with new ITK (Closes: #817257)
+  * Fix dcmtk dependency (Closes: #811166)
+
+ -- Gianfranco Costamagna <locutusofborg@debian.org>  Thu, 14 Apr 2016 07:50:56 +0000
 
 ants (2.1.0-4) unstable; urgency=medium
 
