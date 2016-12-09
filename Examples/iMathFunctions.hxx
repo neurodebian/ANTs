@@ -26,6 +26,9 @@
 #include "itkCastImageFilter.h"
 #include "itkConnectedComponentImageFilter.h"
 #include "itkDanielssonDistanceMapImageFilter.h"
+#include "itkFastMarchingImageFilterBase.h"
+#include "itkFastMarchingThresholdStoppingCriterion.h"
+#include "itkFlatStructuringElement.h"
 #include "itkGradientAnisotropicDiffusionImageFilter.h"
 #include "itkGradientMagnitudeRecursiveGaussianImageFilter.h"
 #include "itkGrayscaleDilateImageFilter.h"
@@ -34,6 +37,7 @@
 #include "itkGrayscaleMorphologicalOpeningImageFilter.h"
 #include "itkIdentityTransform.h"
 #include "itkIntensityWindowingImageFilter.h"
+#include "itkLabelContourImageFilter.h"
 #include "itkLabelStatisticsImageFilter.h"
 #include "itkLaplacianRecursiveGaussianImageFilter.h"
 #include "itkLaplacianSharpeningImageFilter.h"
@@ -42,6 +46,8 @@
 #include "itkRelabelComponentImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkSignedMaurerDistanceMapImageFilter.h"
+
+#include "itkImageFileWriter.h"
 
 
 namespace ants
@@ -71,6 +77,36 @@ BlobCorrespondence( typename ImageType::Pointer image, unsigned int nBlobs,
   // sensitive parameters are set here - end
 }
 */
+unsigned int morph_shape_flag( const char * shape )
+{
+  std::string shapeStr( shape );
+  std::transform(shapeStr.begin(), shapeStr.end(), shapeStr.begin(), ::tolower);
+
+  unsigned int flag = 1;
+
+  if ( !shapeStr.compare("ball") )
+  {
+    flag = 1;
+  }
+  else if ( !shapeStr.compare("box") )
+  {
+    flag = 2;
+  }
+  if ( !shapeStr.compare("cross") )
+  {
+    flag = 3;
+  }
+  if ( !shapeStr.compare("annulus") )
+  {
+    flag = 4;
+  }
+  if ( !shapeStr.compare("polygon") )
+  {
+    flag = 5;
+  }
+
+  return flag;
+}
 
 template <class ImageType>
 typename ImageType::Pointer
@@ -618,27 +654,64 @@ iMathMaurerDistance(typename ImageType::Pointer image,
   return filter->GetOutput();
 }
 
+
+//
+// shape (1=ball, 2=box, 3=cross, 4=annulus, 5=polygon)
+
+template <unsigned int ImageDimension>
+typename itk::FlatStructuringElement<ImageDimension>
+iMathGetFlatStructuringElement( unsigned int shape, unsigned long radius,
+                                bool radiusIsParametric, unsigned int lines,
+                                unsigned int thickness, bool includeCenter )
+{
+  typedef typename itk::FlatStructuringElement<ImageDimension> ElementType;
+  ElementType element;
+
+  typename ElementType::RadiusType elRadius;
+  elRadius.Fill( radius );
+
+  switch( shape )
+    {
+    case 1:
+      element = ElementType::Ball(elRadius,radiusIsParametric);
+      break;
+    case 2:
+      element = ElementType::Box(elRadius);
+      break;
+    case 3:
+      element = ElementType::Cross(elRadius);
+      break;
+    case 4:
+      element = ElementType::Annulus(elRadius,thickness,includeCenter,radiusIsParametric);
+      break;
+    case 5:
+      element = ElementType::Polygon(elRadius, lines);
+      break;
+    default:
+      break;
+    }
+
+  return element;
+}
+
 template <class ImageType>
 typename ImageType::Pointer
 iMathMC(typename ImageType::Pointer image, unsigned long radius,
-        typename ImageType::PixelType closeValue)
+        typename ImageType::PixelType closeValue, unsigned int shape,
+        bool radiusIsParametric, unsigned int lines,
+        unsigned int thickness, bool includeCenter )
 {
-
   const unsigned int ImageDimension = ImageType::ImageDimension;
-  typedef typename ImageType::PixelType                         PixelType;
 
-  typedef itk::BinaryBallStructuringElement<PixelType, ImageDimension>
-    StructuringElementType;
+  typedef typename itk::FlatStructuringElement<ImageType::ImageDimension> ElementType;
+  ElementType element = iMathGetFlatStructuringElement<ImageDimension>(shape,radius,radiusIsParametric,
+                                                                       lines,thickness,includeCenter);
 
-  typedef itk::BinaryMorphologicalClosingImageFilter< ImageType, ImageType, StructuringElementType >  FilterType;
-
-  StructuringElementType structuringElement;
-  structuringElement.SetRadius(radius);
-  structuringElement.CreateStructuringElement();
+  typedef itk::BinaryMorphologicalClosingImageFilter< ImageType, ImageType, ElementType >  FilterType;
 
   typename FilterType::Pointer filter = FilterType::New();
   filter->SetInput( image );
-  filter->SetKernel( structuringElement );
+  filter->SetKernel( element );
   filter->SetForegroundValue( closeValue );
   //filter->SetBackgroundValue(0);
   filter->Update();
@@ -650,24 +723,22 @@ iMathMC(typename ImageType::Pointer image, unsigned long radius,
 template <class ImageType>
 typename ImageType::Pointer
 iMathMD(typename ImageType::Pointer image, unsigned long radius,
-        typename ImageType::PixelType dilateValue)
+        typename ImageType::PixelType dilateValue, unsigned int shape,
+        bool radiusIsParametric, unsigned int lines,
+        unsigned int thickness, bool includeCenter )
 {
 
   const unsigned int ImageDimension = ImageType::ImageDimension;
-  typedef typename ImageType::PixelType                         PixelType;
 
-  typedef itk::BinaryBallStructuringElement<PixelType, ImageDimension>
-    StructuringElementType;
+  typedef typename itk::FlatStructuringElement<ImageType::ImageDimension> ElementType;
+  ElementType element = iMathGetFlatStructuringElement<ImageDimension>(shape,radius,radiusIsParametric,
+                                                                       lines,thickness,includeCenter);
 
-  typedef itk::BinaryDilateImageFilter< ImageType, ImageType, StructuringElementType >  FilterType;
-
-  StructuringElementType structuringElement;
-  structuringElement.SetRadius(radius);
-  structuringElement.CreateStructuringElement();
+  typedef itk::BinaryDilateImageFilter< ImageType, ImageType, ElementType >  FilterType;
 
   typename FilterType::Pointer filter = FilterType::New();
   filter->SetInput( image );
-  filter->SetKernel( structuringElement );
+  filter->SetKernel( element );
   filter->SetDilateValue( dilateValue );
   filter->SetBackgroundValue(0);
   filter->Update();
@@ -678,24 +749,22 @@ iMathMD(typename ImageType::Pointer image, unsigned long radius,
 
 template <class ImageType>
 typename ImageType::Pointer
-iMathME( typename ImageType::Pointer image, unsigned long radius,
-         typename ImageType::PixelType erodeValue )
+iMathME(typename ImageType::Pointer image, unsigned long radius,
+        typename ImageType::PixelType erodeValue, unsigned int shape,
+        bool radiusIsParametric, unsigned int lines,
+        unsigned int thickness, bool includeCenter )
 {
   const unsigned int ImageDimension = ImageType::ImageDimension;
-  typedef typename ImageType::PixelType                         PixelType;
 
-  typedef itk::BinaryBallStructuringElement<PixelType, ImageDimension>
-    StructuringElementType;
+  typedef typename itk::FlatStructuringElement<ImageType::ImageDimension> ElementType;
+  ElementType element = iMathGetFlatStructuringElement<ImageDimension>(shape,radius,radiusIsParametric,
+                                                                       lines,thickness,includeCenter);
 
-  typedef itk::BinaryErodeImageFilter< ImageType, ImageType, StructuringElementType >   FilterType;
-
-  StructuringElementType structuringElement;
-  structuringElement.SetRadius(radius);
-  structuringElement.CreateStructuringElement();
+  typedef itk::BinaryErodeImageFilter< ImageType, ImageType, ElementType >   FilterType;
 
   typename FilterType::Pointer filter = FilterType::New();
   filter->SetInput( image );
-  filter->SetKernel( structuringElement );
+  filter->SetKernel( element );
   filter->SetErodeValue( erodeValue );
   filter->SetBackgroundValue(0);
   filter->Update();
@@ -705,24 +774,22 @@ iMathME( typename ImageType::Pointer image, unsigned long radius,
 
 template <class ImageType>
 typename ImageType::Pointer
-iMathMO( typename ImageType::Pointer image, unsigned long radius,
-         typename ImageType::PixelType openValue )
+iMathMO(typename ImageType::Pointer image, unsigned long radius,
+        typename ImageType::PixelType openValue, unsigned int shape,
+        bool radiusIsParametric, unsigned int lines,
+        unsigned int thickness, bool includeCenter )
 {
   const unsigned int ImageDimension = ImageType::ImageDimension;
-  typedef typename ImageType::PixelType                         PixelType;
 
-  typedef itk::BinaryBallStructuringElement<PixelType, ImageDimension>
-    StructuringElementType;
+  typedef typename itk::FlatStructuringElement<ImageType::ImageDimension> ElementType;
+  ElementType element = iMathGetFlatStructuringElement<ImageDimension>(shape,radius,radiusIsParametric,
+                                                                       lines,thickness,includeCenter);
 
-  typedef itk::BinaryMorphologicalOpeningImageFilter< ImageType, ImageType, StructuringElementType >  FilterType;
-
-  StructuringElementType structuringElement;
-  structuringElement.SetRadius(radius);
-  structuringElement.CreateStructuringElement();
+  typedef itk::BinaryMorphologicalOpeningImageFilter< ImageType, ImageType, ElementType >  FilterType;
 
   typename FilterType::Pointer filter = FilterType::New();
   filter->SetInput( image );
-  filter->SetKernel( structuringElement );
+  filter->SetKernel( element );
   filter->SetForegroundValue( openValue );
   filter->SetBackgroundValue( 0 );
   filter->Update();
@@ -869,6 +936,169 @@ iMathPeronaMalik( typename ImageType::Pointer image, unsigned long nIterations,
 
   filter->Update();
   return filter->GetOutput();
+}
+
+template <class ImageType>
+typename ImageType::Pointer
+iMathPropagateLabelsThroughMask( typename ImageType::Pointer speedimage,
+                                 typename ImageType::Pointer labimage,
+                                 double stoppingValue,
+                                 unsigned int propagationMethod )
+{
+
+  typedef itk::ImageRegionIteratorWithIndex<ImageType>      Iterator;
+
+  typedef itk::FastMarchingThresholdStoppingCriterion< ImageType, ImageType >
+        CriterionType;
+
+  typedef typename CriterionType::Pointer                         CriterionPointer;
+  typedef itk::FastMarchingImageFilterBase<ImageType, ImageType>  FastMarchingFilterType;
+  typedef typename FastMarchingFilterType::LabelImageType         LabelImageType;
+  typedef itk::BinaryThresholdImageFilter<ImageType, ImageType>   ThresholderType;
+  typedef itk::LabelContourImageFilter<ImageType, ImageType>      ContourFilterType;
+  typedef typename FastMarchingFilterType::NodePairContainerType  NodeContainer;
+  typedef typename FastMarchingFilterType::NodePairType           NodePairType;
+  typedef itk::CastImageFilter<ImageType,ImageType>               CastFilterType;
+
+  typename ImageType::Pointer fastimage = ImageType::New();
+  fastimage->SetRegions( speedimage->GetLargestPossibleRegion() );
+  fastimage->SetSpacing( speedimage->GetSpacing() );
+  fastimage->SetOrigin( speedimage->GetOrigin() );
+  fastimage->SetDirection( speedimage->GetDirection() );
+  fastimage->Allocate();
+  fastimage->FillBuffer(1.e9);
+
+  /*
+  typename ImageType::Pointer outlabimage = ImageType::New();
+  outlabimage->SetRegions( speedimage->GetLargestPossibleRegion() );
+  outlabimage->SetSpacing( speedimage->GetSpacing() );
+  outlabimage->SetOrigin( speedimage->GetOrigin() );
+  outlabimage->SetDirection( speedimage->GetDirection() );
+  outlabimage->Allocate();
+  outlabimage->FillBuffer(0);
+  */
+  
+  typename CastFilterType::Pointer caster = CastFilterType::New();
+  caster->SetInput( labimage );
+  caster->Update();
+  typename ImageType::Pointer outlabimage = caster->GetOutput();
+
+
+
+  // FIXME - why is thresh set to 0.5?
+  double maxlabel = 0;
+  double thresh = 0.5;
+  Iterator vfIter2( labimage,  labimage->GetLargestPossibleRegion() );
+  for(  vfIter2.GoToBegin(); !vfIter2.IsAtEnd(); ++vfIter2 )
+    {
+    bool   isinside = true;
+    double speedval = speedimage->GetPixel(vfIter2.GetIndex() );
+    double labval = labimage->GetPixel(vfIter2.GetIndex() );
+    if( speedval < thresh )
+      {
+      isinside = false;
+      }
+    if( isinside )
+      {
+      if( labval > maxlabel )
+        {
+        maxlabel = labval;
+        }
+      }
+    }
+
+  CriterionPointer criterion = CriterionType::New();
+  criterion->SetThreshold( stoppingValue );
+
+  typename FastMarchingFilterType::Pointer  fastMarching;
+  for( unsigned int lab = 1; lab <= (unsigned int)maxlabel; lab++ )
+    {
+
+    // Create binary mask for each label
+    typename ThresholderType::Pointer thresholder = ThresholderType::New();
+    thresholder->SetInput( labimage );
+    thresholder->SetLowerThreshold( lab );
+    thresholder->SetUpperThreshold( lab );
+    thresholder->SetInsideValue( 1 );
+    thresholder->SetOutsideValue( 0 );
+
+    // Get pixels on border of the label mask
+    typename ContourFilterType::Pointer contour = ContourFilterType::New();
+    contour->SetInput( thresholder->GetOutput() );
+    contour->FullyConnectedOff();
+    contour->SetBackgroundValue( itk::NumericTraits<typename LabelImageType::PixelType>::ZeroValue() );
+    contour->Update();
+    typename ImageType::Pointer contourimage = contour->GetOutput();
+
+
+    fastMarching = FastMarchingFilterType::New();
+    fastMarching->SetInput( speedimage );
+    fastMarching->SetStoppingCriterion( criterion );
+
+    if( propagationMethod == 1 )  // Strict
+      {
+      // std::cout << " strict " << std::endl;
+      fastMarching->SetTopologyCheck( FastMarchingFilterType::Strict );
+      }
+    if( propagationMethod == 2 )  // No handles
+      {
+      // std::cout << " no handles " << std::endl;
+      fastMarching->SetTopologyCheck( FastMarchingFilterType::NoHandles );
+      }
+
+    typename NodeContainer::Pointer seeds = NodeContainer::New();
+    seeds->Initialize();
+
+    typename NodeContainer::Pointer alivePoints = NodeContainer::New();
+    alivePoints->Initialize();
+
+    for(  vfIter2.GoToBegin(); !vfIter2.IsAtEnd(); ++vfIter2 )
+      {
+      double labval = labimage->GetPixel( vfIter2.GetIndex() );
+      double contourval = contourimage->GetPixel( vfIter2.GetIndex() );
+      if( ( (unsigned int) contourval == 1 ) && ( (unsigned int) labval == lab ) )
+        {
+	      seeds->push_back( NodePairType(  vfIter2.GetIndex(), 0.0 ) );
+        }
+      if( ( (unsigned int) contourval == 0 ) && ( (unsigned int) labval == lab ) )
+        {
+	      alivePoints->push_back( NodePairType(  vfIter2.GetIndex(), 0.0 ) );
+        }
+      }
+    fastMarching->SetTrialPoints(  seeds  );
+    fastMarching->SetAlivePoints( alivePoints );
+    fastMarching->Update();
+
+    for( vfIter2.GoToBegin(); !vfIter2.IsAtEnd(); ++vfIter2 )
+      {
+      bool   isinside = true;
+      double speedval = speedimage->GetPixel(vfIter2.GetIndex() );
+      double labval = labimage->GetPixel(vfIter2.GetIndex() );
+      if( speedval < thresh )
+        {
+        isinside = false;
+        }
+
+
+      if( isinside && labval == 0 )
+        {
+        double fmarrivaltime = fastMarching->GetOutput()->GetPixel( vfIter2.GetIndex() );
+        double mmm = fastimage->GetPixel(vfIter2.GetIndex() );
+        if( fmarrivaltime < mmm )
+          {
+          fastimage->SetPixel(vfIter2.GetIndex(),  fmarrivaltime );
+          outlabimage->SetPixel(vfIter2.GetIndex(), lab );
+          }
+        }
+      else if( !isinside )
+        {
+        outlabimage->SetPixel(vfIter2.GetIndex(), 0 );
+        }
+      }
+    }
+
+  return outlabimage;
+
 }
 
 template <class ImageType>
