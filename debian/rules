@@ -77,7 +77,7 @@ override_dh_auto_install:
 	: Move binaries under usr/lib/ants
 	mv debian/ants/usr/bin/* debian/ants/usr/lib/ants
 	: Symlink binaries of primary importance and with ants prefix into /usr/bin
-	for fp in debian/ants/usr/lib/ants/{ants*,ANTS*,WarpImageMultiTransform,WarpTimeSeriesImageMultiTransform,Atropos,LaplacianThickness,joinfusion}; do \
+	for fp in debian/ants/usr/lib/ants/{ants*,ANTS*,WarpImageMultiTransform,WarpTimeSeriesImageMultiTransform,Atropos,LaplacianThickness,jointfusion}; do \
 		f=$$(basename $$fp); \
 		dh_link usr/lib/ants/$$f usr/bin/$$f; \
 	done
