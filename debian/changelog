@@ -12,6 +12,12 @@ ants (2.1.0+git635-g0752c29-1) experimental; urgency=medium
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 12 Jun 2016 12:21:41 -0400
 
+ants (2.1.0-5) unstable; urgency=medium
+
+  * joinfusion -> jointfusion symlink (Closes: #856941)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 08 Mar 2017 19:05:12 -0500
+
 ants (2.1.0-4.3) unstable; urgency=medium
 
   * Non-maintainer upload.
