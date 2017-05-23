@@ -1,3 +1,9 @@
+ants (2.2.0-1) experimental; urgency=medium
+
+  * New upstream release
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 23 May 2017 10:23:17 -0400
+
 ants (2.1.0+git715-ge56f961-1) unstable; urgency=medium
 
   * New upstream snapshot from v2.1.0-715-ge56f961
