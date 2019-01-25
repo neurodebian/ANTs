@@ -1,3 +1,3 @@
-changeset_740495bf81ac9cb19a0e3b7d7eb467b61733c325.diff
-up_lower_cc_3_test_i386_precision
+# disabled for now since upstream just commented that test out for now
+# up_lower_cc_3_test_i386_precision
 deb_local-data.patch
