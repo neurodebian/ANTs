@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RSfile: antsAffineInitializer.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009/06/02 21:51:08 $
-  Version:   $Revision: 1.103 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -188,8 +184,6 @@ int antsAffineInitializerImp(int argc, char *argv[])
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
   typedef typename itk::ImageMomentsCalculator<ImageType>                 ImageCalculatorType;
   typedef itk::AffineTransform<RealType, ImageDimension> AffineType;
-  typedef typename SimilarityTransformTraits<RealType,
-    ImageDimension>::TransformType AffineTypeS;
   typedef typename ImageCalculatorType::MatrixType                        MatrixType;
   if( argc < 2 )
     {
@@ -279,7 +273,7 @@ int antsAffineInitializerImp(int argc, char *argv[])
   RealType bestscale =
     calculator2->GetTotalMass() / calculator1->GetTotalMass();
   RealType powlev = 1.0 / static_cast<RealType>(ImageDimension);
-  bestscale = vcl_pow( bestscale , powlev );
+  bestscale = std::pow( bestscale , powlev );
   bestscale=1;
   unsigned int eigind1 = 1;
   unsigned int eigind2 = 1;

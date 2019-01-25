@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: itkN3MRIBiasFieldCorrectionImageFilter.h,v $
-  Language:  C++
-  Date:      $Date: 2009/06/09 16:22:05 $
-  Version:   $Revision: 1.6 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -113,9 +109,6 @@ public:
   itkSetObjectMacro( MaskImage, TMaskImage );
   itkSetObjectMacro( ConfidenceImage, TConfidenceImage );
 
-  itkSetMacro( MaskLabel, typename TMaskImage::PixelType );
-  itkGetConstMacro( MaskLabel, typename TMaskImage::PixelType );
-
   virtual MeasureType GetValue( const ParametersType & parameters ) const ITK_OVERRIDE;
 
   virtual void GetDerivative( const ParametersType & parameters, DerivativeType & derivative ) const ITK_OVERRIDE;
@@ -133,8 +126,6 @@ private:
   typename TBiasFieldImage::Pointer              m_BiasFieldImage;
   typename TMaskImage::Pointer                   m_MaskImage;
   typename TConfidenceImage::Pointer             m_ConfidenceImage;
-
-  typename TMaskImage::PixelType                 m_MaskLabel;
 };
 
 /**
@@ -221,9 +212,6 @@ public:
     this->SetConfidenceImage( image );
   }
 
-  itkSetMacro( MaskLabel, MaskPixelType );
-  itkGetConstMacro( MaskLabel, MaskPixelType );
-
   itkSetMacro( NumberOfHistogramBins, unsigned int );
   itkGetConstMacro( NumberOfHistogramBins, unsigned int );
 
@@ -291,8 +279,6 @@ private:
     typename RealImageType::Pointer );
   RealType CalculateOptimalBiasFieldScaling(
     typename RealImageType::Pointer );
-
-  MaskPixelType m_MaskLabel;
 
   /**
    * Parameters for deconvolution with Weiner filter

@@ -1,24 +1,54 @@
-[![Build Status](https://travis-ci.org/stnava/ANTs.svg?branch=master)](https://travis-ci.org/stnava/ANTs)
+<!--
+![ants registration artillery](http://i.imgur.com/FCLrXV1.jpg)
+![ants multivar](http://i.imgur.com/YqWtunL.png)
+![ants faces](http://i.imgur.com/wBOFGwg.png)
+![ants goat](http://i.imgur.com/SEKf1mo.jpg) -->
 ============================
-Advanced Normalization Tools
+[Advanced Normalization Tools](https://imgur.com/a/kySGi)
 ============================
 
-Questions: [Discussion Site](http://sourceforge.net/p/advants/discussion/) or *new* [ANTsDoc](http://stnava.github.io/ANTsDoc/) or try [this version](http://issuu.com/brianavants/docs/ants2)
+[![Build Status](https://travis-ci.org/stnava/ANTs.svg?branch=master)](https://travis-ci.org/stnava/ANTs)
+
+ANTs computes high-dimensional mappings to capture the statistics of brain
+structure and function.  See the [FAQ page](https://github.com/stnava/ANTsTutorial/blob/master/handout/antsGithubExamples.Rmd).
+
+![ants template](http://i.imgur.com/mLZ71Ai.png)
+
+ANTs allows one to organize, visualize and statistically explore large biomedical
+image sets.
+
+![ants render](http://i.imgur.com/hMW6fjB.png)
+
+ANTs integrates imaging modalities and related information in space and time.
+
+![ants render](http://i.imgur.com/oIMrnpY.png)
+
+ANTs works across species or organ systems with minimal customization.
+
+![ants primate](http://i.imgur.com/Dfrifgg.png)
+
+ANTs and related tools have won several international and unbiased competitions.
+
+![ants competes](http://i.imgur.com/HE0j7IC.png)
+
+[ANTsR](http://stnava.github.io/ANTsR/) is the underlying statistical workhorse.
+
+Questions: [Discussion Site](http://sourceforge.net/p/advants/discussion/) or *new* [ANTsDoc](http://stnava.github.io/ANTsDoc/) or try [this version](http://issuu.com/brianavants/docs/ants2) ... also read our [guide to evaluation strategies and addressing new problems with ANTs or other software](http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3766821/).  *New* [ANTs handout](https://github.com/stnava/ANTsTutorial/raw/master/handout/antsHandout.pdf), part of forthcoming [ANTs tutorial]() material.
 
 [ANTsTalk - subject to change at any moment](http://stnava.github.io/ANTsTalk/)
 
 [ANTsRegistrationTalk - subject to change at any moment](http://stnava.github.io/ANTsRegistrationTalk/)
 
- Email: [antsr.me at gmail dot com](mailto:antsr.me@gmail.com)
-
  Install ANTs via pre-built:
-[Packages](http://sourceforge.net/projects/advants/files/ANTS/)
+[Packages @ github](https://github.com/stnava/ANTs/releases) older
+versions [@ sourceforge](http://sourceforge.net/projects/advants/files/ANTS/) ... also,
+[Github Releases are here](https://github.com/stnava/ANTs/releases) thanks to Arman Eshaghi.
 
  Build [ANTs](https://github.com/stnava/ANTs) from:
 [Source-Code](http://brianavants.wordpress.com/2012/04/13/updated-ants-compile-instructions-april-12-2012/)
 (recommended)
 
-[ANTs Dashboard](http://testing.psychiatry.uiowa.edu/CDash/index.php?project=ANTS) maintained by Hans J. Johnson
+[ANTs Dashboard](https://travis-ci.org/stnava/ANTs/) thanks to Arman Eshaghi and  Hans J. Johnson
 
 ANTs extracts information from complex datasets that include imaging
 ([Word Cloud](http://brianavants.files.wordpress.com/2013/05/avants_wordcloud.jpg)).
@@ -30,7 +60,7 @@ considered a state-of-the-art medical image registration and
 segmentation toolkit. ANTsR is an emerging tool supporting standardized
 multimodality image analysis. ANTs depends on the Insight ToolKit
 [(ITK)](http://www.itk.org), a widely used medical image processing
-library to which ANTs developers contribute.
+library to which ANTs developers contribute.  A summary of some ANTs findings and tutorial material (most of which is on this page) is [here](http://rpubs.com/stnava/ANTsTut).
 
 Authors
 -------
@@ -51,8 +81,7 @@ Authors
 
 ### Team Members
 
-**Core:** Gang Song (Originator), Philip A. Cook, Jeffrey T. Duda (DTI), Ben M. Kandel (Perfusion, multivariate analysis), Kent Williams (software engineer, UIowa)
-
+**Core:** Gang Song (Originator), Philip A. Cook, Jeffrey T. Duda (DTI), Ben M. Kandel (Perfusion, multivariate analysis)
 
 Image Registration
 ------------------
@@ -74,7 +103,7 @@ Image Segmentation
 
 Atropos Multivar-EM Segmentation
 [(link)](http://www.ncbi.nlm.nih.gov/pubmed/21373993), Multi-atlas
-methods [(link)](http://www.ncbi.nlm.nih.gov/pubmed/21237273N4), Bias
+methods [(link)](https://scholar.google.com/scholar?q=joint+label+fusion+yushkevich&btnG=&hl=en&as_sdt=0%2C31) and [JLF](http://journal.frontiersin.org/article/10.3389/fninf.2013.00027/full), Bias
 Correction [(link)](http://www.ncbi.nlm.nih.gov/pubmed/20378467), DiReCT
 cortical thickness
 [(link)](http://www.ncbi.nlm.nih.gov/pubmed/19150502), DiReCT in
@@ -148,14 +177,6 @@ Background & Theory
 ANTs has won several unbiased & international competitions
 ----------------------------------------------------------
 
--   New *antsRegistration* [bash
-    example](https://github.com/stnava/ANTs/blob/master/Scripts/newAntsExample.sh)
-
--   New *Eigenanatomy* for [multivariate neuroimage
-    analysis](http://www.ncbi</a>.nlm.nih.gov/pubmed/23269595) via
-    [PCA](http://www.ncbi.nlm.nih.gov/pubmed/23286132) &
-    [CCA](http://www.ncbi.nlm.nih.gov/pubmed/20083207)
-
 -   ANTs finished in 1st rank in [Klein 2009 intl. brain mapping
     competition](http://www.ncbi.nlm.nih.gov/pubmed/19195496)
 
@@ -174,58 +195,94 @@ ANTs has won several unbiased & international competitions
 
 -   Won the best paper award at the [STACOM 2014 challenge](http://www.cardiacatlas.org/web/stacom2014/home)
 
-Learning about ANTs
+Learning about ANTs (examples, etc.)
 ----------------------------------------------------------
 
-**ANTs and ITK** [paper](http://www.ncbi.nlm.nih.gov/pmc/articles/PMC4009425/)
+### General 
 
-**Pre-built ANTs templates with spatial priors** [download](http://figshare.com/articles/ANTs_ANTsR_Brain_Templates/915436)
+* **antsRegistration** [bash example](https://github.com/stnava/ANTs/blob/master/Scripts/newAntsExample.sh)
 
-**The ANTs Cortical Thickness Pipeline** [example](https://github.com/ntustison/KapowskiChronicles/blob/master/paper2.pdf?raw=true)
+* **antsRegistration with mask** [example](https://github.com/ntustison/antsRegistrationWithMaskExample)
 
-**"Cooking" tissue priors for templates**
+* **ANTs and ITK** [paper](http://www.ncbi.nlm.nih.gov/pmc/articles/PMC4009425/)
+
+* **Large deformation** [example](http://stnava.github.io/C/)
+
+* **Automobile** [example](http://stnava.github.io/cars/)
+
+* **Asymmetry** [example](http://stnava.github.io/asymmetry/)
+
+* **Point-set** [mapping](http://stnava.github.io/chicken/) which includes the PSE metric and affine and deformable registration with (labeled) pointsets or iterative closest point
+
+* **Feature matching** [example](http://stnava.github.io/featureMatching/) ... not up to date ...
+
+* **Global optimization** [example](http://stnava.github.io/butterfly/)
+
+* **Patch-based super resolution** [example](https://github.com/ntustison/NonLocalSuperResolutionExample)
+
+* **Image denoising** [example](https://github.com/ntustison/DenoiseImageExample)
+
+* **Visualization** [example](https://github.com/ntustison/antsVisualizationExamples)
+
+* **Morphing** [example](http://stnava.github.io/Morpheus/)
+
+* **Bibliography** [bibtex of ANTs-related papers](https://github.com/stnava/ANTsBibliography)
+
+* **ANTs** [google scholar page](http://scholar.google.com/citations?user=ox-mhOkAAAAJ&hl=en)
+
+### Neuro
+
+* **Basic Brain Mapping** [example](http://stnava.github.io/BasicBrainMapping/)
+
+* **Template construction** [example](http://ntustison.github.io/TemplateBuildingExample/)
+
+* **Single subject template construction** [example](https://github.com/ntustison/SingleSubjectTemplateExample)
+
+* **Pre-built ANTs templates with spatial priors** [download](http://figshare.com/articles/ANTs_ANTsR_Brain_Templates/915436)
+
+* **Brain extraction** [example](https://github.com/ntustison/antsBrainExtractionExample)
+
+* **N4 bias correction <-> segmentation** [example](https://github.com/ntustison/antsAtroposN4Example)
+
+* **Cortical thickness** [example](https://github.com/ntustison/antsCorticalThicknessExample)
+
+* **"Cooking" tissue priors for templates**
   [example](https://github.com/ntustison/antsCookTemplatePriorsExample)
   (after you build your template)
 
-**Basic Brain Mapping** [example](http://stnava.github.io/BasicBrainMapping/)
+* **Multi-atlas joint label/intensity fusion examples** [example 1](https://github.com/ntustison/MalfLabelingExample) [example 2](https://github.com/qureai/Multi-Atlas-Segmentation) (thanks to @chsasank)
 
-**Large deformation** [example](http://stnava.github.io/C/)
+* **The ANTs Cortical Thickness Pipeline** [example](https://github.com/ntustison/KapowskiChronicles/blob/master/paper2.pdf?raw=true)
 
-**Template construction** [example](http://ntustison.github.io/TemplateBuildingExample/)
+* **Chimpanzee cortical thickness** [example](https://github.com/stnava/WHopkinsNHP/)
 
-**Automobile** [example](http://stnava.github.io/cars/)
+* **Brain tumor segmentation** [example](https://github.com/ntustison/BRATS2013/SimpleExample/)
 
-**Asymmetry** [example](http://stnava.github.io/asymmetry/)
+* **Eigenanatomy** for [multivariate neuroimage analysis](http://www.ncbi</a>.nlm.nih.gov/pubmed/23269595) via
+    [PCA](http://www.ncbi.nlm.nih.gov/pubmed/23286132) &
+    [CCA](http://www.ncbi.nlm.nih.gov/pubmed/20083207)
 
-**Point-set** [mapping](http://stnava.github.io/chicken/)
+* **fMRI or Motion Correction** [example](http://stnava.github.io/fMRIANTs/)
 
-**Feature matching** [example](http://stnava.github.io/featureMatching/) ... not up to date ...
+* **fMRI reproducibility** [example](http://stnava.github.io/RfMRI/)
 
-**Chimpanzee cortical thickness** [example](https://github.com/stnava/WHopkinsNHP/)
+* **fMRI prediction** [example](http://stnava.github.io/Haxby2001/) ... WIP ...
 
-**Global optimization** [example](http://stnava.github.io/butterfly/)
+### Lung 
 
-**Morphing** [example](http://stnava.github.io/Morpheus/)
+* **CT lung registration** [example](https://github.com/ntustison/antsCtLungRegistrationExample)
 
-**fMRI or Motion Correction** [example](http://stnava.github.io/fMRIANTs/)
+* **Lung mask registration** [example](https://github.com/ntustison/ProtonCtLungMaskRegistration)
 
-**fMRI reproducibility** [example](http://stnava.github.io/RfMRI/)
+* **Lung and lobe estimation** [example](https://github.com/ntustison/LungAndLobeEstimationExample)
 
-**fMRI prediction** [example](http://stnava.github.io/Haxby2001/) ... WIP ...
+* **Lung ventilation-based segmentation** [example](https://github.com/ntustison/LungVentilationSegmentationExample)
 
-**Cardiac** [example](http://stnava.github.io/LabelMyHeart)
+### Cardiac
 
-**Brain extraction** [example](https://github.com/ntustison/antsBrainExtractionExample)
+* **Cardiac** [example](http://stnava.github.io/LabelMyHeart)
 
-**N4 bias correction <-> segmentation** [example](https://github.com/ntustison/antsAtroposN4Example)
-
-**Cortical thickness** [example](https://github.com/ntustison/antsCorticalThicknessExample)
-
-**MALF labeling example** [example](https://github.com/ntustison/MalfLabelingExample)
-
-**Bibliography** [bibtex of ANTs-related papers](https://github.com/stnava/ANTsBibliography)
-
-**ANTs** [google scholar page](http://scholar.google.com/citations?user=ox-mhOkAAAAJ&hl=en)
+### Misc.
 
 Presentations: e.g. [a Prezi about
 ANTs](http://prezi.com/mwrmcm-h9-w4/ants/?kw=view-mwrmcm-h9-w4&rc=ref-40024395)
@@ -241,6 +298,9 @@ here](https://sourceforge.net/p/advants/discussion/840261/thread/1cb7b165/?limit
 
 Brief ANTs segmentation [video](http://vimeo.com/67814201)
 
+**Benchmarks** for expected memory and computation time: [results](https://github.com/gdevenyi/antsRegistration-benchmarking).  These
+results are, of course, system and data dependent.
+
 References
 ----------------------------------------------------------
 
@@ -249,7 +309,7 @@ Scholar](http://scholar.google.com/scholar?q=Advanced+Normalization+Tools+%22ANT
 
 [Pubmed](http://www.ncbi.nlm.nih.gov/pubmed?term=%22Avants%20B%22%20OR%20%22Tustison%20N%22)
 
-Boilerplate ANTs 
+Boilerplate ANTs
 ------------------
 
 Here is some boilerplate regarding ants image processing:
@@ -305,9 +365,6 @@ References
 [13] http://www.ncbi.nlm.nih.gov/pubmed/24830834
 
 
+ANTs was supported by: R01-EB006266-01 and by K01-ES025432-01
 
-ANTs was supported by: R01-EB006266-01
-
-
-
-[![githalytics.com alpha](https://cruel-carlota.pagodabox.com/a912f82c8178a07889f508871d94e77d "githalytics.com")](http://githalytics.com/stnava/ANTs)
+![ants chimp](http://i.imgur.com/4tPvy05.png)

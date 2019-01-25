@@ -1,13 +1,7 @@
-
-
-
-
 #include "antsUtilities.h"
 #include <algorithm>
-
 #include "itkSurfaceCurvatureBase.h"
 #include "itkSurfaceImageCurvature.h"
-
 #include "ReadWriteData.h"
 
 namespace ants
@@ -104,6 +98,7 @@ private:
     std::cout << " option 0 means just compute mean curvature from intensity " << std::endl;
     std::cout << " option 5 means characterize surface from intensity " << std::endl;
     std::cout << " option 6 means compute gaussian curvature " << std::endl;
+    std::cout << " option 7 means surface area " << std::endl;
     std::cout << " ... " << std::endl;
     std::cout << " for surface characterization " << std::endl;
     std::cout << " 1 == (+) bowl " << std::endl;
@@ -132,7 +127,6 @@ private:
     {
     sig = atof( argv[3]);
     }
-  std::cout << " sigma " << sig << std::endl;
   if( argc > 4 )
     {
     opt = (int) atoi(argv[4]);
@@ -146,22 +140,14 @@ private:
 
   ImageType::Pointer input;
   ReadImage<ImageType>(input, argv[1]);
-  std::cout << " done reading " << std::string(argv[1]) << std::endl;
-
-  //  float ballradius = 2.0;
-  // if (argc >= 6) ballradius = (float) atof(argv[5]);
-  // if (ballradius > 0 && thresh > 0) input = SegmentImage<ImageType>(input, thresh, ballradius);
-
   Parameterizer->SetInputImage(input);
 
   //  Parameterizer->ProcessLabelImage();
   Parameterizer->SetNeighborhoodRadius( 1. );
-//  std::cout << " set sig " ;  std::cin >> sig;
   if( sig <= 0.5 )
     {
     sig = 1.66;
     }
-  std::cout << " sigma " << sig << " option " << opt << std::endl;
   Parameterizer->SetSigma(sig);
 
   if( opt == 1 )
@@ -178,7 +164,6 @@ private:
       {
       sign = -1.0;
       }
-    std::cout << " setting outward direction as " << sign;
     Parameterizer->SetkSign(sign);
     Parameterizer->SetThreshold(0);
     }
@@ -186,8 +171,7 @@ private:
 //  Parameterizer->IntegrateFunctionOverSurface();
 //  Parameterizer->IntegrateFunctionOverSurface(true);
 
-  std::cout << " computing frame " << std::endl;
-  if( opt != 5 && opt != 6 )
+  if( opt != 5 && opt != 6 && opt != 7 )
     {
     Parameterizer->ComputeFrameOverDomain( 3 );
     }
@@ -204,8 +188,7 @@ private:
   //  Parameterizer->IntegrateFunctionOverSurface(true);
   //   for (int i=0; i<1; i++) Parameterizer->PostProcessGeometry();
 
-  ImageType::Pointer output = ITK_NULLPTR;
-
+  ImageType::Pointer output = Parameterizer->GetFunctionImage();
   //  Parameterizer->GetFunctionImage()->SetSpacing( input->GetSpacing() );
   //  Parameterizer->GetFunctionImage()->SetDirection( input->GetDirection() );
   //  Parameterizer->GetFunctionImage()->SetOrigin( input->GetOrigin() );
@@ -213,11 +196,7 @@ private:
   // SmoothImage(Parameterizer->GetFunctionImage(),smooth,3);
   // NormalizeImage(smooth,output,mn);
   //  NormalizeImage(Parameterizer->GetFunctionImage(),output,mn);
-
-  WriteImage<floatImageType>(Parameterizer->GetFunctionImage(), argv[2]);
-
-  std::cout << " done writing ";
-
-  return 1;
+  WriteImage<floatImageType>( output, argv[2]);
+  return 0;
 }
 } // namespace ants

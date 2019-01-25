@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: SmoothImage.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008/11/15 23:46:06 $
-  Version:   $Revision: 1.18 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -42,6 +38,8 @@ int SmoothImage(int argc, char *argv[])
   typename dgf::Pointer filter = dgf::New();
   typename medf::Pointer filter2 = medf::New();
   bool usespacing = false;
+  float gaussianmaxerror = 0.01;
+  int gaussianmaxkernelwidth = 32;
   if( argc  >  5 )
     {
     usespacing = atoi(argv[5]);
@@ -50,6 +48,14 @@ int SmoothImage(int argc, char *argv[])
   if( argc  >  6 )
     {
     usemedian = atoi(argv[6]);
+    }
+  if( argc  >  7 )
+    {
+    gaussianmaxerror = atof(argv[7]);
+    }
+  if( argc  >  8 )
+    {
+    gaussianmaxkernelwidth = atoi(argv[8]);
     }
   if( !usespacing )
     {
@@ -79,7 +85,8 @@ int SmoothImage(int argc, char *argv[])
       {
       std::cerr << "Incorrect sigma vector size.  Must either be of size 1 or ImageDimension." << std::endl;
       }
-    filter->SetMaximumError( 0.01f );
+    filter->SetMaximumError( gaussianmaxerror );
+    filter->SetMaximumKernelWidth( gaussianmaxkernelwidth );
     filter->SetInput( image1 );
     filter->Update();
     varimage = filter->GetOutput();
@@ -162,7 +169,7 @@ private:
     std::cout << "Usage:  " << std::endl;
     std::cout << argv[0]
              <<
-      " ImageDimension image.ext smoothingsigma outimage.ext {sigma-is-in-spacing-coordinates-0/1} {medianfilter-0/1}"
+      " ImageDimension image.ext smoothingsigma outimage.ext {sigma-is-in-spacing-coordinates-0/1} {medianfilter-0/1} {GaussianSetMaximumError=0.01} {GaussianSetMaximumKernelWidth=32}"
              << std::endl;
     std::cout << " if median, then sigma means radius of filtering " << std::endl;
     std::cout << " A separate sigma can be specified for each dimension, e.g., 1.5x1x2 " << std::endl;
@@ -178,17 +185,17 @@ private:
     {
     case 2:
       {
-      SmoothImage<2>(argc, argv);
+      return SmoothImage<2>(argc, argv);
       }
       break;
     case 3:
       {
-      SmoothImage<3>(argc, argv);
+      return SmoothImage<3>(argc, argv);
       }
       break;
     case 4:
       {
-      SmoothImage<4>(argc, argv);
+      return SmoothImage<4>(argc, argv);
       }
       break;
     default:

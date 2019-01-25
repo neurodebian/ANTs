@@ -1,26 +1,26 @@
-
 #include "antsUtilities.h"
 #include "antsAllocImage.h"
-#include <algorithm>
-
-#include "itkBSplineControlPointImageFilter.h"
 #include "antsCommandLineParser.h"
+
+#include "ReadWriteData.h"
+
+#include "itkBinaryThresholdImageFilter.h"
+#include "itkBSplineControlPointImageFilter.h"
 #include "itkConstantPadImageFilter.h"
 #include "itkExpImageFilter.h"
 #include "itkExtractImageFilter.h"
-#include "ReadWriteData.h"
 #include "itkImageRegionIterator.h"
 #include "itkImageRegionIteratorWithIndex.h"
 #include "itkLabelStatisticsImageFilter.h"
 #include "itkN4BiasFieldCorrectionImageFilter.h"
-#include "itkOtsuThresholdImageFilter.h"
 #include "itkShrinkImageFilter.h"
-
 #include "itkTimeProbe.h"
 
 #include <string>
 #include <algorithm>
 #include <vector>
+
+#include "ANTsVersion.h"
 
 namespace ants
 {
@@ -79,22 +79,36 @@ int N4( itk::ants::CommandLineParser *parser )
   typedef itk::Image<RealType, ImageDimension> MaskImageType;
   typename MaskImageType::Pointer maskImage = ITK_NULLPTR;
 
+  bool verbose = false;
+  typename itk::ants::CommandLineParser::OptionType::Pointer verboseOption =
+    parser->GetOption( "verbose" );
+  if( verboseOption && verboseOption->GetNumberOfFunctions() )
+    {
+    verbose = parser->Convert<bool>( verboseOption->GetFunction( 0 )->GetName() );
+    }
+
+  if( verbose )
+    {
+    std::cout << std::endl << "Running N4 for "
+             << ImageDimension << "-dimensional images." << std::endl << std::endl;
+    }
+
   typedef itk::N4BiasFieldCorrectionImageFilter<ImageType, MaskImageType,
                                                 ImageType> CorrecterType;
   typename CorrecterType::Pointer correcter = CorrecterType::New();
-
   typename itk::ants::CommandLineParser::OptionType::Pointer inputImageOption =
     parser->GetOption( "input-image" );
   if( inputImageOption && inputImageOption->GetNumberOfFunctions() )
     {
     std::string inputFile = inputImageOption->GetFunction( 0 )->GetName();
     ReadImage<ImageType>( inputImage, inputFile.c_str() );
-    inputImage->Update();
-    inputImage->DisconnectPipeline();
     }
   else
     {
-    std::cout << "Input image not specified." << std::endl;
+    if( verbose )
+      {
+      std::cerr << "Input image not specified." << std::endl;
+      }
     return EXIT_FAILURE;
     }
 
@@ -110,25 +124,20 @@ int N4( itk::ants::CommandLineParser *parser )
     {
     std::string inputFile = maskImageOption->GetFunction( 0 )->GetName();
     ReadImage<MaskImageType>( maskImage, inputFile.c_str() );
-    maskImage->Update();
-    maskImage->DisconnectPipeline();
 
     isMaskImageSpecified = true;
     }
   if( !maskImage )
     {
-    std::cout << "Mask not read.  Creating Otsu mask." << std::endl;
-    typedef itk::OtsuThresholdImageFilter<ImageType, MaskImageType>
-      ThresholderType;
-    typename ThresholderType::Pointer otsu = ThresholderType::New();
-    otsu->SetInput( inputImage );
-    otsu->SetNumberOfHistogramBins( 200 );
-    otsu->SetInsideValue( 0 );
-    otsu->SetOutsideValue( 1 );
-
-    maskImage = otsu->GetOutput();
-    maskImage->Update();
-    maskImage->DisconnectPipeline();
+    if( verbose )
+      {
+      std::cout << "Mask not read.  Using the entire image as the mask." << std::endl << std::endl;
+      }
+    maskImage = MaskImageType::New();
+    maskImage->CopyInformation( inputImage );
+    maskImage->SetRegions( inputImage->GetRequestedRegion() );
+    maskImage->Allocate( false );
+    maskImage->FillBuffer( itk::NumericTraits<typename MaskImageType::PixelType>::OneValue() );
     }
 
   typename ImageType::Pointer weightImage = ITK_NULLPTR;
@@ -139,8 +148,6 @@ int N4( itk::ants::CommandLineParser *parser )
     {
     std::string inputFile = weightImageOption->GetFunction( 0 )->GetName();
     ReadImage<ImageType>( weightImage, inputFile.c_str() );
-    weightImage->Update();
-    weightImage->DisconnectPipeline();
     }
 
   /**
@@ -216,15 +223,15 @@ int N4( itk::ants::CommandLineParser *parser )
         //     requested domain size.
         float splineDistance = array[0];
 
-        unsigned long lowerBound[ImageDimension];
-        unsigned long upperBound[ImageDimension];
+        typename ImageType::SizeType originalImageSize = inputImage->GetLargestPossibleRegion().GetSize();
+
+        itk::Size<ImageDimension> lowerBound;
+        itk::Size<ImageDimension> upperBound;
         for( unsigned int d = 0; d < ImageDimension; d++ )
           {
-          float domain = static_cast<RealType>( inputImage->
-                                                GetLargestPossibleRegion().GetSize()[d]
-                                                - 1 ) * inputImage->GetSpacing()[d];
+          float domain = static_cast<RealType>( originalImageSize[d] - 1 ) * inputImage->GetSpacing()[d];
           unsigned int numberOfSpans = static_cast<unsigned int>(
-              vcl_ceil( domain / splineDistance ) );
+              std::ceil( domain / splineDistance ) );
           unsigned long extraPadding = static_cast<unsigned long>( ( numberOfSpans
                                                                      * splineDistance
                                                                      - domain ) / inputImage->GetSpacing()[d] + 0.5 );
@@ -269,6 +276,15 @@ int N4( itk::ants::CommandLineParser *parser )
           weightImage = weightPadder->GetOutput();
           weightImage->DisconnectPipeline();
           }
+
+        if( verbose )
+          {
+          std::cout << "Specified spline distance: " << splineDistance << "mm" << std::endl;
+          std::cout << "  original image size:  " << originalImageSize << std::endl;
+          std::cout << "  padded image size:  " << inputImage->GetLargestPossibleRegion().GetSize() << std::endl;
+          std::cout << "  number of control points:  " << numberOfControlPoints << std::endl;
+          std::cout << std::endl;
+          }
         }
       else if( array.size() == ImageDimension )
         {
@@ -280,7 +296,10 @@ int N4( itk::ants::CommandLineParser *parser )
         }
       else
         {
-        std::cout << "Incorrect mesh resolution" << std::endl;
+        if( verbose )
+          {
+          std::cerr << "Incorrect mesh resolution" << std::endl;
+          }
         return EXIT_FAILURE;
         }
       correcter->SetNumberOfControlPoints( numberOfControlPoints );
@@ -306,6 +325,11 @@ int N4( itk::ants::CommandLineParser *parser )
     }
   shrinker->SetShrinkFactors( shrinkFactor );
   maskshrinker->SetShrinkFactors( shrinkFactor );
+  if( ImageDimension == 4 )
+    {
+    shrinker->SetShrinkFactor( 3, 1 );
+    maskshrinker->SetShrinkFactor( 3, 1 );
+    }
   shrinker->Update();
   maskshrinker->Update();
 
@@ -320,15 +344,18 @@ int N4( itk::ants::CommandLineParser *parser )
   if( weightImage )
     {
     weightshrinker->SetInput( weightImage );
-    weightshrinker->SetShrinkFactors( shrinkFactor );
+    weightshrinker->SetShrinkFactors( shrinker->GetShrinkFactors() );
     weightshrinker->Update();
 
     correcter->SetConfidenceImage( weightshrinker->GetOutput() );
     }
 
-  typedef CommandIterationUpdate<CorrecterType> CommandType;
-  typename CommandType::Pointer observer = CommandType::New();
-  correcter->AddObserver( itk::IterationEvent(), observer );
+  if( verbose )
+    {
+    typedef CommandIterationUpdate<CorrecterType> CommandType;
+    typename CommandType::Pointer observer = CommandType::New();
+    correcter->AddObserver( itk::IterationEvent(), observer );
+    }
 
   /**
    * histogram sharpening options
@@ -361,14 +388,23 @@ int N4( itk::ants::CommandLineParser *parser )
     }
   catch( itk::ExceptionObject & e )
     {
-    std::cout << "Exception caught: " << e << std::endl;
+    if( verbose )
+      {
+      std::cerr << "Exception caught: " << e << std::endl;
+      }
     return EXIT_FAILURE;
     }
 
-  correcter->Print( std::cout, 3 );
+  if( verbose )
+    {
+    correcter->Print( std::cout, 3 );
+    }
 
   timer.Stop();
-  std::cout << "Elapsed time: " << timer.GetMean() << std::endl;
+  if( verbose )
+    {
+    std::cout << "Elapsed time: " << timer.GetMean() << std::endl;
+    }
 
   /**
    * output
@@ -425,7 +461,7 @@ int N4( itk::ants::CommandLineParser *parser )
                                                inputImage->GetLargestPossibleRegion() );
       for( ItD.GoToBegin(), ItI.GoToBegin(); !ItD.IsAtEnd(); ++ItD, ++ItI )
         {
-        if( maskImage->GetPixel( ItD.GetIndex() ) != correcter->GetMaskLabel() )
+        if( maskImage->GetPixel( ItD.GetIndex() ) == itk::NumericTraits<typename MaskImageType::PixelType>::ZeroValue() )
           {
           ItD.Set( ItI.Get() );
           }
@@ -445,27 +481,31 @@ int N4( itk::ants::CommandLineParser *parser )
     if( doRescale )
       {
       typedef itk::Image<unsigned short, ImageDimension> ShortImageType;
-      typedef itk::CastImageFilter<MaskImageType, ShortImageType> CasterType;
-      typename CasterType::Pointer caster = CasterType::New();
-      caster->SetInput( maskImage );
-      caster->Update();
+
+      typedef itk::BinaryThresholdImageFilter<MaskImageType, ShortImageType> ThresholderType;
+      typename ThresholderType::Pointer thresholder = ThresholderType::New();
+      thresholder->SetInsideValue( itk::NumericTraits<typename ShortImageType::PixelType>::ZeroValue() );
+      thresholder->SetOutsideValue( itk::NumericTraits<typename ShortImageType::PixelType>::OneValue() );
+      thresholder->SetLowerThreshold( itk::NumericTraits<typename MaskImageType::PixelType>::ZeroValue() );
+      thresholder->SetUpperThreshold( itk::NumericTraits<typename MaskImageType::PixelType>::ZeroValue() );
+      thresholder->SetInput( maskImage );
 
       typedef itk::LabelStatisticsImageFilter<ImageType, ShortImageType> StatsType;
       typename StatsType::Pointer stats = StatsType::New();
       stats->SetInput( inputImage );
-      stats->SetLabelInput( caster->GetOutput() );
+      stats->SetLabelInput( thresholder->GetOutput() );
       stats->UseHistogramsOff();
       stats->Update();
 
       typedef typename StatsType::LabelPixelType StatsLabelType;
-      StatsLabelType maskLabel = static_cast<StatsLabelType>( correcter->GetMaskLabel() );
+      StatsLabelType maskLabel = itk::NumericTraits<StatsLabelType>::OneValue();
 
       RealType minOriginal = stats->GetMinimum( maskLabel );
       RealType maxOriginal = stats->GetMaximum( maskLabel );
 
       typename StatsType::Pointer stats2 = StatsType::New();
       stats2->SetInput( divider->GetOutput() );
-      stats2->SetLabelInput( caster->GetOutput() );
+      stats2->SetLabelInput( thresholder->GetOutput() );
       stats2->UseHistogramsOff();
       stats2->Update();
 
@@ -525,192 +565,219 @@ void N4InitializeCommandLineOptions( itk::ants::CommandLineParser *parser )
 {
   typedef itk::ants::CommandLineParser::OptionType OptionType;
 
-    {
-    std::string description =
+  {
+  std::string description =
       std::string( "This option forces the image to be treated as a specified-" )
       + std::string( "dimensional image.  If not specified, N4 tries to " )
       + std::string( "infer the dimensionality from the input image." );
+  OptionType::Pointer option = OptionType::New();
+  option->SetLongName( "image-dimensionality" );
+  option->SetShortName( 'd' );
+  option->SetUsageOption( 0, "2/3/4" );
+  option->SetDescription( description );
+  parser->AddOption( option );
+  }
 
-    OptionType::Pointer option = OptionType::New();
-    option->SetLongName( "image-dimensionality" );
-    option->SetShortName( 'd' );
-    option->SetUsageOption( 0, "2/3/4" );
-    option->SetDescription( description );
-    parser->AddOption( option );
-    }
+  {
+  std::string description =
+    std::string( "A scalar image is expected as input for bias correction.  " )
+    + std::string( "Since N4 log transforms the intensities, negative values " )
+    + std::string( "or values close to zero should be processed prior to " )
+    + std::string( "correction." );
 
-    {
-    std::string description =
-      std::string( "A scalar image is expected as input for bias correction.  " )
-      + std::string( "Since N4 log transforms the intensities, negative values " )
-      + std::string( "or values close to zero should be processed prior to " )
-      + std::string( "correction." );
+  OptionType::Pointer option = OptionType::New();
+  option->SetLongName( "input-image" );
+  option->SetShortName( 'i' );
+  option->SetUsageOption( 0, "inputImageFilename" );
+  option->SetDescription( description );
+  parser->AddOption( option );
+  }
 
-    OptionType::Pointer option = OptionType::New();
-    option->SetLongName( "input-image" );
-    option->SetShortName( 'i' );
-    option->SetUsageOption( 0, "inputImageFilename" );
-    option->SetDescription( description );
-    parser->AddOption( option );
-    }
+  {
+  std::string description =
+    std::string( "If a mask image is specified, the final bias correction is " )
+    + std::string( "only performed in the mask region.  If a weight image is not " )
+    + std::string( "specified, only intensity values inside the masked region are " )
+    + std::string( "used during the execution of the algorithm.  If a weight " )
+    + std::string( "image is specified, only the non-zero weights are used in the " )
+    + std::string( "execution of the algorithm although the mask region defines " )
+    + std::string( "where bias correction is performed in the final output. " )
+    + std::string( "Otherwise bias correction occurs over the entire image domain. " )
+    + std::string( "See also the option description for the weight image. " )
+    + std::string( "If a mask image is *not* specified then the entire image region " )
+    + std::string( "will be used as the mask region.  Note that this is different than " )
+    + std::string( "the N3 implementation which uses the results of Otsu thresholding " )
+    + std::string( "to define a mask.  However, this leads to unknown anatomical regions being " )
+    + std::string( "included and excluded during the bias correction." );
 
-    {
-    std::string description =
-      std::string( "If a mask image is specified, the final bias correction is " )
-      + std::string( "only performed in the mask region.  If a weight image is not " )
-      + std::string( "specified, only intensity values inside the masked region are " )
-      + std::string( "used during the execution of the algorithm.  If a weight " )
-      + std::string( "image is specified, only the non-zero weights are used in the " )
-      + std::string( "execution of the algorithm although the mask region defines " )
-      + std::string( "where bias correction is performed in the final output. " )
-      + std::string( "Otherwise bias correction occurs over the entire image domain. " )
-      + std::string( "See also the option description for the weight image." );
+  OptionType::Pointer option = OptionType::New();
+  option->SetLongName( "mask-image" );
+  option->SetShortName( 'x' );
+  option->SetUsageOption( 0, "maskImageFilename" );
+  option->SetDescription( description );
+  parser->AddOption( option );
+  }
 
-    OptionType::Pointer option = OptionType::New();
-    option->SetLongName( "mask-image" );
-    option->SetShortName( 'x' );
-    option->SetUsageOption( 0, "maskImageFilename" );
-    option->SetDescription( description );
-    parser->AddOption( option );
-    }
+  {
+  std::string description =
+    std::string( "At each iteration, a new intensity mapping is calculated " )
+    + std::string( "and applied but there is nothing which constrains the " )
+    + std::string( "new intensity range to be within certain values.  The " )
+    + std::string( "result is that the range can \"drift\" from the original " )
+    + std::string( "at each iteration.  This option rescales to the [min,max] " )
+    + std::string( "range of the original image intensities within the user-specified mask." );
 
-    {
-    std::string description =
-      std::string( "At each iteration, a new intensity mapping is calculated " )
-      + std::string( "and applied but there is nothing which constrains the " )
-      + std::string( "new intensity range to be within certain values.  The " )
-      + std::string( "result is that the range can \"drift\" from the original " )
-      + std::string( "at each iteration.  This option rescales to the [min,max] " )
-      + std::string( "range of the original image intensities within the user-specified mask." );
+  OptionType::Pointer option = OptionType::New();
+  option->SetLongName( "rescale-intensities" );
+  option->SetShortName( 'r' );
+  option->SetUsageOption( 0, "0/(1)" );
+  option->SetDescription( description );
+  parser->AddOption( option );
+  }
 
-    OptionType::Pointer option = OptionType::New();
-    option->SetLongName( "rescale-intensities" );
-    option->SetShortName( 'r' );
-    option->SetUsageOption( 0, "0/(1)" );
-    option->SetDescription( description );
-    parser->AddOption( option );
-    }
+  {
+  std::string description =
+    std::string( "The weight image allows the user to perform a relative " )
+    + std::string( "weighting of specific voxels during the B-spline fitting. " )
+    + std::string( "For example, some studies have shown that N3 performed on " )
+    + std::string( "white matter segmentations improves performance.  If one " )
+    + std::string( "has a spatial probability map of the white matter, one can " )
+    + std::string( "use this map to weight the b-spline fitting towards those " )
+    + std::string( "voxels which are more probabilistically classified as white " )
+    + std::string( "matter.  See also the option description for the mask image." );
 
-    {
-    std::string description =
-      std::string( "The weight image allows the user to perform a relative " )
-      + std::string( "weighting of specific voxels during the B-spline fitting. " )
-      + std::string( "For example, some studies have shown that N3 performed on " )
-      + std::string( "white matter segmentations improves performance.  If one " )
-      + std::string( "has a spatial probability map of the white matter, one can " )
-      + std::string( "use this map to weight the b-spline fitting towards those " )
-      + std::string( "voxels which are more probabilistically classified as white " )
-      + std::string( "matter.  See also the option description for the mask image." );
+  OptionType::Pointer option = OptionType::New();
+  option->SetLongName( "weight-image" );
+  option->SetUsageOption( 0, "weightImageFilename" );
+  option->SetShortName( 'w' );
+  option->SetDescription( description );
+  parser->AddOption( option );
+  }
 
-    OptionType::Pointer option = OptionType::New();
-    option->SetLongName( "weight-image" );
-    option->SetUsageOption( 0, "weightImageFilename" );
-    option->SetShortName( 'w' );
-    option->SetDescription( description );
-    parser->AddOption( option );
-    }
+  {
+  std::string description =
+    std::string( "Running N4 on large images can be time consuming. " )
+    + std::string( "To lessen computation time, the input image can be resampled. " )
+    + std::string( "The shrink factor, specified as a single integer, describes " )
+    + std::string( "this resampling.  Shrink factors <= 4 are commonly used." )
+    + std::string( "Note that the shrink factor is only applied to the first two or " )
+    + std::string( "three dimensions which we assume are spatial.  " );
 
-    {
-    std::string description =
-      std::string( "Running N4 on large images can be time consuming. " )
-      + std::string( "To lessen computation time, the input image can be resampled. " )
-      + std::string( "The shrink factor, specified as a single integer, describes " )
-      + std::string( "this resampling.  Shrink factors <= 4 are commonly used." );
+  OptionType::Pointer option = OptionType::New();
+  option->SetLongName( "shrink-factor" );
+  option->SetShortName( 's' );
+  option->SetUsageOption( 0, "1/2/3/(4)/..." );
+  option->SetDescription( description );
+  parser->AddOption( option );
+  }
 
-    OptionType::Pointer option = OptionType::New();
-    option->SetLongName( "shrink-factor" );
-    option->SetShortName( 's' );
-    option->SetUsageOption( 0, "1/2/3/4/..." );
-    option->SetDescription( description );
-    parser->AddOption( option );
-    }
+  {
+  std::string description =
+    std::string( "Convergence is determined by calculating the coefficient of " )
+    + std::string( "variation between subsequent iterations. When this value " )
+    + std::string( "is less than the specified threshold " )
+    + std::string( "from the previous iteration or the maximum number of " )
+    + std::string( "iterations is exceeded the program terminates.  Multiple " )
+    + std::string( "resolutions can be specified by using 'x' between the number " )
+    + std::string( "of iterations at each resolution, e.g. 100x50x50." );
 
-    {
-    std::string description =
-      std::string( "Convergence is determined by calculating the coefficient of " )
-      + std::string( "variation between subsequent iterations. When this value " )
-      + std::string( "is less than the specified threshold " )
-      + std::string( "from the previous iteration or the maximum number of " )
-      + std::string( "iterations is exceeded the program terminates.  Multiple " )
-      + std::string( "resolutions can be specified by using 'x' between the number " )
-      + std::string( "of iterations at each resolution, e.g. 100x50x50." );
+  OptionType::Pointer option = OptionType::New();
+  option->SetLongName( "convergence" );
+  option->SetShortName( 'c' );
+  option->SetUsageOption( 0, "[<numberOfIterations=50x50x50x50>,<convergenceThreshold=0.0>]" );
+  option->SetDescription( description );
+  parser->AddOption( option );
+  }
 
-    OptionType::Pointer option = OptionType::New();
-    option->SetLongName( "convergence" );
-    option->SetShortName( 'c' );
-    option->SetUsageOption( 0, "[<numberOfIterations=50x50x50x50>,<convergenceThreshold=0.0>]" );
-    option->SetDescription( description );
-    parser->AddOption( option );
-    }
+  {
+  std::string description =
+    std::string( "These options describe the b-spline fitting parameters. " )
+    + std::string( "The initial b-spline mesh at the coarsest resolution is " )
+    + std::string( "specified either as the number of elements in each dimension, " )
+    + std::string( "e.g. 2x2x3 for 3-D images, or it can be specified as a " )
+    + std::string( "single scalar parameter which describes the isotropic sizing " )
+    + std::string( "of the mesh elements. The latter option is typically preferred. " )
+    + std::string( "For each subsequent level, the spline distance decreases in " )
+    + std::string( "half, or equivalently, the number of mesh elements doubles " )
+    + std::string( "Cubic splines (order = 3) are typically used.  The default setting " )
+    + std::string( "is to employ a single mesh element over the entire domain, i.e., " )
+    + std::string( "-b [1x1x1,3]." );
 
-    {
-    std::string description =
-      std::string( "These options describe the b-spline fitting parameters. " )
-      + std::string( "The initial b-spline mesh at the coarsest resolution is " )
-      + std::string( "specified either as the number of elements in each dimension, " )
-      + std::string( "e.g. 2x2x3 for 3-D images, or it can be specified as a " )
-      + std::string( "single scalar parameter which describes the isotropic sizing " )
-      + std::string( "of the mesh elements. The latter option is typically preferred. " )
-      + std::string( "For each subsequent level, the spline distance decreases in " )
-      + std::string( "half, or equivalently, the number of mesh elements doubles " )
-      + std::string( "Cubic splines (order = 3) are typically used." );
+  OptionType::Pointer option = OptionType::New();
+  option->SetLongName( "bspline-fitting" );
+  option->SetShortName( 'b' );
+  option->SetUsageOption( 0, "[splineDistance,<splineOrder=3>]" );
+  option->SetUsageOption( 1, "[initialMeshResolution,<splineOrder=3>]" );
+  option->SetDescription( description );
+  parser->AddOption( option );
+  }
 
-    OptionType::Pointer option = OptionType::New();
-    option->SetLongName( "bspline-fitting" );
-    option->SetShortName( 'b' );
-    option->SetUsageOption( 0, "[splineDistance,<splineOrder=3>]" );
-    option->SetUsageOption( 1, "[initialMeshResolution,<splineOrder=3>]" );
-    option->SetDescription( description );
-    parser->AddOption( option );
-    }
+  {
+  std::string description =
+    std::string( "These options describe the histogram sharpening parameters, " )
+    + std::string( "i.e. the deconvolution step parameters described in the " )
+    + std::string( "original N3 algorithm.  The default values have been shown " )
+    + std::string( "to work fairly well." );
 
-    {
-    std::string description =
-      std::string( "These options describe the histogram sharpening parameters, " )
-      + std::string( "i.e. the deconvolution step parameters described in the " )
-      + std::string( "original N3 algorithm.  The default values have been shown " )
-      + std::string( "to work fairly well." );
+  OptionType::Pointer option = OptionType::New();
+  option->SetLongName( "histogram-sharpening" );
+  option->SetShortName( 't' );
+  option->SetUsageOption( 0, "[<FWHM=0.15>,<wienerNoise=0.01>,<numberOfHistogramBins=200>]" );
+  option->SetDescription( description );
+  parser->AddOption( option );
+  }
 
-    OptionType::Pointer option = OptionType::New();
-    option->SetLongName( "histogram-sharpening" );
-    option->SetShortName( 't' );
-    option->SetUsageOption( 0, "[<FWHM=0.15>,<wienerNoise=0.01>,<numberOfHistogramBins=200>]" );
-    option->SetDescription( description );
-    parser->AddOption( option );
-    }
+  {
+  std::string description =
+    std::string( "The output consists of the bias corrected version of the " )
+    + std::string( "input image.  Optionally, one can also output the estimated " )
+    + std::string( "bias field." );
 
-    {
-    std::string description =
-      std::string( "The output consists of the bias corrected version of the " )
-      + std::string( "input image.  Optionally, one can also output the estimated " )
-      + std::string( "bias field." );
+  OptionType::Pointer option = OptionType::New();
+  option->SetLongName( "output" );
+  option->SetShortName( 'o' );
+  option->SetUsageOption( 0, "correctedImage" );
+  option->SetUsageOption( 1, "[correctedImage,<biasField>]" );
+  option->SetDescription( description );
+  parser->AddOption( option );
+  }
 
-    OptionType::Pointer option = OptionType::New();
-    option->SetLongName( "output" );
-    option->SetShortName( 'o' );
-    option->SetUsageOption( 0, "correctedImage" );
-    option->SetUsageOption( 1, "[correctedImage,<biasField>]" );
-    option->SetDescription( description );
-    parser->AddOption( option );
-    }
+  {
+  std::string description = std::string( "Get Version Information." );
+  OptionType::Pointer option = OptionType::New();
+  option->SetLongName( "version" );
+  option->SetDescription( description );
+  parser->AddOption( option );
+  }
 
-    {
-    std::string description = std::string( "Print the help menu (short version)." );
+  {
+  std::string description = std::string( "Verbose output." );
 
-    OptionType::Pointer option = OptionType::New();
-    option->SetShortName( 'h' );
-    option->SetDescription( description );
-    parser->AddOption( option );
-    }
+  OptionType::Pointer option = OptionType::New();
+  option->SetShortName( 'v' );
+  option->SetLongName( "verbose" );
+  option->SetUsageOption( 0, "(0)/1" );
+  option->SetDescription( description );
+  parser->AddOption( option );
+  }
 
-    {
-    std::string description = std::string( "Print the help menu." );
+  {
+  std::string description = std::string( "Print the help menu (short version)." );
 
-    OptionType::Pointer option = OptionType::New();
-    option->SetLongName( "help" );
-    option->SetDescription( description );
-    parser->AddOption( option );
-    }
+  OptionType::Pointer option = OptionType::New();
+  option->SetShortName( 'h' );
+  option->SetDescription( description );
+  parser->AddOption( option );
+  }
+
+  {
+  std::string description = std::string( "Print the help menu." );
+
+  OptionType::Pointer option = OptionType::New();
+  option->SetLongName( "help" );
+  option->SetDescription( description );
+  parser->AddOption( option );
+  }
 }
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
@@ -788,7 +855,7 @@ private:
 
   if( argc == 1 )
     {
-    parser->PrintMenu( std::cout, 5, false );
+    parser->PrintMenu( std::cerr, 5, false );
     return EXIT_FAILURE;
     }
   else if( parser->GetOption( "help" )->GetFunction() && parser->Convert<bool>( parser->GetOption( "help" )->GetFunction()->GetName() ) )
@@ -801,7 +868,19 @@ private:
     parser->PrintMenu( std::cout, 5, true );
     return EXIT_SUCCESS;
     }
-
+  // Show automatic version
+  itk::ants::CommandLineParser::OptionType::Pointer versionOption = parser->GetOption( "version" );
+  if( versionOption && versionOption->GetNumberOfFunctions() )
+    {
+    std::string versionFunction = versionOption->GetFunction( 0 )->GetName();
+    ConvertToLowerCase( versionFunction );
+    if( versionFunction.compare( "1" ) == 0 || versionFunction.compare( "true" ) == 0 )
+      {
+      //Print Version Information
+      std::cout << ANTs::Version::ExtendedVersionString() << std::endl;
+      return EXIT_SUCCESS;
+      }
+    }
   // Get dimensionality
   unsigned int dimension = 3;
 
@@ -831,7 +910,7 @@ private:
       }
     else
       {
-      std::cout << "No input images were specified.  Specify an input image"
+      std::cerr << "No input images were specified.  Specify an input image"
                << " with the -i option" << std::endl;
       return EXIT_FAILURE;
       }
@@ -840,30 +919,29 @@ private:
     dimension = imageIO->GetNumberOfDimensions();
     }
 
-  std::cout << std::endl << "Running N4 for "
-           << dimension << "-dimensional images." << std::endl << std::endl;
+  int returnValue = EXIT_FAILURE;
 
   switch( dimension )
     {
     case 2:
       {
-      N4<2>( parser );
+      returnValue = N4<2>( parser );
       }
       break;
     case 3:
       {
-      N4<3>( parser );
+      returnValue = N4<3>( parser );
       }
       break;
     case 4:
       {
-      N4<4>( parser );
+      returnValue = N4<4>( parser );
       }
       break;
     default:
       std::cout << "Unsupported dimension" << std::endl;
       return EXIT_FAILURE;
     }
-  return EXIT_SUCCESS;
+  return returnValue;
 }
 } // namespace ants

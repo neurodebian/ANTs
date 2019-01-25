@@ -1,10 +1,6 @@
 /*=========================================================================
 
   Program:   Insight Segmentation & Registration Toolkit
-  Module:    $RCSfile: itkSpatialMutualInformationRegistrationFunction.h,v $
-  Language:  C++
-  Date:      $Date: 2009/01/08 15:14:48 $
-  Version:   $Revision: 1.20 $
 
   Copyright (c) Insight Software Consortium. All rights reserved.
   See ITKCopyright.txt or http://www.itk.org/HTML/Copyright.htm for details.
@@ -497,7 +493,7 @@ public:
       {
       loce = eps * (-1.0);
       }
-    for( int imd = 0; imd < ImageDimension; imd++ )
+    for( unsigned int imd = 0; imd < ImageDimension; imd++ )
       {
       update[imd] = loce * fixedGradient[imd] * spacing[imd] * (1);
       }
@@ -596,7 +592,7 @@ public:
       {
       loce = eps * (-1.0);
       }
-    for( int imd = 0; imd < ImageDimension; imd++ )
+    for( unsigned int imd = 0; imd < ImageDimension; imd++ )
       {
       update[imd] = loce * movingGradient[imd] * spacing[imd] * (1);
       }

@@ -1,5 +1,10 @@
-cmake_minimum_required(VERSION 2.8.5)
-cmake_policy(VERSION 2.8.5)
+cmake_minimum_required(VERSION 2.8.9)
+cmake_policy(VERSION 2.8.9)
+
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+endif()
 
 set(LIBRARY_SOVERSION_INFO 2)
 set(LIBRARY_VERSION_INFO 2.1.0)
@@ -30,6 +35,9 @@ mark_as_advanced(${LOCAL_PROJECT_NAME}_USE_QT)
 
 option(${LOCAL_PROJECT_NAME}_INSTALL_DEVELOPMENT "Install development support include and libraries for external packages." OFF)
 mark_as_advanced(${LOCAL_PROJECT_NAME}_INSTALL_DEVELOPMENT)
+
+option(COPY_SCRIPT_FILES_TO_BIN_DIR "Copy the script files to the ANTS bin directory." OFF)
+mark_as_advanced(COPY_SCRIPT_FILES_TO_BIN_DIR)
 
 set(CPACK_PACKAGE_NAME "ANTs")
 set(CPACK_PACKAGE_VENDOR "CMake.org")

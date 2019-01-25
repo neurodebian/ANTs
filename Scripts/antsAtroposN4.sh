@@ -53,6 +53,7 @@ Optional arguments:
                                                 Specified using c-style formatting, e.g. -p labelsPriors%02d.nii.gz.
      -r:  mrf                                   Specifies MRF prior (of the form '[weight,neighborhood]', e.g.
                                                 '[0.1,1x1x1]' which is default).
+     -g:  denoise anatomical images             Denoise anatomical images (default = 0).
      -b:  posterior formulation                 Posterior formulation and whether or not to use mixture model proportions.
                                                 e.g 'Socrates[1]' (default) or 'Aristotle[1]'.  Choose the latter if you
                                                 want use the distance priors (see also the -l option for label propagation
@@ -90,6 +91,7 @@ echoParameters() {
       segmentation priors     = ${ATROPOS_SEGMENTATION_PRIORS}
       output prefix           = ${OUTPUT_PREFIX}
       output image suffix     = ${OUTPUT_SUFFIX}
+      denoise images          = ${DENOISE_ANATOMICAL_IMAGES}
 
     N4 parameters (segmentation):
       convergence             = ${N4_CONVERGENCE}
@@ -160,6 +162,7 @@ OUTPUT_SUFFIX="nii.gz"
 KEEP_TMP_IMAGES=0
 
 USE_RANDOM_SEEDING=1
+DENOISE_ANATOMICAL_IMAGES=0
 
 DIMENSION=3
 
@@ -195,7 +198,7 @@ if [[ $# -lt 3 ]] ; then
   Usage >&2
   exit 1
 else
-  while getopts "a:b:c:d:h:k:l:m:n:o:p:r:s:t:u:w:x:y:z:" OPT
+  while getopts "a:b:c:d:g:h:k:l:m:n:o:p:r:s:t:u:w:x:y:z:" OPT
     do
       case $OPT in
           c) #number of segmentation classes
@@ -218,6 +221,9 @@ else
        ;;
           b) #atropos prior weight
        ATROPOS_SEGMENTATION_POSTERIOR_FORMULATION=$OPTARG
+       ;;
+          g) # denoise anatomical images
+       DENOISE_ANATOMICAL_IMAGES=$OPTARG
        ;;
           k) #keep tmp images
        KEEP_TMP_IMAGES=$OPTARG
@@ -383,6 +389,24 @@ ATROPOS_SEGMENTATION_POSTERIORS=${ATROPOS_SEGMENTATION_OUTPUT}Posteriors%${FORMA
 
 ################################################################################
 #
+# Preprocess anatomical images
+#    1. Denoise input images (if requested)
+#
+################################################################################
+
+PREPROCESSED_ANATOMICAL_IMAGES=()
+if [[ ${DENOISE_ANATOMICAL_IMAGES} -ne 0 ]];
+  then
+    if [[ ! -s ${ANTSPATH}/DenoiseImage ]];
+      then
+        echo "Error:  we can't find the DenoiseImage program."
+        echo "Perhaps you need to \(re\)define \$ANTSPATH in your environment or update your repository."
+        exit
+      fi
+  fi
+
+################################################################################
+#
 # Segmentation
 #
 ################################################################################
@@ -428,11 +452,16 @@ for (( i = 0; i < ${N4_ATROPOS_NUMBER_OF_ITERATIONS}; i++ ))
         SEGMENTATION_N4_IMAGES=( ${SEGMENTATION_N4_IMAGES[@]} ${ATROPOS_SEGMENTATION_OUTPUT}${j}N4.${OUTPUT_SUFFIX} )
         if [[ $j == 0 ]];
           then
-            logCmd ${ANTSPATH}/ImageMath ${DIMENSION} ${SEGMENTATION_N4_IMAGES[$j]} TruncateImageIntensity ${ANATOMICAL_IMAGES[$j]} 0.025 0.995 256 ${ATROPOS_SEGMENTATION_MASK}
+            # BA edit - forcing the image to copy physical space due to ITK bug images do not occupy same space
+            logCmd ${ANTSPATH}/ImageMath ${DIMENSION} ${SEGMENTATION_N4_IMAGES[$j]} TruncateImageIntensity ${ANATOMICAL_IMAGES[$j]} 0.025 0.995 256 ${ATROPOS_SEGMENTATION_MASK} 1
+            if [[ ${DENOISE_ANATOMICAL_IMAGES} -ne 0 ]];
+              then
+                logCmd ${ANTSPATH}/DenoiseImage -d ${DIMENSION} -i ${SEGMENTATION_N4_IMAGES[$j]} -o ${SEGMENTATION_N4_IMAGES[$j]} --verbose 1
+              fi
           else
             cp ${ANATOMICAL_IMAGES[$j]} ${SEGMENTATION_N4_IMAGES[$j]}
           fi
-        exe_n4_correction="${N4} -d ${DIMENSION} -i ${SEGMENTATION_N4_IMAGES[$j]} -x ${ATROPOS_SEGMENTATION_MASK} -s ${N4_SHRINK_FACTOR} -c ${N4_CONVERGENCE} -b ${N4_BSPLINE_PARAMS} -o ${SEGMENTATION_N4_IMAGES[$j]}"
+        exe_n4_correction="${N4} -d ${DIMENSION} -i ${SEGMENTATION_N4_IMAGES[$j]} -x ${ATROPOS_SEGMENTATION_MASK} -s ${N4_SHRINK_FACTOR} -c ${N4_CONVERGENCE} -b ${N4_BSPLINE_PARAMS} -o ${SEGMENTATION_N4_IMAGES[$j]} --verbose 1"
         if [[ -f ${SEGMENTATION_WEIGHT_MASK} ]];
           then
             exe_n4_correction="${exe_n4_correction} -w ${SEGMENTATION_WEIGHT_MASK}"
@@ -465,7 +494,7 @@ for (( i = 0; i < ${N4_ATROPOS_NUMBER_OF_ITERATIONS}; i++ ))
         ATROPOS_LABEL_PROPAGATION_COMMAND_LINE="${ATROPOS_LABEL_PROPAGATION_COMMAND_LINE} -l ${ATROPOS_SEGMENTATION_LABEL_PROPAGATION[$j]}";
       done
 
-    exe_segmentation="${ATROPOS} -d ${DIMENSION} -x ${ATROPOS_SEGMENTATION_MASK} -c ${ATROPOS_SEGMENTATION_CONVERGENCE} ${ATROPOS_ANATOMICAL_IMAGES_COMMAND_LINE} ${ATROPOS_LABEL_PROPAGATION_COMMAND_LINE}"
+    exe_segmentation="${ATROPOS} -d ${DIMENSION} -x ${ATROPOS_SEGMENTATION_MASK} -c ${ATROPOS_SEGMENTATION_CONVERGENCE} ${ATROPOS_ANATOMICAL_IMAGES_COMMAND_LINE} ${ATROPOS_LABEL_PROPAGATION_COMMAND_LINE} --verbose 1"
     exe_segmentation="${exe_segmentation} -i ${INITIALIZATION} -k ${ATROPOS_SEGMENTATION_LIKELIHOOD} -m ${ATROPOS_SEGMENTATION_MRF} -o [${ATROPOS_SEGMENTATION},${ATROPOS_SEGMENTATION_POSTERIORS}] -r ${USE_RANDOM_SEEDING}"
 
     if [[ $i -eq 0 ]];

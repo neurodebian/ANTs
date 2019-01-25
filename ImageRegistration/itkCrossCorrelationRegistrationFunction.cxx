@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: itkCrossCorrelationRegistrationFunction.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008/11/15 23:46:06 $
-  Version:   $Revision: 1.18 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -168,7 +164,7 @@ CrossCorrelationRegistrationFunction<TFixedImage, TMovingImage, TDisplacementFie
   // float sig=15.;
 
   RadiusType r;
-  for( int j = 0; j < ImageDimension; j++ )
+  for( unsigned int j = 0; j < ImageDimension; j++ )
     {
     r[j] = this->GetRadius()[j];
     }
@@ -426,7 +422,7 @@ CrossCorrelationRegistrationFunction<TFixedImage, TMovingImage, TDisplacementFie
   float Ii = finitediffimages[0]->GetPixel(index);
 
   m_TEMP = 2.0 * sfm / (sff * smm) * ( Ji - sfm / sff * Ii );
-  for( int qq = 0; qq < ImageDimension; qq++ )
+  for( unsigned int qq = 0; qq < ImageDimension; qq++ )
     {
     deriv[qq]   -= 2.0 * sfm / (sff * smm) * ( Ji - sfm / sff * Ii ) * gradI[qq];
     //        derivinv[qq]-=2.0*sfm/(sff*smm)*( Ii - sfm/smm*Ji )*gradJ[qq];
@@ -489,7 +485,7 @@ CrossCorrelationRegistrationFunction<TFixedImage, TMovingImage, TDisplacementFie
 
   float Ji = finitediffimages[1]->GetPixel(index);
   float Ii = finitediffimages[0]->GetPixel(index);
-  for( int qq = 0; qq < ImageDimension; qq++ )
+  for( unsigned int qq = 0; qq < ImageDimension; qq++ )
     {
     // deriv[qq]   -=2.0*sfm/(sff*smm)*( Ji - sfm/sff*Ii )*gradI[qq];
     deriv[qq] -= 2.0 * sfm / (sff * smm) * ( Ii - sfm / smm * Ji ) * gradJ[qq];

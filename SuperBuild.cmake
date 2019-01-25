@@ -20,7 +20,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/Common.cmake)
 option(${CMAKE_PROJECT_NAME}_USE_GIT_PROTOCOL "If behind a firewall turn this off to use http instead." ON)
 set(git_protocol "git")
 if(NOT ${CMAKE_PROJECT_NAME}_USE_GIT_PROTOCOL)
-  set(git_protocol "http")
+  set(git_protocol "https")
 endif()
 
 find_package(Git REQUIRED)
@@ -93,7 +93,10 @@ CMAKE_DEPENDENT_OPTION(
   "BUILD_STYLE_UTILS" OFF
   )
 
+option(ITK_BUILD_MINC_SUPPORT "Build support for MINC2" OFF)
+
 set(EXTERNAL_PROJECT_BUILD_TYPE "Release" CACHE STRING "Default build type for support libraries")
+
 
 option(USE_SYSTEM_ITK "Build using an externally defined version of ITK" OFF)
 option(USE_SYSTEM_SlicerExecutionModel "Build using an externally defined version of SlicerExecutionModel"  OFF)
@@ -104,6 +107,7 @@ CMAKE_DEPENDENT_OPTION(
      "USE_VTK" OFF
      )
 
+option(BUILD_ALL_ANTS_APPS "Build all ANTs apps" ON)
 option(RUN_SHORT_TESTS    "Run the quick unit tests."                                   ON  )
 option(RUN_LONG_TESTS     "Run the time consuming tests. i.e. real world registrations" ON  )
 option(OLD_BASELINE_TESTS "Use reported metrics from old tests"                         OFF )
@@ -211,12 +215,6 @@ if(APPLE)
     -DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET})
 endif()
 
-set(${LOCAL_PROJECT_NAME}_CLI_RUNTIME_DESTINATION  bin)
-set(${LOCAL_PROJECT_NAME}_CLI_LIBRARY_DESTINATION  lib)
-set(${LOCAL_PROJECT_NAME}_CLI_ARCHIVE_DESTINATION  lib)
-set(${LOCAL_PROJECT_NAME}_CLI_INSTALL_RUNTIME_DESTINATION  bin)
-set(${LOCAL_PROJECT_NAME}_CLI_INSTALL_LIBRARY_DESTINATION  lib)
-set(${LOCAL_PROJECT_NAME}_CLI_INSTALL_ARCHIVE_DESTINATION  lib)
 #-----------------------------------------------------------------------------
 # Add external project CMake args
 #-----------------------------------------------------------------------------
@@ -231,6 +229,7 @@ list(APPEND ${CMAKE_PROJECT_NAME}_SUPERBUILD_EP_VARS
   BUILD_TESTING:BOOL
   ITK_VERSION_MAJOR:STRING
   ITK_DIR:PATH
+  BUILD_ALL_ANTS_APPS:BOOL
   RUN_SHORT_TESTS:BOOL
   RUN_LONG_TESTS:BOOL
   OLD_BASELINE_TESTS:BOOL
@@ -281,7 +280,6 @@ ExternalProject_Add(${proj}
     ${CMAKE_OSX_EXTERNAL_PROJECT_ARGS}
     ${COMMON_EXTERNAL_PROJECT_ARGS}
     -D${LOCAL_PROJECT_NAME}_SUPERBUILD:BOOL=OFF
-    -DBUILD_EXTERNAL_APPLICATIONS:BOOL=${BUILD_EXTERNAL_APPLICATIONS}
   INSTALL_COMMAND ""
   )
 

@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: itkAvantsMutualInformationRegistrationFunction.h,v $
-  Language:  C++
-  Date:      $Date: 2009/01/08 15:14:48 $
-  Version:   $Revision: 1.20 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -17,7 +13,9 @@
 =========================================================================*/
 #ifndef __itkAvantsMutualInformationRegistrationFunction_h
 #define __itkAvantsMutualInformationRegistrationFunction_h
-#include "vcl_cmath.h"
+#include <vcl_compiler.h>
+#include <iostream>
+#include "cmath"
 #include "itkImageFileWriter.h"
 #include "itkImageToImageMetric.h"
 #include "itkAvantsPDEDeformableRegistrationFunction.h"
@@ -479,7 +477,7 @@ public:
           if( pxy / denom > 0 )
             {
             // true mi
-            mi = pxy * vcl_log(pxy / denom);
+            mi = pxy * std::log(pxy / denom);
             // test mi
             // mi = 1.0 + log(pxy/denom);
             ct++;
@@ -491,8 +489,8 @@ public:
       //      std::cout << " II " << ii << " JJ " << ii << " pxy " << pxy << " px " << px << std::endl;
       }
     // GS: temp edit to make sure if this is decreasing (should be )
-    // this->m_Energy = -1.0*mival/vcl_log((double)2.0);
-    this->m_Energy = -1.0 * mival / vcl_log( (double)2.0);
+    // this->m_Energy = -1.0*mival/std::log((double)2.0);
+    this->m_Energy = -1.0 * mival / std::log( (double)2.0);
     return this->m_Energy;
   }
 
@@ -530,7 +528,7 @@ public:
     double nccm1 = 0;
     const double loce = this->GetValueAndDerivative(oindex, nccm1, fdvec1, fdvec2);
     //    if ( loce > 1.5 ) std::cout << " loce " << loce << " ind " << oindex << std::endl;
-    for( int imd = 0; imd < ImageDimension; imd++ )
+    for( unsigned int imd = 0; imd < ImageDimension; imd++ )
       {
       update[imd] = loce * fixedGradient[imd] * spacing[imd] * (1);
       }
@@ -620,7 +618,7 @@ public:
 
     double nccm1 = 0;
     const double loce = this->GetValueAndDerivativeInv(oindex, nccm1, fdvec1, fdvec2);
-    for( int imd = 0; imd < ImageDimension; imd++ )
+    for( unsigned int imd = 0; imd < ImageDimension; imd++ )
       {
       update[imd] = loce * movingGradient[imd] * spacing[imd] * (1);
       }

@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: itkSurfaceCurvatureBase.h,v $
-  Language:  C++
-  Date:      $Date: 2008/11/15 23:46:06 $
-  Version:   $Revision: 1.12 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -175,7 +171,7 @@ public:
 
   /** We use the cross-product of the tangents times the image spacing
       to get the local area. */
-  RealType ComputeLocalArea(const double* spacing);
+  RealType ComputeLocalArea( FixedVectorType );
 
   /** We estimate the integral as a sum, assuming the local
       area (from compute local area) scales the value of the

@@ -1,11 +1,29 @@
 #ifndef ants_h
 #define ants_h
 
+#include "../../Utilities/itkSurfaceCurvatureBase.h"
+
+#include "../../Utilities/itkSurfaceImageCurvature.h"
+
+#include "../../Utilities/itkAlternatingValueSimpleSubtractionImageFilter.h"
+
+#include "../../Utilities/itkAverageOverDimensionImageFilter.h"
+
+#include "../../Utilities/itkAlternatingValueDifferenceImageFilter.h"
+
+#include "antsAffineInitializer.h"
+
+#include "antsAI.h"
+
 #include "antsApplyTransforms.h"
 
 #include "antsAlignOrigin.h"
 
 #include "antsApplyTransformsToPoints.h"
+
+#include "antsJointFusion.h"
+
+#include "antsJointTensorFusion.h"
 
 #include "antsTransformInfo.h"
 
@@ -35,11 +53,15 @@
 
 #include "antsUtilitiesTesting.h"
 
+#include "antsVol.h"
+
 #include "ANTSUseDeformationFieldToGetAffineTransform.h"
 
 #include "ANTSUseLandmarkImagesToGetAffineTransform.h"
 
 #include "ANTSUseLandmarkImagesToGetBSplineDisplacementField.h"
+
+#include "antsLandmarkBasedTransformInitializer.h"
 
 #include "Atropos.h"
 
@@ -62,6 +84,8 @@
 #include "ComputeSimilarityMetric.h"
 
 #include "ConformalMapping.h"
+
+#include "ConvertImage.h"
 
 #include "ConvertImagePixelType.h"
 
@@ -89,23 +113,25 @@
 
 #include "DeNrrd.h"
 
+#include "DenoiseImage.h"
+
 #include "ExtractRegionFromImageByMask.h"
 
 #include "ExtractRegionFromImage.h"
 
 #include "ExtractSliceFromImage.h"
 
-#include "FitBSplineCurveToPoints.h"
+#include "FitBSplineToPoints.h"
 
 #include "GetMeshAndTopology.h"
+
+#include "iMath.h"
 
 #include "ImageCompare.h"
 
 #include "ImageMath.h"
 
 #include "ImageIntensityStatistics.h"
-
-#include "antsAffineInitializer.h"
 
 // #include "antsSimilarityInitializer.h"
 
@@ -139,6 +165,8 @@
 
 #include "N4BiasFieldCorrection.h"
 
+#include "NonLocalSuperResolution.h"
+
 #include "PasteImageIntoImage.h"
 
 #include "PermuteFlipImageOrientationAxes.h"
@@ -167,9 +195,13 @@
 
 #include "SmoothImage.h"
 
+#include "SmoothDisplacementField.h"
+
 #include "StackSlices.h"
 
 #include "StudentsTestOnImages.h"
+
+#include "SuperResolution.h"
 
 #include "SurfaceBasedSmoothing.h"
 

@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: antsCommandLineOption.h,v $
-  Language:  C++
-  Date:      $Date: 2009/01/22 22:48:30 $
-  Version:   $Revision: 1.1 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -71,8 +67,9 @@ public:
 
   typedef std::deque<std::string> ParameterStackType;
 
-  itkSetMacro( Name, std::string );
-  itkGetConstMacro( Name, std::string );
+  itkSetStringMacro( Name );
+  itkGetStringMacro( Name );
+  itkGetMacro( Name, std::string );
 
   itkSetMacro( ArgOrder, unsigned int );
   itkGetConstMacro( ArgOrder, unsigned int );
@@ -180,11 +177,11 @@ public:
   itkSetMacro( ShortName, char );
   itkGetConstMacro( ShortName, char );
 
-  itkSetMacro( LongName, std::string );
+  itkSetStringMacro( LongName );
   itkGetConstMacro( LongName, std::string );
 
-  itkSetMacro( Description, std::string );
-  itkGetConstMacro( Description, std::string );
+  itkSetStringMacro( Description );
+  itkGetMacro( Description, std::string );
 
   void AddFunction( std::string, char, char, unsigned int order = 0 );
 

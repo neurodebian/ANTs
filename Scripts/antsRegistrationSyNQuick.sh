@@ -69,16 +69,24 @@ Optional arguments:
         a: rigid + affine
         s: rigid + affine + deformable syn
         sr: rigid + deformable syn
+        so: deformable syn only
         b: rigid + affine + deformable b-spline syn
-        br: rigid +  deformable b-spline syn
+        br: rigid + deformable b-spline syn
+        bo: deformable b-spline syn only
 
-     -r:  radius for cross correlation metric used during SyN stage (default = 4)
+     -r:  histogram bins for mutual information in SyN stage (default = 32)
 
      -s:  spline distance for deformable B-spline SyN transform (default = 26)
+
+     -x:  mask for the fixed image space, applied only in the last stage
 
      -p:  precision type (default = 'd')
         f: float
         d: double
+
+     -j:  use histogram matching (default = 0)
+        0: false
+        1: true
 
      NB:  Multiple image pairs can be specified for registration during the SyN stage.
           Specify additional images using the '-m' and '-f' options.  Note that image
@@ -134,18 +142,24 @@ Optional arguments:
         a: rigid + affine
         s: rigid + affine + deformable syn
         sr: rigid + deformable syn
+        so: deformable syn only
         b: rigid + affine + deformable b-spline syn
         br: rigid + deformable b-spline syn
-
-     -j:  use histogram matching
+        bo: deformable b-spline syn only
 
      -r:  histogram bins for mutual information in SyN stage (default = 32)
 
      -s:  spline distance for deformable B-spline SyN transform (default = 26)
 
+     -x:  mask for the fixed image space
+
      -p:  precision type (default = 'd')
         f: float
         d: double
+
+     -j:  use histogram matching (default = 0)
+        0: false
+        1: true
 
      NB:  Multiple image pairs can be specified for registration during the SyN stage.
           Specify additional images using the '-m' and '-f' options.  Note that image
@@ -196,33 +210,24 @@ function reportMappingParameters {
  Number of threads:        $NUMBEROFTHREADS
  Spline distance:          $SPLINEDISTANCE
  Transform type:           $TRANSFORMTYPE
- CC radius:                $CCRADIUS
+ MI histogram bins:        $NUMBEROFBINS
  Precision:                $PRECISIONTYPE
+ Use histogram matching    $USEHISTOGRAMMATCHING
 ======================================================================================
 REPORTMAPPINGPARAMETERS
 }
 
 cleanup()
-# example cleanup function
 {
-
-  cd ${currentdir}/
-
   echo "\n*** Performing cleanup, please wait ***\n"
 
-# 1st attempt to kill all remaining processes
-# put all related processes in array
-runningANTSpids=( `ps -C antsRegistration | awk '{ printf "%s\n", $1 ; }'` )
+  runningANTSpids=$( ps --ppid $$ -o pid= )
 
-# debug only
-  #echo list 1: ${runningANTSpids[@]}
-
-# kill these processes, skip the first since it is text and not a PID
-for (( i = 1; i < ${#runningANTSpids[@]}; i++ ))
+  for thePID in $runningANTSpids
   do
-    echo "killing:  ${runningANTSpids[${i}]}"
-    kill ${runningANTSpids[${i}]}
-done
+      echo "killing:  ${thePID}"
+      kill ${thePID}
+  done
 
   return $?
 }
@@ -235,7 +240,6 @@ control_c()
   exit $?
   echo -en "\n*** Script cancelled by user ***\n"
 }
-
 
 # Provide output for Help
 if [[ "$1" == "-h" || $# -eq 0 ]];
@@ -257,11 +261,12 @@ NUMBEROFTHREADS=1
 SPLINEDISTANCE=26
 TRANSFORMTYPE='s'
 PRECISIONTYPE='d'
-CCRADIUS=32
-
+NUMBEROFBINS=32
+MASK=0
 USEHISTOGRAMMATCHING=0
+
 # reading command line arguments
-while getopts "d:f:h:m:j:n:o:p:r:s:t:" OPT
+while getopts "d:f:h:m:j:n:o:p:r:s:t:x:" OPT
   do
   case $OPT in
       h) #help
@@ -271,11 +276,14 @@ while getopts "d:f:h:m:j:n:o:p:r:s:t:" OPT
       d)  # dimensions
    DIM=$OPTARG
    ;;
-      j)  # histogram matching
-   USEHISTOGRAMMATCHING=$OPTARG
+      x)  # inclusive mask
+   MASK=$OPTARG
    ;;
       f)  # fixed image
    FIXEDIMAGES[${#FIXEDIMAGES[@]}]=$OPTARG
+   ;;
+      j)  # histogram matching
+   USEHISTOGRAMMATCHING=$OPTARG
    ;;
       m)  # moving image
    MOVINGIMAGES[${#MOVINGIMAGES[@]}]=$OPTARG
@@ -290,7 +298,7 @@ while getopts "d:f:h:m:j:n:o:p:r:s:t:" OPT
    PRECISIONTYPE=$OPTARG
    ;;
       r)  # cc radius
-   CCRADIUS=$OPTARG
+   NUMBEROFBINS=$OPTARG
    ;;
       s)  # spline distance
    SPLINEDISTANCE=$OPTARG
@@ -350,6 +358,23 @@ reportMappingParameters
 
 ##############################
 #
+# Mask stuff
+#
+##############################
+
+if [[ ${#MASK} -lt 3 ]];
+  then
+    NULLMASK=""
+    MASK=""
+    HAVEMASK=0
+  else
+    NULLMASK=" -x [NULL,NULL] "
+    MASK=" -x [$MASK, NULL] "
+    HAVEMASK=1
+  fi
+
+##############################
+#
 # Infer the number of levels based on
 # the size of the input fixed image.
 #
@@ -402,12 +427,15 @@ if [[ $ISLARGEIMAGE -eq 1 ]];
     SYNSHRINKFACTORS="10x6x4x2x1"
     SYNSMOOTHINGSIGMAS="5x3x2x1x0vox"
   fi
+
 tx=Rigid
 if [[ $TRANSFORMTYPE == 't' ]] ; then
   tx=Translation
 fi
-RIGIDSTAGE="--initial-moving-transform [${FIXEDIMAGES[0]},${MOVINGIMAGES[0]},1] \
-            --transform ${tx}[0.1] \
+
+INITIALSTAGE="--initial-moving-transform [${FIXEDIMAGES[0]},${MOVINGIMAGES[0]},1]"
+
+RIGIDSTAGE="--transform ${tx}[0.1] \
             --metric MI[${FIXEDIMAGES[0]},${MOVINGIMAGES[0]},1,32,Regular,0.25] \
             --convergence $RIGIDCONVERGENCE \
             --shrink-factors $RIGIDSHRINKFACTORS \
@@ -422,7 +450,7 @@ AFFINESTAGE="--transform Affine[0.1] \
 SYNMETRICS=''
 for(( i=0; i<${#FIXEDIMAGES[@]}; i++ ))
   do
-    SYNMETRICS="$SYNMETRICS --metric MI[${FIXEDIMAGES[$i]},${MOVINGIMAGES[$i]},1,${CCRADIUS}]"
+    SYNMETRICS="$SYNMETRICS --metric MI[${FIXEDIMAGES[$i]},${MOVINGIMAGES[$i]},1,${NUMBEROFBINS}]"
   done
 
 SYNSTAGE="${SYNMETRICS} \
@@ -441,17 +469,13 @@ if [[ $TRANSFORMTYPE == 'sr' ]] || [[ $TRANSFORMTYPE == 'br' ]];
           --smoothing-sigmas $SYNSMOOTHINGSIGMAS"
   fi
 
-if [[ $TRANSFORMTYPE == 'b' ]] || [[ $TRANSFORMTYPE == 'br' ]];
+if [[ $TRANSFORMTYPE == 'b' ]] || [[ $TRANSFORMTYPE == 'br' ]] || [[ $TRANSFORMTYPE == 'bo' ]];
   then
     SYNSTAGE="--transform BSplineSyN[0.1,${SPLINEDISTANCE},0,3] \
              $SYNSTAGE"
   fi
-if [[ $TRANSFORMTYPE == 's' ]] ;
-  then
-    SYNSTAGE="--transform SyN[0.1,3,0] \
-             $SYNSTAGE"
-  fi
-if [[ $TRANSFORMTYPE == 'sr' ]] ;
+
+if [[ $TRANSFORMTYPE == 's' ]] || [[ $TRANSFORMTYPE == 'sr' ]] || [[ $TRANSFORMTYPE == 'so' ]];
   then
     SYNSTAGE="--transform SyN[0.1,3,0] \
              $SYNSTAGE"
@@ -459,17 +483,35 @@ if [[ $TRANSFORMTYPE == 'sr' ]] ;
 
 STAGES=''
 case "$TRANSFORMTYPE" in
-"r"| "t")
-  STAGES="$RIGIDSTAGE"
+"r" | "t")
+  STAGES="$INITIALSTAGE $RIGIDSTAGE"
+  if [[ $HAVEMASK -eq 1 ]] ; then
+    $STAGES=" $INITIALSTAGE $RIGIDSTAGE $MASK "
+  fi
   ;;
 "a")
-  STAGES="$RIGIDSTAGE $AFFINESTAGE"
+  STAGES="$INITIALSTAGE $RIGIDSTAGE $AFFINESTAGE"
+  if [[ $HAVEMASK -eq 1 ]] ; then
+    STAGES="$INITIALSTAGE $RIGIDSTAGE $NULLMASK $AFFINESTAGE $MASK "
+  fi
   ;;
 "b" | "s")
-  STAGES="$RIGIDSTAGE $AFFINESTAGE $SYNSTAGE"
+  STAGES="$INITIALSTAGE $RIGIDSTAGE $AFFINESTAGE $SYNSTAGE"
+  if [[ $HAVEMASK -eq 1 ]] ; then
+    STAGES="$INITIALSTAGE $RIGIDSTAGE $NULLMASK $AFFINESTAGE $NULLMASK $SYNSTAGE $MASK "
+  fi
   ;;
 "br" | "sr")
-  STAGES="$RIGIDSTAGE  $SYNSTAGE"
+  STAGES="$INITIALSTAGE $RIGIDSTAGE  $SYNSTAGE"
+  if [[ $HAVEMASK -eq 1 ]] ; then
+    STAGES="$INITIALSTAGE $RIGIDSTAGE $NULLMASK $SYNSTAGE $MASK "
+  fi
+  ;;
+"bo" | "so")
+  STAGES="$INITIALSTAGE $SYNSTAGE"
+  if [[ $HAVEMASK -eq 1 ]] ; then
+    $STAGES=" $INITIALSTAGE $SYNSTAGE $MASK "
+  fi
   ;;
 *)
   echo "Transform type '$TRANSFORMTYPE' is not an option.  See usage: '$0 -h 1'"
@@ -491,7 +533,8 @@ case "$PRECISIONTYPE" in
   ;;
 esac
 
-COMMAND="${ANTS} --dimensionality $DIM $PRECISION \
+COMMAND="${ANTS} --verbose 1 \
+                 --dimensionality $DIM $PRECISION \
                  --output [$OUTPUTNAME,${OUTPUTNAME}Warped.nii.gz,${OUTPUTNAME}InverseWarped.nii.gz] \
                  --interpolation Linear \
                  --use-histogram-matching ${USEHISTOGRAMMATCHING} \

@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: antsFMarchingImageFilter.hxx,v $
-  Language:  C++
-  Date:      $Date: 2009/03/10 17:30:41 $
-  Version:   $Revision: 1.1 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
-  http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+  https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -648,7 +644,7 @@ FMarchingImageFilter<TLevelSet, TSpeedImage>
         throw err;
         }
 
-      solution = ( vcl_sqrt( discrim ) + bb ) / aa;
+      solution = ( std::sqrt( discrim ) + bb ) / aa;
       }
     else
       {

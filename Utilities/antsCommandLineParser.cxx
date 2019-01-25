@@ -1,10 +1,6 @@
 /*=========================================================================
 
   Program:   Insight Segmentation & Registration Toolkit
-  Module:    $RCSfile: antsCommandLineParser.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009/01/22 22:43:11 $
-  Version:   $Revision: 1.1 $
 
   Copyright (c) Insight Software Consortium. All rights reserved.
   See ITKCopyright.txt or http://www.itk.org/HTML/Copyright.htm for details.
@@ -23,7 +19,7 @@ namespace itk
 namespace ants
 {
 
-  std::string ConvertToHumanReadable(const std::string input)
+  std::string ConvertToHumanReadable(const std::string & input)
     {
     typedef std::map<std::string,std::string> TypeMapType;
     TypeMapType cnvtMap;
@@ -123,10 +119,15 @@ CommandLineParser
       {
       name = argument.substr( 1, 2 );
       }
+    if( atof( name.c_str() ) )
+      {
+      continue;
+      }
     if ( name.size() > 0 )
-      allFlagsAreValid &= this->ValidateFlag(name);
-    if( ( !( name.empty() ) )     &&
-        ( !atof( name.c_str() ) ) &&
+      {
+      allFlagsAreValid &= this->ValidateFlag( name );
+      }
+    if( ( !( name.empty() ) ) &&
         ( name.size() > 0 )
       )
       {
@@ -371,7 +372,7 @@ ValidateFlag(const std::string & currentFlag)
       }
     }
 
-  if ( ( ! validFlagFound ) && ( currentFlag.size() > 0 ))
+  if ( ( ! validFlagFound ) && ( currentFlag.size() > 0 ) && ( !atof( currentFlag.c_str() ) ) )
     {
     std::cout << "ERROR:  Invalid flag provided " << currentFlag << std::endl;
     }

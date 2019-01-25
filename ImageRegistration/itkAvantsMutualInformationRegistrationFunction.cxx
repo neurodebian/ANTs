@@ -1,14 +1,10 @@
 /*=========================================================================
 
   Program:   Advanced Normalization Tools
-  Module:    $RCSfile: itkAvantsMutualInformationRegistrationFunction.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009/01/08 15:14:48 $
-  Version:   $Revision: 1.21 $
 
   Copyright (c) ConsortiumOfANTS. All rights reserved.
   See accompanying COPYING.txt or
- http://sourceforge.net/projects/advants/files/ANTS/ANTSCopyright.txt for details.
+ https://github.com/stnava/ANTs/blob/master/ANTSCopyright.txt for details.
 
      This software is distributed WITHOUT ANY WARRANTY; without even
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -309,7 +305,7 @@ AvantsMutualInformationRegistrationFunction<TFixedImage, TMovingImage, TDisplace
   // respectively.
 
   m_NormalizeMetric = 1.0;
-  for( int i = 0; i < ImageDimension; i++ )
+  for( unsigned int i = 0; i < ImageDimension; i++ )
     {
     m_NormalizeMetric *= this->m_FixedImage->GetLargestPossibleRegion().GetSize()[i];
     }
@@ -499,9 +495,9 @@ AvantsMutualInformationRegistrationFunction<TFixedImage, TMovingImage, TDisplace
   const double eps = 1.e-16;
   if( jointPDFValue > eps &&  (fixedImagePDFValue) > 0 )
     {
-    const double pRatio = vcl_log(jointPDFValue) - vcl_log(fixedImagePDFValue);
+    const double pRatio = std::log(jointPDFValue) - std::log(fixedImagePDFValue);
     const double term1 = dJPDF * pRatio;
-    const double term2 = vcl_log( (double)2) * dFmPDF * jointPDFValue / fixedImagePDFValue;
+    const double term2 = std::log( (double)2) * dFmPDF * jointPDFValue / fixedImagePDFValue;
     value =  (term2 - term1);
     }  // end if-block to check non-zero bin contribution
   else
@@ -539,9 +535,9 @@ AvantsMutualInformationRegistrationFunction<TFixedImage, TMovingImage, TDisplace
   const double eps = 1.e-16;
   if( jointPDFValue > eps &&  (movingImagePDFValue) > 0 )
     {
-    const double pRatio = vcl_log(jointPDFValue) - vcl_log(movingImagePDFValue);
+    const double pRatio = std::log(jointPDFValue) - std::log(movingImagePDFValue);
     const double term1 = dJPDF * pRatio;
-    const double term2 = vcl_log( (double)2) * dMmPDF * jointPDFValue / movingImagePDFValue;
+    const double term2 = std::log( (double)2) * dMmPDF * jointPDFValue / movingImagePDFValue;
     value =  (term2 - term1);
     } // end if-block to check non-zero bin contribution
   else

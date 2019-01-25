@@ -23,6 +23,7 @@
 #include "itkANTSCenteredAffine2DTransform.h"
 #include "itkANTSNeighborhoodCorrelationImageToImageMetricv4.h"
 #include "itkAffineTransform.h"
+#include "itkArray.h"
 #include "itkBSplineExponentialDiffeomorphicTransform.h"
 #include "itkBSplineExponentialDiffeomorphicTransformParametersAdaptor.h"
 #include "itkBSplineSmoothingOnUpdateDisplacementFieldTransform.h"
@@ -65,6 +66,7 @@
 #include "itkMatrixOffsetTransformBase.h"
 #include "itkMattesMutualInformationImageToImageMetricv4.h"
 #include "itkMeanSquaresImageToImageMetricv4.h"
+#include "itkMeanSquaresPointSetToPointSetIntensityMetricv4.h"
 #include "itkMultiGradientOptimizerv4.h"
 #include "itkObject.h"
 #include "itkObjectToObjectMetric.h"
@@ -95,6 +97,11 @@
 #include <iostream>
 #include <sstream>
 #include <deque>
+#include <iomanip>
+
+#include "antsRegistrationCommandIterationUpdate.h"
+#include "antsRegistrationOptimizerCommandIterationUpdate.h"
+#include "antsDisplacementAndVelocityFieldRegistrationCommandIterationUpdate.h"
 
 namespace ants
 {
@@ -118,12 +125,17 @@ public:
   typedef typename ImageType::Pointer                                                ImagePointer;
   typedef itk::ImageBase<VImageDimension>                                            ImageBaseType;
   typedef typename ImageType::SpacingType                                            ImageSpacingType;
-  typedef itk::PointSet<unsigned int, VImageDimension>                               PointSetType;
-  typedef typename PointSetType::Pointer                                             PointSetPointer;
+
+  typedef itk::Array<TComputeType>                                                   IntensityAndGradientArrayType;
+  typedef itk::PointSet<unsigned int, VImageDimension>                               LabeledPointSetType;
+  typedef typename LabeledPointSetType::Pointer                                      LabeledPointSetPointer;
+  typedef itk::PointSet<IntensityAndGradientArrayType, VImageDimension>              IntensityPointSetType;
+  typedef typename IntensityPointSetType::Pointer                                    IntensityPointSetPointer;
 
   typedef itk::Transform<TComputeType, VImageDimension, VImageDimension>             TransformType;
   typedef itk::AffineTransform<RealType, VImageDimension>                            AffineTransformType;
-  typedef itk::ImageRegistrationMethodv4<ImageType, ImageType, AffineTransformType>  AffineRegistrationType;
+  typedef itk::ImageRegistrationMethodv4<ImageType, ImageType, AffineTransformType,
+    ImageType, LabeledPointSetType>                                                  AffineRegistrationType;
   typedef typename AffineRegistrationType::ShrinkFactorsPerDimensionContainerType    ShrinkFactorsPerDimensionContainerType;
   typedef typename AffineTransformType::Superclass                                   MatrixOffsetTransformBaseType;
   typedef typename MatrixOffsetTransformBaseType::Pointer                            MatrixOffsetTransformBasePointer;
@@ -138,10 +150,14 @@ public:
   typedef itk::ObjectToObjectMultiMetricv4
                      <VImageDimension, VImageDimension, ImageType, RealType>         MultiMetricType;
   typedef itk::ImageToImageMetricv4<ImageType, ImageType, ImageType, RealType>       ImageMetricType;
-  typedef itk::PointSetToPointSetMetricv4<PointSetType, PointSetType, RealType>      PointSetMetricType;
   typedef itk::ImageMaskSpatialObject<VImageDimension>                               ImageMaskSpatialObjectType;
   typedef typename ImageMaskSpatialObjectType::ImageType                             MaskImageType;
+
   typedef itk::InterpolateImageFunction<ImageType, RealType>                         InterpolatorType;
+
+  typedef itk::ConjugateGradientLineSearchOptimizerv4Template<TComputeType>          ConjugateGradientDescentOptimizerType;
+    typedef itk::GradientDescentOptimizerv4Template<TComputeType>                    GradientDescentOptimizerType;
+
 
   enum MetricEnumeration
     {
@@ -154,7 +170,8 @@ public:
     ICP = 6,
     PSE = 7,
     JHCT = 8,
-    IllegalMetric = 9
+    IGDM = 9,
+    IllegalMetric = 10
     };
   enum SamplingStrategy
     {
@@ -166,7 +183,7 @@ public:
 
   bool IsPointSetMetric( const MetricEnumeration metricType ) const
     {
-    if( metricType == ICP || metricType == PSE || metricType == JHCT )
+    if( metricType == ICP || metricType == PSE || metricType == JHCT || metricType == IGDM )
       {
       return true;
       }
@@ -181,13 +198,15 @@ public:
   public:
     Metric( MetricEnumeration metricType,
             ImageType *fixedImage, ImageType *movingImage,
-            PointSetType *fixedPointSet, PointSetType *movingPointSet,
+            LabeledPointSetType *fixedLabeledPointSet, LabeledPointSetType *movingLabeledPointSet,
+            IntensityPointSetType *fixedIntensityPointSet, IntensityPointSetType *movingIntensityPointSet,
             unsigned int stageID, RealType weighting,
             SamplingStrategy samplingStrategy, int numberOfBins,
             unsigned int radius, bool useBoundaryPointsOnly,
             RealType pointSetSigma, unsigned int evaluationKNeighborhood,
             RealType alpha, bool useAnisotropicCovariances,
-            RealType samplingPercentage ) :
+            RealType samplingPercentage, RealType intensityDistanceSigma,
+            RealType euclideanDistanceSigma ) :
       m_MetricType( metricType ),
       m_FixedImage( fixedImage ),
       m_MovingImage( movingImage ),
@@ -196,14 +215,18 @@ public:
       m_SamplingStrategy( samplingStrategy ),
       m_NumberOfBins( numberOfBins ),
       m_Radius( radius ),
-      m_FixedPointSet( fixedPointSet ),
-      m_MovingPointSet( movingPointSet ),
+      m_FixedLabeledPointSet( fixedLabeledPointSet ),
+      m_MovingLabeledPointSet( movingLabeledPointSet ),
+      m_FixedIntensityPointSet( fixedIntensityPointSet ),
+      m_MovingIntensityPointSet( movingIntensityPointSet ),
       m_UseBoundaryPointsOnly( useBoundaryPointsOnly ),
       m_PointSetSigma( pointSetSigma ),
       m_EvaluationKNeighborhood( evaluationKNeighborhood ),
       m_Alpha( alpha ),
       m_UseAnisotropicCovariances( useAnisotropicCovariances ),
-      m_SamplingPercentage( samplingPercentage )
+      m_SamplingPercentage( samplingPercentage ),
+      m_IntensityDistanceSigma( intensityDistanceSigma ),
+      m_EuclideanDistanceSigma( euclideanDistanceSigma )
     {
     }
 
@@ -247,6 +270,10 @@ public:
           {
           return std::string( "JHCT" );
           }
+        case IGDM:
+          {
+          return std::string( "IGDM" );
+          }
         default:
           {
           }
@@ -269,17 +296,22 @@ public:
 
     // Variables for point-set metrics
 
-    PointSetPointer     m_FixedPointSet;
-    PointSetPointer     m_MovingPointSet;
+    LabeledPointSetPointer       m_FixedLabeledPointSet;
+    LabeledPointSetPointer       m_MovingLabeledPointSet;
+    IntensityPointSetPointer     m_FixedIntensityPointSet;
+    IntensityPointSetPointer     m_MovingIntensityPointSet;
+
     bool                m_UseBoundaryPointsOnly;
     RealType            m_PointSetSigma;             // Only for PSE,JHCT metrics
     RealType            m_EvaluationKNeighborhood;   // Only for PSE,JHCT metrics
     RealType            m_Alpha;                     // Only for JHCT metric
     bool                m_UseAnisotropicCovariances; // Only for JHCT metric
 
-    // Variables for both
+    RealType            m_SamplingPercentage;        // Only for PSE,JHCT metrics
 
-    RealType            m_SamplingPercentage;
+    RealType            m_IntensityDistanceSigma;    // Only for IGDM metric
+    RealType            m_EuclideanDistanceSigma;    // Only for IGDM metric
+
   };
 
   typedef std::deque<Metric> MetricListType;
@@ -429,8 +461,10 @@ public:
   void AddMetric( MetricEnumeration metricType,
                   ImageType *fixedImage,
                   ImageType *movingImage,
-                  PointSetType *fixedPointSet,
-                  PointSetType *movingPointSet,
+                  LabeledPointSetType *fixedLabeledPointSet,
+                  LabeledPointSetType *movingLabeledPointSet,
+                  IntensityPointSetType *fixedIntensityPointSet,
+                  IntensityPointSetType *movingIntensityPointSet,
                   unsigned int stageID,
                   RealType weighting,
                   SamplingStrategy samplingStrategy,
@@ -441,7 +475,10 @@ public:
                   unsigned int evaluationKNeighborhood,
                   RealType alpha,
                   bool useAnisotropicCovariances,
-                  RealType samplingPercentage );
+                  RealType samplingPercentage,
+                  RealType intensityDistanceSigma,
+                  RealType euclideanDistanceSigma
+                   );
 
   /** For backwards compatibility */
   inline void AddMetric( MetricEnumeration metricType,
@@ -455,8 +492,9 @@ public:
                   RealType samplingPercentage )
     {
     this->AddMetric( metricType, fixedImage, movingImage, ITK_NULLPTR, ITK_NULLPTR,
+      ITK_NULLPTR, ITK_NULLPTR,
       stageID, weighting, samplingStrategy, numberOfBins, radius,
-      false, 1.0, 50, 1.1, false, samplingPercentage );
+      false, 1.0, 50, 1.1, false, samplingPercentage, std::sqrt( 5 ), std::sqrt( 5 ) );
     }
 
 
@@ -684,22 +722,22 @@ public:
   /**
    * Set the fixed/moving image masks with a spatial object
    */
-  void SetFixedImageMask( typename ImageMaskSpatialObjectType::Pointer & fixedImageMask )
+  void AddFixedImageMask( typename ImageMaskSpatialObjectType::Pointer & fixedImageMask )
   {
-    this->m_FixedImageMask = fixedImageMask;
+    this->m_FixedImageMasks.push_back( fixedImageMask );
   }
 
-  void SetMovingImageMask( typename ImageMaskSpatialObjectType::Pointer & movingImageMask )
+  void AddMovingImageMask( typename ImageMaskSpatialObjectType::Pointer & movingImageMask )
   {
-    this->m_MovingImageMask = movingImageMask;
+    this->m_MovingImageMasks.push_back( movingImageMask );
   }
 
   /**
    * Set the fixed/moving mask image. this will be used to instantiate
    * ImageMaskSpatialObject masks.
    */
-  void SetFixedImageMask(typename MaskImageType::Pointer & fixedImageMask);
-  void SetMovingImageMask(typename MaskImageType::Pointer & movingImageMask);
+  void AddFixedImageMask( typename MaskImageType::Pointer & fixedImageMask );
+  void AddMovingImageMask( typename MaskImageType::Pointer & movingImageMask );
 
   /**
    * Collapse a composite transform by adjacent linear or displacement field transforms.
@@ -710,9 +748,11 @@ public:
                                                    const bool applyInverse );
 
   /**
-   * Collapse a composite transform composed of displacement field transforms to a single displacement field transform.
+   * Collapse a composite transform composed of displacement field transforms.
+   * We return a composite transform since we don't combine mixed displacement field
+   * transforms (i.e., transforms that do and do not have inverses).
    */
-  DisplacementFieldTransformPointer CollapseDisplacementFieldTransforms( const CompositeTransformType * );
+  typename CompositeTransformType::Pointer CollapseDisplacementFieldTransforms( const CompositeTransformType * );
 
   /**
    * Collapse a composite linear transform to a generic affine transform.
@@ -754,6 +794,10 @@ protected:
   RegistrationHelper();
   virtual ~RegistrationHelper();
 private:
+
+  typename itk::ImageBase<VImageDimension>::Pointer GetShrinkImageOutputInformation(const itk::ImageBase<VImageDimension> * inputImageInformation,
+                               const typename RegistrationHelper<TComputeType, VImageDimension>::ShrinkFactorsPerDimensionContainerType &shrinkFactorsPerDimensionForCurrentLevel) const;
+
   int ValidateParameters();
 
   std::ostream & Logger() const
@@ -761,11 +805,188 @@ private:
     return *m_LogStream;
   }
 
+  template<class RegistrationMethodType>
+  typename RegistrationMethodType::Pointer PrepareRegistrationMethod(
+    CompositeTransformType *compositeTransform, const unsigned int currentStageNumber,
+    const unsigned int parametersDimensionSize,
+    std::vector<typename RegistrationMethodType::FixedImageType::Pointer> preprocessedFixedImagesPerStage,
+    std::vector<typename RegistrationMethodType::MovingImageType::Pointer> preprocessedMovingImagesPerStage,
+    std::vector<typename RegistrationMethodType::PointSetType::Pointer> fixedPointSetsPerStage,
+    std::vector<typename RegistrationMethodType::PointSetType::Pointer> movingPointSetsPerStage,
+    const MetricListType stageMetricList, ObjectMetricType *singleMetric, MultiMetricType *multiMetric,
+    ConjugateGradientDescentOptimizerType *optimizer, const unsigned int numberOfLevels,
+    const std::vector<ShrinkFactorsPerDimensionContainerType> shrinkFactorsPerDimensionForAllLevels,
+    const typename RegistrationMethodType::SmoothingSigmasArrayType smoothingSigmasPerLevel,
+    typename AffineRegistrationType::MetricSamplingStrategyType metricSamplingStrategy,
+    const float samplingPercentage
+    )
+  {
+    typename RegistrationMethodType::Pointer registrationMethod = RegistrationMethodType::New();
+    typedef typename RegistrationMethodType::OutputTransformType  RegistrationMethodTransformType;
+
+    for( unsigned int n = 0; n < stageMetricList.size(); n++ )
+      {
+      if( !this->IsPointSetMetric( stageMetricList[n].m_MetricType ) )
+        {
+        registrationMethod->SetFixedImage( n, preprocessedFixedImagesPerStage[n] );
+        registrationMethod->SetMovingImage( n, preprocessedMovingImagesPerStage[n] );
+        }
+      else
+        {
+        registrationMethod->SetFixedPointSet( n, fixedPointSetsPerStage[n] );
+        registrationMethod->SetMovingPointSet( n, movingPointSetsPerStage[n] );
+        }
+      }
+
+    if( multiMetric )
+      {
+      registrationMethod->SetMetric( multiMetric );
+      }
+    else
+      {
+      registrationMethod->SetMetric( singleMetric );
+      }
+
+    registrationMethod->SetNumberOfLevels( numberOfLevels );
+
+    for( unsigned int level = 0; level < numberOfLevels; ++level )
+      {
+      registrationMethod->SetShrinkFactorsPerDimension( level, shrinkFactorsPerDimensionForAllLevels[level] );
+      }
+    registrationMethod->SetSmoothingSigmasPerLevel( smoothingSigmasPerLevel );
+    registrationMethod->SetSmoothingSigmasAreSpecifiedInPhysicalUnits(
+      this->m_SmoothingSigmasAreInPhysicalUnits[currentStageNumber] );
+    registrationMethod->SetMetricSamplingStrategy(
+      static_cast<typename RegistrationMethodType::MetricSamplingStrategyType>( metricSamplingStrategy ) );
+    registrationMethod->SetMetricSamplingPercentage( samplingPercentage );
+
+    if( this->m_RestrictDeformationOptimizerWeights.size() > currentStageNumber )
+      {
+      if( this->m_RestrictDeformationOptimizerWeights[currentStageNumber].size() == parametersDimensionSize )
+        {
+        typename RegistrationMethodType::OptimizerWeightsType optimizerWeights( parametersDimensionSize );
+        for( unsigned int d = 0; d < parametersDimensionSize; d++ )
+          {
+          optimizerWeights[d] = this->m_RestrictDeformationOptimizerWeights[currentStageNumber][d];
+          }
+        registrationMethod->SetOptimizerWeights( optimizerWeights );
+        }
+      }
+
+    registrationMethod->SetOptimizer( optimizer );
+
+    typename RegistrationMethodTransformType::Pointer currentTransform = RegistrationMethodTransformType::New();
+
+    std::string t = currentTransform->GetNameOfClass();
+    std::string s = "Transform";
+    std::string::size_type index = t.find( s );
+
+    if( index != std::string::npos )
+      {
+      t.erase( index, s.length() );
+      }
+
+    if( compositeTransform->GetNumberOfTransforms() > 0 )
+      {
+      if( this->m_InitializeTransformsPerStage )
+        {
+        const unsigned int numOfTransforms = compositeTransform->GetNumberOfTransforms();
+        this->Logger() << "Current number of transforms in the composite transform: " << numOfTransforms << std::endl;
+        for( unsigned int i = 0; i < numOfTransforms; i++ )
+          {
+          this->Logger() << i+1 << ") " << compositeTransform->GetNthTransform( i )->GetNameOfClass() << std::endl;
+          }
+
+        if( this->InitializeWithPreviousLinearTransform<RegistrationMethodTransformType>( compositeTransform, t.c_str(), currentTransform ) )
+          {
+          this->Logger() << "Registration process is run using direct initialization!" << std::endl;
+          compositeTransform->RemoveTransform(); // Remove previous initial transform,
+                                                 // since it is included in current results.
+          registrationMethod->SetInitialTransform( currentTransform );
+          }
+        }
+      }
+
+    if( compositeTransform->GetNumberOfTransforms() > 0 )
+      {
+      registrationMethod->SetMovingInitialTransform( compositeTransform );
+      }
+    if( this->m_FixedInitialTransform->GetNumberOfTransforms() > 0 )
+      {
+      registrationMethod->SetFixedInitialTransform( this->m_FixedInitialTransform );
+      }
+
+    return registrationMethod;
+  }
+
+  template<class RegistrationMethodType>
+  int AddLinearTransformToCompositeTransform(
+    CompositeTransformType *compositeTransform, const unsigned int currentStageNumber,
+    const unsigned int parametersDimensionSize,
+    std::vector<typename RegistrationMethodType::FixedImageType::Pointer> preprocessedFixedImagesPerStage,
+    std::vector<typename RegistrationMethodType::MovingImageType::Pointer> preprocessedMovingImagesPerStage,
+    std::vector<typename RegistrationMethodType::PointSetType::Pointer> fixedPointSetsPerStage,
+    std::vector<typename RegistrationMethodType::PointSetType::Pointer> movingPointSetsPerStage,
+    const MetricListType stageMetricList, ObjectMetricType *singleMetric, MultiMetricType *multiMetric,
+    ConjugateGradientDescentOptimizerType *optimizer, const unsigned int numberOfLevels,
+    const std::vector<ShrinkFactorsPerDimensionContainerType> shrinkFactorsPerDimensionForAllLevels,
+    const typename RegistrationMethodType::SmoothingSigmasArrayType smoothingSigmasPerLevel,
+    typename AffineRegistrationType::MetricSamplingStrategyType metricSamplingStrategy,
+    const float samplingPercentage
+    )
+  {
+    typename RegistrationMethodType::Pointer registrationMethod =
+      this->PrepareRegistrationMethod<RegistrationMethodType>(
+            compositeTransform, currentStageNumber, parametersDimensionSize,
+            preprocessedFixedImagesPerStage, preprocessedMovingImagesPerStage,
+            fixedPointSetsPerStage, movingPointSetsPerStage, stageMetricList, singleMetric,
+            multiMetric, optimizer, numberOfLevels, shrinkFactorsPerDimensionForAllLevels,
+            smoothingSigmasPerLevel, metricSamplingStrategy, samplingPercentage );
+
+    typedef antsRegistrationCommandIterationUpdate<RegistrationMethodType> TransformCommandType;
+    typename TransformCommandType::Pointer transformObserver = TransformCommandType::New();
+    transformObserver->SetLogStream( *this->m_LogStream );
+    transformObserver->SetNumberOfIterations( this->m_Iterations[currentStageNumber] );
+    registrationMethod->AddObserver( itk::IterationEvent(), transformObserver );
+    registrationMethod->AddObserver( itk::InitializeEvent(), transformObserver );
+
+    try
+      {
+      typedef typename RegistrationMethodType::OutputTransformType  RegistrationMethodTransformType;
+      typename RegistrationMethodTransformType::Pointer currentTransform = RegistrationMethodTransformType::New();
+
+      this->Logger() << std::endl << "*** Running " <<
+        currentTransform->GetNameOfClass() << " registration ***" << std::endl << std::endl;
+      transformObserver->Execute( registrationMethod, itk::StartEvent() );
+      registrationMethod->Update();
+      }
+    catch( itk::ExceptionObject & e )
+      {
+      this->Logger() << "Exception caught: " << e << std::endl;
+      return EXIT_FAILURE;
+      }
+
+    // Add calculated transform to the composite transform or add it to the composite transform
+    // which is incorporated into the fixed image header.
+    if( this->m_ApplyLinearTransformsToFixedImageHeader && this->m_AllPreviousTransformsAreLinear )
+      {
+      this->m_CompositeLinearTransformForFixedImageHeader->AddTransform( registrationMethod->GetModifiableTransform() );
+      }
+    else
+      {
+      compositeTransform->AddTransform( registrationMethod->GetModifiableTransform() );
+      }
+
+    return EXIT_SUCCESS;
+  }
+
+
   typename CompositeTransformType::Pointer         m_CompositeTransform;
   typename CompositeTransformType::Pointer         m_RegistrationState;
   typename CompositeTransformType::Pointer         m_FixedInitialTransform;
-  typename ImageMaskSpatialObjectType::Pointer     m_FixedImageMask;
-  typename ImageMaskSpatialObjectType::Pointer     m_MovingImageMask;
+
+  std::vector<typename ImageMaskSpatialObjectType::Pointer>     m_FixedImageMasks;
+  std::vector<typename ImageMaskSpatialObjectType::Pointer>     m_MovingImageMasks;
 
   typename InterpolatorType::Pointer               m_Interpolator;
 
@@ -933,6 +1154,14 @@ GetCompositeTransformFromParserOption( typename ParserType::Pointer & parser,
   typename ImageType::Pointer fixedImage = ITK_NULLPTR;
   typename ImageType::Pointer movingImage = ITK_NULLPTR;
 
+  bool verbose = false;
+  typename itk::ants::CommandLineParser::OptionType::Pointer verboseOption =
+    parser->GetOption( "verbose" );
+  if( verboseOption && verboseOption->GetNumberOfFunctions() )
+    {
+    verbose = parser->Convert<bool>( verboseOption->GetFunction( 0 )->GetName() );
+    }
+
   std::deque<std::string> transformNames;
   std::deque<std::string> transformTypes;
   derivedTransforms.resize( initialTransformOption->GetNumberOfFunctions() );
@@ -1068,7 +1297,10 @@ GetCompositeTransformFromParserOption( typename ParserType::Pointer & parser,
         }
       if( initialTransform.IsNull() )
         {
-        std::cout << "Can't read initial transform " << initialTransformName << std::endl;
+        if( verbose )
+          {
+          std::cout << "Can't read initial transform " << initialTransformName << std::endl;
+          }
         return ITK_NULLPTR;
         }
       if( useInverse )
@@ -1076,7 +1308,10 @@ GetCompositeTransformFromParserOption( typename ParserType::Pointer & parser,
         initialTransform = dynamic_cast<TransformType *>( initialTransform->GetInverseTransform().GetPointer() );
         if( initialTransform.IsNull() )
           {
-          std::cout << "Inverse does not exist for " << initialTransformName << std::endl;
+          if( verbose )
+            {
+            std::cout << "Inverse does not exist for " << initialTransformName << std::endl;
+            }
           return ITK_NULLPTR;
           }
         initialTransformName = std::string( "inverse of " ) + initialTransformName;
@@ -1104,13 +1339,16 @@ GetCompositeTransformFromParserOption( typename ParserType::Pointer & parser,
         }
       }
     }
-  std::cout << "=============================================================================" << std::endl;
-  std::cout << "The composite transform comprises the following transforms (in order): " << std::endl;
-  for( unsigned int n = 0; n < transformNames.size(); n++ )
+  if( verbose )
     {
-    std::cout << "  " << n + 1 << ". " << transformNames[n] << " (type = " << transformTypes[n] << ")" << std::endl;
+    std::cout << "=============================================================================" << std::endl;
+    std::cout << "The composite transform comprises the following transforms (in order): " << std::endl;
+    for( unsigned int n = 0; n < transformNames.size(); n++ )
+      {
+      std::cout << "  " << n + 1 << ". " << transformNames[n] << " (type = " << transformTypes[n] << ")" << std::endl;
+      }
+    std::cout << "=============================================================================" << std::endl;
     }
-  std::cout << "=============================================================================" << std::endl;
   return compositeTransform;
 }
 

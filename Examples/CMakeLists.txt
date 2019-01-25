@@ -1,51 +1,45 @@
-set(PICSL_INCLUDE_DIRS
-../Utilities
-../ImageRegistration
-../ImageSegmentation
-../GraphTheory
-../Tensor
-../Temporary
-.
-)
-
-include_directories( ${BOOST_INCLUDE_DIR} ) #Define where to find Boost includes
-include_directories(${PICSL_INCLUDE_DIRS})
-link_directories( ${ITK_LIBRARY_PATH}  )
-# message("${ITK_LIBRARIES}")
-# non-templated class -- this should be stored in a library and linked in...
-set(UI_SOURCES "../Utilities/antsCommandLineParser" "../Utilities/antsCommandLineOption" )
-
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/ANTsVersionConfig.h.in"
-               "${CMAKE_CURRENT_BINARY_DIR}/ANTsVersionConfig.h" @ONLY IMMEDIATE)
-
 ## Note that the antsUtilities can always be built static.  It will then be linked
 ## Directly into the other libraries.
-add_library(antsUtilities STATIC antsUtilities.cxx ../Utilities/ReadWriteData.cxx
+add_library(antsUtilities STATIC antsUtilities.cxx
             antsRegistrationTemplateHeader.cxx
             antsRegistration2DDouble.cxx antsRegistration2DFloat.cxx
             antsRegistration3DDouble.cxx antsRegistration3DFloat.cxx
             antsRegistration4DDouble.cxx antsRegistration4DFloat.cxx
+            ../Utilities/ReadWriteData.cxx
+            ../Utilities/antsCommandLineOption.cxx
+            ../Utilities/antsCommandLineParser.cxx
             ANTsVersion.cxx
+            ImageMathHelper.cxx ImageMathHelper2D.cxx  ImageMathHelper3D.cxx  ImageMathHelper4D.cxx
             )
 target_link_libraries(antsUtilities ${ITK_LIBRARIES} )
+install(TARGETS antsUtilities
+    RUNTIME DESTINATION ${BIN_INSTALL_DIR}
+    COMPONENT RUNTIME_antsUtilities
+    LIBRARY DESTINATION ${LIB_INSTALL_DIR}
+    COMPONENT RUNTIME_antsUtilities
+    ARCHIVE DESTINATION ${LIB_INSTALL_DIR}
+    COMPONENT DEVELOPMENT_antsUtilities
+  )
 
 macro(STANDARD_ANTS_BUILD ANTS_FUNCTION_NAME EXTRA_LIBS)
   set( ANTS_FUNCTION_NAME ${ANTS_FUNCTION_NAME} )
 
-  add_library(l_${ANTS_FUNCTION_NAME} ${ANTS_FUNCTION_NAME}.cxx ${UI_SOURCES})
+  add_library(l_${ANTS_FUNCTION_NAME} ${ANTS_FUNCTION_NAME}.cxx)
   SET_TARGET_PROPERTIES(l_${ANTS_FUNCTION_NAME} PROPERTIES
     SOVERSION ${LIBRARY_SOVERSION_INFO}  VERSION ${LIBRARY_VERSION_INFO})
   message(STATUS "${ANTS_FUNCTION_NAME} ${EXTRA_LIBS}")
-  target_link_libraries(l_${ANTS_FUNCTION_NAME} antsUtilities ${ITK_LIBRARIES} ${EXTRA_LIBS} )
+  target_link_libraries(l_${ANTS_FUNCTION_NAME} antsUtilities ${EXTRA_LIBS} )
   configure_file( template_for_executables.cxx.in cli_${ANTS_FUNCTION_NAME}.cxx )
   add_executable( ${ANTS_FUNCTION_NAME} cli_${ANTS_FUNCTION_NAME}.cxx )
-  target_link_libraries( ${ANTS_FUNCTION_NAME} l_${ANTS_FUNCTION_NAME})
+  target_link_libraries( ${ANTS_FUNCTION_NAME} l_${ANTS_FUNCTION_NAME} )
 
   install(TARGETS l_${ANTS_FUNCTION_NAME} ${ANTS_FUNCTION_NAME}
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION ${BIN_INSTALL_DIR}
+    COMPONENT RUNTIME_${ANTS_FUNCTION_NAME}
+    LIBRARY DESTINATION ${LIB_INSTALL_DIR}
+    COMPONENT RUNTIME_${ANTS_FUNCTION_NAME}
+    ARCHIVE DESTINATION ${LIB_INSTALL_DIR}
+    COMPONENT DEVELOPMENT_${ANTS_FUNCTION_NAME}
   )
 
 endmacro()
@@ -54,131 +48,132 @@ endmacro()
 #add_executable(${PROG_WITH_NO_FLAG} ${PROG_WITH_NO_FLAG}.cxx)
 #target_link_libraries(${PROG_WITH_NO_FLAG} antsUtilities ${ITK_LIBRARIES})
 
-set(BASE_ANTS_APPS
-  ANTS
-  ANTSJacobian
-  PrintHeader
-  ResetDirection
-  # ResetDirection2
-  # BoykovGraphCutFilter
-  # GeneralLinearModel
-  ANTSUseLandmarkImagesToGetAffineTransform
-  ANTSUseLandmarkImagesToGetBSplineDisplacementField
-  ANTSUseDeformationFieldToGetAffineTransform
-  # FDR
+
+set(CORE_ANTS_APPS
   antsAffineInitializer
-  # antsSimilarityInitializer
-  ImageMath
-  SurfaceCurvature
+  antsJointFusion
   SurfaceBasedSmoothing
-  # test
-  # WarpImage
-  LaplacianThickness
-  SetOrigin
-  SetSpacing
-  SetDirectionByMatrix
-  # WarpFunctionalImage
-  ConvertScalarImageToRGB
-  CreateWarpedGridImage
   CreateJacobianDeterminantImage
-  MeasureImageSimilarity
-  ConvertToJpg
-  ConvertImagePixelType
-  ConvertInputImagePixelTypeToFloat
-  FitBSplineCurveToPoints
-  AverageImages
-  AverageTensorImages
-  ImageSetStatistics
   ThresholdImage
-  MultiplyImages
-  SmoothImage
-  ClusterImageStatistics
-  LabelClustersUniquely
-  # StudentsTestOnImages
-  LabelOverlapMeasures
-  LesionFilling
-  MeasureMinMaxMean
-  WarpImageMultiTransform
-  ComposeMultiTransform
-  StackSlices
-  MemoryTest
-  # ANTSOrientImage
-  PermuteFlipImageOrientationAxes
-  ImageCompare
-  ResampleImageBySpacing
-  # ResampleImageByOtherImage
-  CopyImageHeaderInformation
-  WarpTimeSeriesImageMultiTransform
   ResampleImage
-  ExtractSliceFromImage
-  ExtractRegionFromImage
-  ExtractRegionFromImageByMask
-  LabelGeometryMeasures
-  PasteImageIntoImage
-  TileImages
-  CreateTiledMosaic
-  CreateImage
-  WarpTensorImageMultiTransform
-  ReorientTensorImage
-  RebaseTensorImage
-  N3BiasFieldCorrection
-  N4BiasFieldCorrection
-  KellySlater
-  KellyKapowski
-  CreateDTICohort
-  AverageAffineTransform
-  AverageAffineTransformNoRigid
-  antsAlignOrigin
-  antsRegistration
-  simpleSynRegistration
-  antsApplyTransforms
-  antsApplyTransformsToPoints
-  CompositeTransformUtil
-  antsMotionCorr
-  antsMotionCorrStats
-  antsMotionCorrDiffusionDirection
-  antsSliceRegularizedRegistration
   sccan
-  CreateDisplacementField
-  ANTSIntegrateVectorField
-  ANTSIntegrateVelocityField
+  N4BiasFieldCorrection
+  N3BiasFieldCorrection
+  KellyKapowski
+  antsRegistration
+  antsMotionCorrStats
+  antsMotionCorr
+  antsApplyTransforms
+  LabelGeometryMeasures
+  LabelClustersUniquely
   Atropos
-  ConvertTransformFile
-  compareTwoTransforms
-  TimeSCCAN
-  TextureCooccurrenceFeatures
-  TextureRunLengthFeatures
-  ImageIntensityStatistics
-  GetConnectedComponentsFeatureImages
-  DeNrrd
-  antsTransformInfo
-  antsUtilitiesTesting
+  antsApplyTransformsToPoints
 )
-foreach(ANTS_APP ${BASE_ANTS_APPS})
+
+set(MORE_ANTS_APPS
+    antsAI
+    antsJointTensorFusion
+    ImageMath
+    iMath
+    ANTS
+    ANTSJacobian
+    PrintHeader
+    ResetDirection
+    ANTSUseLandmarkImagesToGetAffineTransform
+    ANTSUseLandmarkImagesToGetBSplineDisplacementField
+    ANTSUseDeformationFieldToGetAffineTransform
+    antsLandmarkBasedTransformInitializer
+    LaplacianThickness
+    SetOrigin
+    SetSpacing
+    SetDirectionByMatrix
+    SurfaceCurvature
+    ConvertScalarImageToRGB
+    CreateWarpedGridImage
+    MeasureImageSimilarity
+    ConvertToJpg
+    ConvertImage
+    ConvertImagePixelType
+    ConvertInputImagePixelTypeToFloat
+    FitBSplineToPoints
+    AverageTensorImages
+    ImageSetStatistics
+    MultiplyImages
+    SmoothDisplacementField
+    SmoothImage
+    ClusterImageStatistics
+    LabelOverlapMeasures
+    LesionFilling
+    MeasureMinMaxMean
+    WarpImageMultiTransform
+    ComposeMultiTransform
+    MemoryTest
+    PermuteFlipImageOrientationAxes
+    ImageCompare
+    ResampleImageBySpacing
+    CopyImageHeaderInformation
+    WarpTimeSeriesImageMultiTransform
+    ExtractSliceFromImage
+    ExtractRegionFromImage
+    ExtractRegionFromImageByMask
+    PasteImageIntoImage
+    TileImages
+    CreateTiledMosaic
+    CreateImage
+    DenoiseImage
+    NonLocalSuperResolution
+    WarpTensorImageMultiTransform
+    ReorientTensorImage
+    RebaseTensorImage
+    KellySlater
+    CreateDTICohort
+    antsAlignOrigin
+    antsMotionCorrDiffusionDirection
+    antsSliceRegularizedRegistration
+    ANTSIntegrateVectorField
+    ANTSIntegrateVelocityField
+    antsTransformInfo
+    antsUtilitiesTesting
+    AverageAffineTransform
+    AverageAffineTransformNoRigid
+    AverageImages
+    simpleSynRegistration
+    CompositeTransformUtil
+    CreateDisplacementField
+    ConvertTransformFile
+    compareTwoTransforms
+    SuperResolution
+    TimeSCCAN
+    TextureCooccurrenceFeatures
+    TextureRunLengthFeatures
+    ImageIntensityStatistics
+    GetConnectedComponentsFeatureImages
+    DeNrrd
+    StackSlices
+  )
+
+foreach(ANTS_APP ${CORE_ANTS_APPS})
   STANDARD_ANTS_BUILD(${ANTS_APP} "")
 endforeach()
 
-if(USE_VTK)
-find_package(VTK 6.2 REQUIRED NO_MODULE)
-find_package(VTK COMPONENTS
-   vtkCommonCore
-   vtkCommonDataModel
-   vtkIOGeometry
-   vtkIOXML
-   vtkIOLegacy
-   vtkIOPLY
-   vtkRenderingOpenGL
-   vtkFiltersModeling
-   vtkImagingStencil
-   vtkImagingGeneral
-   vtkRenderingAnnotation
-   )
-include(${VTK_USE_FILE})
-include_directories(${VTK_INCLUDE_DIRS})
+if (BUILD_ALL_ANTS_APPS)
+  foreach(ANTS_APP ${MORE_ANTS_APPS})
+    STANDARD_ANTS_BUILD(${ANTS_APP} "")
+  endforeach()
+else(BUILD_ALL_ANTS_APPS)
+  foreach(ANTS_APP ${MORE_ANTS_APPS})
+    if(ANTS_BUILD_${ANTS_APP})
+      STANDARD_ANTS_BUILD(${ANTS_APP} "")
+    endif()
+  endforeach()
+endif(BUILD_ALL_ANTS_APPS)
 
+
+if(USE_VTK)
 set(VTK_ANTS_APPS
-#    ConvertVectorFieldToVTK
+    # ConvertVectorFieldToVTK
     antsSurf
+    antsVol
     GetMeshAndTopology
     CheckTopology
     WarpVTKPolyDataMultiTransform
@@ -202,7 +197,7 @@ install(PROGRAMS ../Scripts/ANTSpexec.sh
      ../Scripts/antsIntroduction.sh
      ../Scripts/antsLaplacianBoundaryCondition.R
      ../Scripts/antsLongitudinalCorticalThickness.sh
-     ../Scripts/antsMalfLabeling.sh
+     ../Scripts/antsJointLabelFusion.sh
      ../Scripts/antsMultivariateTemplateConstruction.sh
      ../Scripts/antsMultivariateTemplateConstruction2.sh
      ../Scripts/antsNetworkAnalysis.R
@@ -212,32 +207,32 @@ install(PROGRAMS ../Scripts/ANTSpexec.sh
      ../Scripts/waitForPBSQJobs.pl
      ../Scripts/waitForSGEQJobs.pl
      ../Scripts/waitForXGridJobs.pl
-                DESTINATION bin
+     ../Scripts/waitForSlurmJobs.pl
+                DESTINATION ${SCRIPTS_INSTALL_DIR}
                 PERMISSIONS  OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
                 CONFIGURATIONS  Release
+                COMPONENT SCRIPTS
         )
 
+if( COPY_SCRIPT_FILES_TO_BIN_DIR )
+  message( "-- Copy scripts." )
+  file( GLOB SCRIPT_FILES "../Scripts/*.sh" )
+  file( GLOB PSCRIPT_FILES "../Scripts/*.pl" )
+  foreach( SCRIPT_FILE ${SCRIPT_FILES} )
+    message( "  Copying ${SCRIPT_FILE} to ${CMAKE_CURRENT_BINARY_DIR}/../../bin/" )
+    CONFIGURE_FILE( ${SCRIPT_FILE} ${CMAKE_CURRENT_BINARY_DIR}/../../bin/ COPYONLY )
+  endforeach( SCRIPT_FILE )
+  foreach( SCRIPT_FILE ${PSCRIPT_FILES} )
+    message( "  Copying ${SCRIPT_FILE} to ${CMAKE_CURRENT_BINARY_DIR}/../../bin/" )
+    CONFIGURE_FILE( ${SCRIPT_FILE} ${CMAKE_CURRENT_BINARY_DIR}/../../bin/ COPYONLY )
+  endforeach( SCRIPT_FILE )
+endif( COPY_SCRIPT_FILES_TO_BIN_DIR )
 
 ## Build test option
 if(BUILD_TESTING)
     add_subdirectory(TestSuite)
 endif(BUILD_TESTING)
 
-# Copy all the shell scripts in the Scripts/ directory to the bin directory
-##
-option( COPY_SCRIPT_FILES_TO_BIN_DIR "Copy the script files to the ANTS bin directory." ON )
-if( COPY_SCRIPT_FILES_TO_BIN_DIR )
-  file( GLOB SCRIPT_FILES "${CMAKE_SOURCE_DIR}/../Scripts/*.sh" )
-  file( GLOB PSCRIPT_FILES "${CMAKE_SOURCE_DIR}/../Scripts/*.pl" )
-  foreach( SCRIPT_FILE ${SCRIPT_FILES} )
-    add_custom_command( TARGET ANTS POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy ${SCRIPT_FILE} ${CMAKE_BINARY_DIR} )
-  endforeach( SCRIPT_FILE )
-  foreach( SCRIPT_FILE ${PSCRIPT_FILES} )
-    add_custom_command( TARGET ANTS POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy ${SCRIPT_FILE} ${CMAKE_BINARY_DIR} )
-  endforeach( SCRIPT_FILE )
-endif( COPY_SCRIPT_FILES_TO_BIN_DIR )
 set(CPACK_PACKAGE_NAME "ANTs")
 set(CPACK_PACKAGE_VENDOR "CMake.org")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "ANTs - Advanced Normalization Tools")
