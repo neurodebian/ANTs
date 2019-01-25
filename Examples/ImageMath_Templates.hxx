@@ -321,6 +321,9 @@ void ReflectionMatrix(int argc, char *argv[])
   typename TransformWriterType::Pointer transformWriter = TransformWriterType::New();
   transformWriter->SetInput( aff );
   transformWriter->SetFileName( outname.c_str() );
+#if ITK_VERSION_MAJOR >= 5
+  transformWriter->SetUseCompression(true);
+#endif
   transformWriter->Update();
   return;
 }
@@ -345,6 +348,9 @@ void MakeAffineTransform(int argc, char *argv[])
     TransformWriterType::New();
   transformWriter->SetInput( aff );
   transformWriter->SetFileName( outname.c_str() );
+#if ITK_VERSION_MAJOR >= 5
+  transformWriter->SetUseCompression(true);
+#endif
   transformWriter->Update();
   return;
 }
@@ -1827,7 +1833,7 @@ int NeighborhoodStats( int itkNotUsed( argc ), char * argv[] )
 }
 
 template <unsigned int ImageDimension>
-int PadImage(int /*argc */, char *argv[])
+int PadImage(int argc, char *argv[])
 {
   typedef float                                                           PixelType;
   typedef itk::Image<PixelType, ImageDimension>                           ImageType;
@@ -1836,9 +1842,16 @@ int PadImage(int /*argc */, char *argv[])
   int               argct = 2;
   const std::string outname = std::string(argv[argct]);
   argct += 2;
-  std::string fn1 = std::string(argv[argct]);   argct++;
+  std::string fn1 = std::string(argv[argct]);
+  argct++;
   const float padvalue = atof(argv[argct]);
-  argct += 2;
+  argct++;
+
+  PixelType padVoxelValue = itk::NumericTraits<PixelType>::Zero;
+  if( argc > 6 )
+    {
+    padVoxelValue = static_cast<PixelType>( atof( argv[argct] ) );
+    }
 
   typename ImageType::Pointer image1 = ITK_NULLPTR;
   if( fn1.length() > 3 )
@@ -1864,7 +1877,7 @@ int PadImage(int /*argc */, char *argv[])
     AllocImage<ImageType>(newregion,
                           image1->GetSpacing(),
                           origin2,
-                          image1->GetDirection(), 0);
+                          image1->GetDirection(), padVoxelValue);
 
   typename ImageType::IndexType index;
   typename ImageType::IndexType index2;
@@ -3192,7 +3205,7 @@ int PCASLQuantifyCBF(int argc, char *  /*NOT USED argv*/[])
     }
 
 
-  typename TimeImageType::Pointer diff = NULL;
+  typename TimeImageType::Pointer diff = ITK_NULLPTR;
   if( fn1.length() > 3 )
     {
     ReadImage<TimeImageType>(diff, fn1.c_str() );
@@ -3202,7 +3215,7 @@ int PCASLQuantifyCBF(int argc, char *  /*NOT USED argv*/[])
     return 1;
     }
 
-  typename ImageType::Pointer m0 = NULL;
+  typename ImageType::Pointer m0 = ITK_NULLPTR;
   if( m0name.length() > 3 )
     {
     ReadImage<ImageType>(m0, m0name.c_str() );
@@ -5003,11 +5016,11 @@ int FitSphere(int argc, char *argv[])
   float MaxRad=5;
   if (argc > argct) MaxRad = atof(argv[argct]);   argct++;
 
-  typename ImageType::Pointer image1 = NULL;
-  typename ImageType::Pointer radimage = NULL;
-  typename ImageType::Pointer radimage2 = NULL;
-  typename ImageType::Pointer priorimage = NULL;
-  typename ImageType::Pointer wmimage = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer radimage = ITK_NULLPTR;
+  typename ImageType::Pointer radimage2 = ITK_NULLPTR;
+  typename ImageType::Pointer priorimage = ITK_NULLPTR;
+  typename ImageType::Pointer wmimage = ITK_NULLPTR;
   if (fn2.length() > 3)   ReadImage<ImageType>(wmimage, fn2.c_str());
   // std::cout <<"  read " << fn1 << " MXR " << MaxRad << std::endl;
   ReadImage<ImageType>(image1, fn1.c_str());
@@ -5028,7 +5041,7 @@ int FitSphere(int argc, char *argv[])
   typename ScalarInterpolatorType::ContinuousIndexType  Y2;
   typename ScalarInterpolatorType::ContinuousIndexType  GMx;
   typename ScalarInterpolatorType::ContinuousIndexType  WMx;
-  typename ScalarInterpolatorType::Pointer winterp=NULL;
+  typename ScalarInterpolatorType::Pointer winterp= ITK_NULLPTR;
   if (wmimage)
     {
       winterp=ScalarInterpolatorType::New();
@@ -6712,7 +6725,7 @@ int CompareHeadersAndImages(int argc, char *argv[])
 //
 //   typedef itk::ImageFileReader< InputImageType >  ReaderType;
 //   typename ReaderType::Pointer reader =  ReaderType::New();
-//   typename InputImageType::Pointer priors=NULL;
+//   typename InputImageType::Pointer priors= ITK_NULLPTR;
 //
 //   if (priorfn.length()  > 3 )
 //     {
@@ -7856,7 +7869,12 @@ int PropagateLabelsThroughMask(int argc, char *argv[])
   std::string lname = tempname + std::string("_label") + extension;
   WriteImage<ImageType>(fastimage, kname.c_str() );
   WriteImage<ImageType>(outlabimage, outname.c_str() );
-  WriteImage<LabelImageType>(fastMarching->GetLabelImage(), lname.c_str() );
+
+// this nonsense fixes a type error
+  typedef itk::CastImageFilter<LabelImageType, LabelImageType>                 CastFilterType;
+  typename CastFilterType::Pointer castRegions = CastFilterType::New();
+  castRegions->SetInput( fastMarching->GetLabelImage() );
+  WriteImage<LabelImageType>( castRegions->GetOutput(), lname.c_str() );
   return 0;
 }
 
@@ -8128,7 +8146,13 @@ int itkPropagateLabelsThroughMask(int argc, char *argv[])
   std::string lname = tempname + std::string("_label") + extension;
   WriteImage<ImageType>(fastimage, kname.c_str() );
   WriteImage<ImageType>(outlabimage, outname.c_str() );
-  WriteImage<LabelImageType>(fastMarching->GetLabelImage(), lname.c_str() );
+
+  // this nonsense fixes a type error
+  typedef itk::CastImageFilter<LabelImageType, LabelImageType>                 CastFilterType;
+  typename CastFilterType::Pointer castRegions = CastFilterType::New();
+  castRegions->SetInput( fastMarching->GetLabelImage() );
+  WriteImage<LabelImageType>( castRegions->GetOutput(), lname.c_str() );
+
   return 0;
 }
 
@@ -8688,7 +8712,7 @@ int PoissonDiffusion( int argc, char *argv[])
   duplicator->SetInputImage( reader->GetOutput() );
   duplicator->Update();
 
-  typename ImageType::Pointer output = duplicator->GetModifiableOutput();
+  typename ImageType::Pointer output = duplicator->GetOutput();
   output->DisconnectPipeline();
 
   typedef itk::ImageFileReader<LabelImageType> LabelReaderType;
@@ -11035,7 +11059,7 @@ int RandomlySampleImageSetToCSV(unsigned int argc, char *argv[])
   argct += 2;
   unsigned int n_samples = atoi(argv[argct]);   argct++;
   /* std::string maskfn=std::string(argv[argct]); argct++;
-  typename ImageType::Pointer mask = NULL;
+  typename ImageType::Pointer mask = ITK_NULLPTR;
   ReadImage<ImageType>(mask,maskfn.c_str());
   Iterator mIter( mask,mask->GetLargestPossibleRegion() );
   for(  mIter.GoToBegin(); !mIter.IsAtEnd(); ++mIter )
@@ -11450,17 +11474,57 @@ int MajorityVoting( int argc, char *argv[] )
 
   std::string outputName = std::string( argv[2] );
 
-  // Read input segmentations
-  const unsigned long                               nImages = argc - 4;
-  typename std::vector<typename ImageType::Pointer> images(argc - 4);
-  for( int i = 4; i < argc; i++ )
+  // Check for usage 1, e.g.,
+  //     ImageMath 3 outputLabels.nii.gz MajorityVoting labelImage1.nii.gz ... labelImageN.nii.gz
+  //  vs.
+  // usage 2 (hidden from casual user), e.g.,
+  //     ImageMath 3 outputLabels.nii.gz MajorityVoting 0.9 labelImage1.nii.gz ... labelImageN.nii.gz
+
+  typename ImageType::Pointer image4 = ITK_NULLPTR;
+  bool doUsage1 = ReadImage<ImageType>( image4, argv[4] );
+
+  unsigned long numberOfImages = 0;
+  unsigned int startIndex = 0;
+  float percentage = 0.0;
+
+  if( doUsage1 )
     {
-    ReadImage<ImageType>( images[i - 4], argv[i] );
+    numberOfImages = argc - 4;
+    startIndex = 4;
     }
+  else
+    {
+    numberOfImages = argc - 5;
+    startIndex = 5;
+    percentage = atof( argv[4] );
+    }
+
+  if( numberOfImages <= 1 )
+    {
+    // std::cout << " Not enough inputs " << std::endl;
+    return 1;
+    }
+
+  typename std::vector<typename ImageType::Pointer> images;
+  images.resize( numberOfImages );
+
+  for( int i = startIndex; i < argc; i++ )
+    {
+    if( i == 4 )
+      {
+      images[0] = image4;
+      }
+    else
+      {
+      ReadImage<ImageType>( images[i - startIndex], argv[i] );
+      }
+    }
+
+  typename ImageType::Pointer output = ITK_NULLPTR;
 
   // Find maximum label
   int maxLabel = 0;
-  for( unsigned int i = 0; i < nImages; i++ )
+  for( unsigned int i = 0; i < numberOfImages; i++ )
     {
     typename CalculatorType::Pointer calc = CalculatorType::New();
     calc->SetImage( images[i] );
@@ -11472,35 +11536,81 @@ int MajorityVoting( int argc, char *argv[] )
     }
   unsigned long nLabels = maxLabel + 1; // account for label=0
 
-  typename ImageType::Pointer output =
-    AllocImage<ImageType>(images[0], 0);
+  output = AllocImage<ImageType>( images[0], 0 );
 
-  IteratorType              it( output, output->GetLargestPossibleRegion() );
+  typename ImageType::Pointer outputMask = ITK_NULLPTR;
+  outputMask = AllocImage<ImageType>( images[0], 0 );
+
+  IteratorType it( output, output->GetLargestPossibleRegion() );
+  IteratorType itM( outputMask, outputMask->GetLargestPossibleRegion() );
+
   itk::Array<unsigned long> votes;
   votes.SetSize( nLabels );
 
   while( !it.IsAtEnd() )
     {
-    votes.Fill(0);
+    votes.Fill( 0 );
     unsigned long maxVotes = 0;
     unsigned long votedLabel = 0;
-    for( unsigned long i = 0; i < nImages; i++ )
+    for( unsigned long i = 0; i < numberOfImages; i++ )
       {
       unsigned long label = images[i]->GetPixel( it.GetIndex() );
-      votes.SetElement(label, votes.GetElement(label) + 1 );
+      votes.SetElement( label, votes.GetElement( label ) + 1 );
 
-      if( votes.GetElement(label) > maxVotes )
+      if( votes.GetElement( label ) > maxVotes )
         {
-        maxVotes = votes.GetElement(label);
+        maxVotes = votes.GetElement( label );
         votedLabel = label;
         }
       }
 
-    it.Set( votedLabel );
+    if( doUsage1 )
+      {
+      it.Set( votedLabel );
+      }
+    else
+      {
+      if( static_cast<float>( maxVotes ) / static_cast<float>( numberOfImages ) >= percentage )
+        {
+        it.Set( votedLabel );
+        }
+      else
+        {
+        itM.Set( 1 );
+        }
+      }
+
     ++it;
+    ++itM;
     }
 
   WriteImage<ImageType>( output, outputName.c_str() );
+
+  if( ! doUsage1 )
+    {
+    std::vector<std::string> fileExtensions;
+    fileExtensions.push_back( ".nii" );
+    fileExtensions.push_back( ".mha" );
+    fileExtensions.push_back( ".nrrd" );
+
+    std::string outputMaskName;
+    for( unsigned int i = 0; i < fileExtensions.size(); i++ )
+      {
+      if( outputName.find_last_of( fileExtensions[i] ) != std::string::npos )
+        {
+        outputMaskName = outputName.insert(
+          outputName.find_last_of( fileExtensions[i] ) - ( fileExtensions[i] ).length(), "_Mask" );
+        break;
+        }
+      }
+    if( outputMaskName.empty() )
+      {
+      // std::cout << " Unrecognized output file extension. " << std::endl;
+      return 1;
+      }
+    WriteImage<ImageType>( outputMask, outputMaskName.c_str() );
+    }
+
   return 0;
 }
 
@@ -12575,7 +12685,6 @@ int InPaint(int argc, char *argv[])
     sigma = atof(argv[argct]); argct++;
     }
   typename ImageType::Pointer image1 = ITK_NULLPTR;
-  typename ImageType::Pointer varimage = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
   PixelType     spacingsize = 0;
   PixelType     minsp = image1->GetSpacing()[0];
@@ -12652,7 +12761,7 @@ int InPaint(int argc, char *argv[])
   typename DuplicatorType::Pointer duplicator = DuplicatorType::New();
   duplicator->SetInputImage( image1 );
   duplicator->Update();
-  varimage =  duplicator->GetOutput();
+  typename ImageType::Pointer varimage = duplicator->GetOutput();
   for ( unsigned int i = 0; i < sigma; i++ )
     {
     typedef itk::ConvolutionImageFilter< ImageType, ImageType > FilterType;
@@ -12690,8 +12799,8 @@ int InPaint2(int argc, char *argv[])
     {
     sigma = atof(argv[argct]); argct++;
     }
-  typename ImageType::Pointer image1 = NULL;
-  typename ImageType::Pointer varimage = NULL;
+  typename ImageType::Pointer image1 = ITK_NULLPTR;
+  typename ImageType::Pointer varimage = ITK_NULLPTR;
   ReadImage<ImageType>(image1, fn1.c_str() );
   PixelType     spacingsize = 0;
   PixelType     minsp = image1->GetSpacing()[0];
@@ -12893,7 +13002,7 @@ int Check3TissueLabeling( int argc, char *argv[] )
     duplicator->SetInputImage( labelImage );
     duplicator->Update();
 
-    typename LabelImageType::Pointer permutedLabelImage = duplicator->GetModifiableOutput();
+    typename LabelImageType::Pointer permutedLabelImage = duplicator->GetOutput();
 
     itk::ImageRegionIterator<LabelImageType> ItP( permutedLabelImage, permutedLabelImage->GetRequestedRegion() );
     for( ItP.GoToBegin(); !ItP.IsAtEnd(); ++ItP )
@@ -12967,7 +13076,7 @@ int Check3TissueLabeling( int argc, char *argv[] )
         duplicator->SetInputImage( labelImage );
         duplicator->Update();
 
-        typename LabelImageType::Pointer permutedLabelImage = duplicator->GetModifiableOutput();
+        typename LabelImageType::Pointer permutedLabelImage = duplicator->GetOutput();
 
         itk::ImageRegionIteratorWithIndex<LabelImageType> ItP( permutedLabelImage,
                                                                permutedLabelImage->GetRequestedRegion() );

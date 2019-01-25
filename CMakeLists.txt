@@ -1,16 +1,27 @@
-cmake_minimum_required(VERSION 2.8.9)
-cmake_policy(VERSION 2.8.9)
+if(CMAKE_CXX_STANDARD)
+  #if CMAKE_CXX_STANDARD is requested, then require
+  #new version of cmake to force C++11 that can
+  #improve support of C++11 features.
+  cmake_minimum_required(VERSION 3.8.2 FATAL_ERROR)
+else()
+  cmake_minimum_required(VERSION 2.8.9)
+  cmake_policy(VERSION 2.8.9)
+endif()
 
-find_program(CCACHE_PROGRAM ccache)
-if(CCACHE_PROGRAM)
+option(ANTS_BUILD_WITH_CCACHE "Build ${LOCAL_PROJECT_NAME} using ccache if available." ON)
+mark_as_advanced(ANTS_BUILD_WITH_CCACHE)
+if(ANTS_BUILD_WITH_CCACHE)
+  find_program(CCACHE_PROGRAM ccache)
+  if(CCACHE_PROGRAM)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+  endif()
 endif()
 
 set(LIBRARY_SOVERSION_INFO 2)
-set(LIBRARY_VERSION_INFO 2.1.0)
+set(LIBRARY_VERSION_INFO 2.2.0)
 
 set(LOCAL_PROJECT_NAME ANTS)
-INCLUDE(InstallRequiredSystemLibraries)
+include(InstallRequiredSystemLibraries)
 ## NOTE THERE SHOULD BE NO PROJECT STATEMENT HERE!
 ## This file acts as a simple switch to initiate
 ## two completely independant CMake build environments.
@@ -42,9 +53,9 @@ mark_as_advanced(COPY_SCRIPT_FILES_TO_BIN_DIR)
 set(CPACK_PACKAGE_NAME "ANTs")
 set(CPACK_PACKAGE_VENDOR "CMake.org")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "ANTs - Advanced Normalization Tools")
-set(CPACK_PACKAGE_VERSION 2.1.0)
+set(CPACK_PACKAGE_VERSION 2.2.0)
 set(CPACK_PACKAGE_VERSION_MAJOR 2)
-set(CPACK_PACKAGE_VERSION_MINOR 1)
+set(CPACK_PACKAGE_VERSION_MINOR 2)
 set(CPACK_PACKAGE_VERSION_PATCH 0)
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "ANTS_Install")
 set(CPACK_BINARY_GENERATORS "DragNDrop TGZ TZ")

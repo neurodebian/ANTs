@@ -397,7 +397,7 @@ private:
     std::cout << "  MostLikely : Select label from from maximum probabilistic segmentations" << std::endl;
     std::cout << "    Usage: MostLikely probabilityThreshold ProbabilityImages*" << std::endl;
     std::cout << "  AverageLabels : Select label using STAPLE method" << std::endl;
-    std::cout << "    Usage: STAPLE LabelImages*" << std::endl;
+    std::cout << "    Usage: AverageLabels LabelImages*" << std::endl;
     std::cout << "    Note:  Gives probabilistic output (float)" << std::endl;
 
     std::cout << "\nImage Metrics & Info:" <<  std::endl;
@@ -627,7 +627,7 @@ private:
     std::cout << "      Usage        : Normalize Image.ext opt" << std::endl;
 
     std::cout << "\n  PadImage       : If Pad-Number is negative, de-Padding occurs" << std::endl;
-    std::cout << "      Usage        : PadImage ImageIn Pad-Number" << std::endl;
+    std::cout << "      Usage        : PadImage ImageIn PaddingSize [PaddingVoxelValue=0]" << std::endl;
 
     std::cout << "\n  SigmoidImage   : " << std::endl;
     std::cout << "      Usage        : SigmoidImage ImageIn [alpha=1.0] [beta=0.0]" << std::endl;
