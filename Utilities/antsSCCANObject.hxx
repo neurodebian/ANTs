@@ -49,6 +49,7 @@ antsSCCANObject<TInputImage, TRealType>::antsSCCANObject()
   this->m_MinClusterSizeQ = 1;
   this->m_KeptClusterSize = 0;
   this->m_Debug = false;
+  this->m_MaxBasedThresholding = false;
   this->m_Silent = true;
   this->m_CorrelationForSignificanceTest = 0;
   this->m_SpecializationForHBM2011 = false;
@@ -5029,7 +5030,7 @@ template <class TInputImage, class TRealType>
 bool antsSCCANObject<TInputImage, TRealType>
 ::CCAUpdate( unsigned int n_vecs, bool allowchange  , bool normbycov , unsigned int k )
 {
-  // srand (time(NULL));
+  // srand (time(ITK_NULLPTR));
   RealType gsteP = this->m_GradStepP;
   RealType gsteQ = this->m_GradStepQ;
   this->m_FractionNonZeroP = this->m_SparsenessP( k );

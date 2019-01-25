@@ -3,11 +3,10 @@
 ![ants multivar](http://i.imgur.com/YqWtunL.png)
 ![ants faces](http://i.imgur.com/wBOFGwg.png)
 ![ants goat](http://i.imgur.com/SEKf1mo.jpg) -->
-============================
 [Advanced Normalization Tools](https://imgur.com/a/kySGi)
-============================
+=========================================================
 
-[![Build Status](https://travis-ci.org/stnava/ANTs.svg?branch=master)](https://travis-ci.org/stnava/ANTs)
+[![Build Status](https://travis-ci.org/ANTsX/ANTs.svg?branch=master)](https://travis-ci.org/ANTsX/ANTs)
 
 ANTs computes high-dimensional mappings to capture the statistics of brain
 structure and function.  See the [FAQ page](https://github.com/stnava/ANTsTutorial/blob/master/handout/antsGithubExamples.Rmd).
@@ -42,13 +41,10 @@ Questions: [Discussion Site](http://sourceforge.net/p/advants/discussion/) or *n
  Install ANTs via pre-built:
 [Packages @ github](https://github.com/stnava/ANTs/releases) older
 versions [@ sourceforge](http://sourceforge.net/projects/advants/files/ANTS/) ... also,
-[Github Releases are here](https://github.com/stnava/ANTs/releases) thanks to Arman Eshaghi.
+[Github Releases are here](https://github.com/stnava/ANTs/releases) thanks to Arman Eshaghi. You can also run ANTs Cortical Thickness pipeline in the cloud using the free [http://OpenNeuro.org](OpenNeuro.org) platform (no installation required).
 
  Build [ANTs](https://github.com/stnava/ANTs) from:
-[Source-Code](http://brianavants.wordpress.com/2012/04/13/updated-ants-compile-instructions-april-12-2012/)
-(recommended)
-
-[ANTs Dashboard](https://travis-ci.org/stnava/ANTs/) thanks to Arman Eshaghi and  Hans J. Johnson
+Source-Code (recommended) on [Linux / Mac OS](https://github.com/stnava/ANTs/wiki/Compiling-ANTs-on-Linux-and-Mac-OS) or [Windows](https://github.com/stnava/ANTs/wiki/Compiling-ANTs-on-Windows-10).
 
 ANTs extracts information from complex datasets that include imaging
 ([Word Cloud](http://brianavants.files.wordpress.com/2013/05/avants_wordcloud.jpg)).
@@ -198,7 +194,7 @@ ANTs has won several unbiased & international competitions
 Learning about ANTs (examples, etc.)
 ----------------------------------------------------------
 
-### General 
+### General
 
 * **antsRegistration** [bash example](https://github.com/stnava/ANTs/blob/master/Scripts/newAntsExample.sh)
 
@@ -268,7 +264,9 @@ Learning about ANTs (examples, etc.)
 
 * **fMRI prediction** [example](http://stnava.github.io/Haxby2001/) ... WIP ...
 
-### Lung 
+* **Partial EPI slab to T1 image registration** [example](https://github.com/ntustison/PartialSlabEpiT1ImageRegistration)
+
+### Lung
 
 * **CT lung registration** [example](https://github.com/ntustison/antsCtLungRegistrationExample)
 
