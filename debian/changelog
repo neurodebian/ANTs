@@ -1,4 +1,4 @@
-ants (2.3.1-1) unstable; urgency=medium
+ants (2.3.1-1) experimental; urgency=medium
 
   * New upstream release
   * debian/patches
@@ -6,7 +6,14 @@ ants (2.3.1-1) unstable; urgency=medium
     - disabled a patch up_lower_cc_3_test_i386_precision since upstream just
       commented out that test for now
 
- -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 25 Jan 2019 14:58:09 -0500
+ -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 24 May 2019 12:52:46 -0400
+
+ants (2.2.0-2) unstable; urgency=medium
+
+  * Not so fresh upstream release
+    - if builds - then closes FTBFS (Closes: #872741, #909833)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 12 Feb 2019 21:32:07 -0500
 
 ants (2.2.0-1) experimental; urgency=medium
 
