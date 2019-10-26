@@ -112,7 +112,7 @@ int IntegrateVelocityField(int argc, char *argv[])
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
 // 'main()'
-int ANTSIntegrateVelocityField( std::vector<std::string> args, std::ostream* /*out_stream = ITK_NULLPTR */)
+int ANTSIntegrateVelocityField( std::vector<std::string> args, std::ostream* /*out_stream = nullptr */)
 {
   // put the arguments coming in as 'args' into standard (argc,argv) format;
   // 'args' doesn't have the command name as first, argument, so add it manually;
@@ -129,7 +129,7 @@ int ANTSIntegrateVelocityField( std::vector<std::string> args, std::ostream* /*o
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = ITK_NULLPTR;
+  argv[argc] = nullptr;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {
@@ -169,7 +169,7 @@ private:
   std::cout << " start " << std::endl;
   std::string               ifn = std::string(argv[1]);
   itk::ImageIOBase::Pointer imageIO =
-    itk::ImageIOFactory::CreateImageIO(ifn.c_str(), itk::ImageIOFactory::ReadMode);
+    itk::ImageIOFactory::CreateImageIO(ifn.c_str(), itk::ImageIOFactory::FileModeType::ReadMode);
   imageIO->SetFileName(ifn.c_str() );
   imageIO->ReadImageInformation();
   unsigned int dim =  imageIO->GetNumberOfDimensions();

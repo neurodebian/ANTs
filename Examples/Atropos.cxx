@@ -30,7 +30,7 @@
 
 namespace ants
 {
-template <class TFilter>
+template <typename TFilter>
 class CommandIterationUpdate : public itk::Command
 {
 public:
@@ -39,19 +39,17 @@ public:
   typedef itk::SmartPointer<Self> Pointer;
   itkNewMacro( Self );
 protected:
-  CommandIterationUpdate()
-  {
-  };
+  CommandIterationUpdate() = default;
 public:
 
-  void Execute(itk::Object *caller, const itk::EventObject & event) ITK_OVERRIDE
+  void Execute(itk::Object *caller, const itk::EventObject & event) override
   {
     Execute( (const itk::Object *) caller, event);
   }
 
-  void Execute(const itk::Object * object, const itk::EventObject & event) ITK_OVERRIDE
+  void Execute(const itk::Object * object, const itk::EventObject & event) override
   {
-    const TFilter * filter =
+    const auto * filter =
       dynamic_cast<const TFilter *>( object );
 
     if( typeid( event ) != typeid( itk::IterationEvent ) )
@@ -70,7 +68,7 @@ public:
       * std::pow( filter->GetAnnealingRate(), static_cast<RealType>(
                    filter->GetElapsedIterations() ) );
 
-    annealingTemperature = vnl_math_max( annealingTemperature,
+    annealingTemperature = std::max( annealingTemperature,
                                          filter->GetMinimumAnnealingTemperature() );
 
     std::cout << " (annealing temperature = "
@@ -307,7 +305,7 @@ int AtroposSegmentation( itk::ants::CommandLineParser *parser )
         {
         annealingTemperature =
           parser->Convert<RealType>( posteriorOption->GetFunction( 0 )->GetParameter( 1 ) );
-        if( annealingTemperature <= 0.0 )
+        if( annealingTemperature <= itk::NumericTraits<RealType>::ZeroValue() )
           {
           if( verbose )
             {
@@ -323,7 +321,8 @@ int AtroposSegmentation( itk::ants::CommandLineParser *parser )
         {
         annealingRate =
           parser->Convert<RealType>( posteriorOption->GetFunction( 0 )->GetParameter( 2 ) );
-        if( annealingRate < 0.0 || annealingRate > 1.0 )
+        if( annealingRate < itk::NumericTraits<RealType>::ZeroValue() ||
+            annealingRate > itk::NumericTraits<RealType>::OneValue() )
           {
           if( verbose )
             {
@@ -336,7 +335,7 @@ int AtroposSegmentation( itk::ants::CommandLineParser *parser )
 
       if( posteriorOption->GetFunction( 0 )->GetNumberOfParameters() > 3 )
         {
-        RealType minimumAnnealingTemperature =
+        auto minimumAnnealingTemperature =
           parser->Convert<RealType>( posteriorOption->GetFunction( 0 )->GetParameter( 3 ) );
         segmenter->SetMinimumAnnealingTemperature( minimumAnnealingTemperature );
         }
@@ -563,20 +562,20 @@ int AtroposSegmentation( itk::ants::CommandLineParser *parser )
       {
       typename SegmentationFilterType::LabelParameterMapType labelMap;
 
-      float labelLambda = parser->Convert<float>(
+      auto labelLambda = parser->Convert<float>(
           labelOption->GetFunction( 0 )->GetParameter( 0 ) );
       float labelBoundaryProbability = 1.0;
       if( labelOption->GetFunction( 0 )->GetNumberOfParameters() > 1 )
         {
         labelBoundaryProbability = parser->Convert<float>(
             labelOption->GetFunction( 0 )->GetParameter( 1 ) );
-        if( labelBoundaryProbability < 0.0 )
+        if( labelBoundaryProbability < itk::NumericTraits<float>::ZeroValue() )
           {
-          labelBoundaryProbability = 0.0;
+          labelBoundaryProbability = itk::NumericTraits<float>::ZeroValue();
           }
-        if( labelBoundaryProbability > 1.0 )
+        if( labelBoundaryProbability > itk::NumericTraits<float>::OneValue() )
           {
-          labelBoundaryProbability = 1.0;
+          labelBoundaryProbability = itk::NumericTraits<float>::OneValue();
           }
         }
       for( unsigned int n = 1; n <= segmenter->GetNumberOfTissueClasses(); n++ )
@@ -595,7 +594,7 @@ int AtroposSegmentation( itk::ants::CommandLineParser *parser )
         {
         typename SegmentationFilterType::LabelParametersType labelPair;
 
-        float labelLambda = parser->Convert<float>(
+        auto labelLambda = parser->Convert<float>(
             labelOption->GetFunction( n )->GetParameter( 0 ) );
         float labelBoundaryProbability = 1.0;
         if( labelOption->GetFunction( n )->GetNumberOfParameters() > 1 )
@@ -613,7 +612,7 @@ int AtroposSegmentation( itk::ants::CommandLineParser *parser )
         labelPair.first = labelLambda;
         labelPair.second = labelBoundaryProbability;
 
-        unsigned int whichClass = parser->Convert<unsigned int>( labelOption->GetFunction( n )->GetName() );
+        auto whichClass = parser->Convert<unsigned int>( labelOption->GetFunction( n )->GetName() );
 
         labelMap[whichClass] = labelPair;
         }
@@ -1206,7 +1205,7 @@ int AtroposSegmentation( itk::ants::CommandLineParser *parser )
       fileNamesCreator->SetSeriesFormat( filename.c_str() );
       const std::vector<std::string> & imageNames = fileNamesCreator->GetFileNames();
 
-      if( segmenter->GetAdaptiveSmoothingWeight( 0 ) > 0.0 )
+      if( segmenter->GetAdaptiveSmoothingWeight( 0 ) > itk::NumericTraits<RealType>::ZeroValue() )
         {
         for( unsigned int i = 0; i < segmenter->GetNumberOfTissueClasses(); i++ )
           {
@@ -1658,7 +1657,7 @@ void AtroposInitializeCommandLineOptions( itk::ants::CommandLineParser *parser )
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
 // 'main()'
-int Atropos( std::vector<std::string> args, std::ostream* /*out_stream = ITK_NULLPTR */)
+int Atropos( std::vector<std::string> args, std::ostream* /*out_stream = nullptr */)
 {
   // put the arguments coming in as 'args' into standard (argc,argv) format;
   // 'args' doesn't have the command name as first, argument, so add it manually;
@@ -1675,7 +1674,7 @@ int Atropos( std::vector<std::string> args, std::ostream* /*out_stream = ITK_NUL
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = ITK_NULLPTR;
+  argv[argc] = nullptr;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {
@@ -1776,7 +1775,7 @@ private:
       return EXIT_FAILURE;
       }
     itk::ImageIOBase::Pointer imageIO = itk::ImageIOFactory::CreateImageIO(
-        filename.c_str(), itk::ImageIOFactory::ReadMode );
+        filename.c_str(), itk::ImageIOFactory::FileModeType::ReadMode );
     dimension = imageIO->GetNumberOfDimensions();
     }
 

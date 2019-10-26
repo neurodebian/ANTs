@@ -49,7 +49,7 @@ int ConvertScalarImageToRGB( int argc, char *argv[] )
   reader->Update();
 
   typedef itk::Image<unsigned char, ImageDimension> MaskImageType;
-  typename MaskImageType::Pointer maskImage = ITK_NULLPTR;
+  typename MaskImageType::Pointer maskImage = nullptr;
   typedef itk::ImageFileReader<MaskImageType> MaskReaderType;
   typename MaskReaderType::Pointer maskreader = MaskReaderType::New();
   maskreader->SetFileName( argv[4] );
@@ -60,7 +60,7 @@ int ConvertScalarImageToRGB( int argc, char *argv[] )
     }
   catch( ... )
     {
-    maskImage = ITK_NULLPTR;
+    maskImage = nullptr;
     }
   ;
 
@@ -73,51 +73,51 @@ int ConvertScalarImageToRGB( int argc, char *argv[] )
 
   if( colormapString == "red" )
     {
-    rgbfilter->SetColormap( RGBFilterType::Red );
+    rgbfilter->SetColormap( RGBFilterType::ColormapEnumType::Red );
     }
   else if( colormapString == "green"  )
     {
-    rgbfilter->SetColormap( RGBFilterType::Green );
+    rgbfilter->SetColormap( RGBFilterType::ColormapEnumType::Green );
     }
   else if( colormapString == "blue"  )
     {
-    rgbfilter->SetColormap( RGBFilterType::Blue );
+    rgbfilter->SetColormap( RGBFilterType::ColormapEnumType::Blue );
     }
   else if( colormapString == "grey"  )
     {
-    rgbfilter->SetColormap( RGBFilterType::Grey );
+    rgbfilter->SetColormap( RGBFilterType::ColormapEnumType::Grey );
     }
   else if( colormapString == "cool"  )
     {
-    rgbfilter->SetColormap( RGBFilterType::Cool );
+    rgbfilter->SetColormap( RGBFilterType::ColormapEnumType::Cool );
     }
   else if( colormapString == "hot"  )
     {
-    rgbfilter->SetColormap( RGBFilterType::Hot );
+    rgbfilter->SetColormap( RGBFilterType::ColormapEnumType::Hot );
     }
   else if( colormapString == "spring"  )
     {
-    rgbfilter->SetColormap( RGBFilterType::Spring );
+    rgbfilter->SetColormap( RGBFilterType::ColormapEnumType::Spring );
     }
   else if( colormapString == "autumn"  )
     {
-    rgbfilter->SetColormap( RGBFilterType::Autumn );
+    rgbfilter->SetColormap( RGBFilterType::ColormapEnumType::Autumn );
     }
   else if( colormapString == "winter"  )
     {
-    rgbfilter->SetColormap( RGBFilterType::Winter );
+    rgbfilter->SetColormap( RGBFilterType::ColormapEnumType::Winter );
     }
   else if( colormapString == "copper"  )
     {
-    rgbfilter->SetColormap( RGBFilterType::Copper );
+    rgbfilter->SetColormap( RGBFilterType::ColormapEnumType::Copper );
     }
   else if( colormapString == "summer"  )
     {
-    rgbfilter->SetColormap( RGBFilterType::Summer );
+    rgbfilter->SetColormap( RGBFilterType::ColormapEnumType::Summer );
     }
   else if( colormapString == "jet"  )
     {
-    rgbfilter->SetColormap( RGBFilterType::Jet );
+    rgbfilter->SetColormap( RGBFilterType::ColormapEnumType::Jet );
 //    typedef itk::Function::JetColormapFunction<typename RealImageType::PixelType,
 //      typename RGBImageType::PixelType> ColormapType;
 //    typename ColormapType::Pointer colormap = ColormapType::New();
@@ -125,7 +125,7 @@ int ConvertScalarImageToRGB( int argc, char *argv[] )
     }
   else if( colormapString == "hsv"  )
     {
-    rgbfilter->SetColormap( RGBFilterType::HSV );
+    rgbfilter->SetColormap( RGBFilterType::ColormapEnumType::HSV );
 //    typedef itk::Function::HSVColormapFunction<typename RealImageType::PixelType,
 //      typename RGBImageType::PixelType> ColormapType;
 //    typename ColormapType::Pointer colormap = ColormapType::New();
@@ -133,7 +133,7 @@ int ConvertScalarImageToRGB( int argc, char *argv[] )
     }
   else if( colormapString == "overunder"  )
     {
-    rgbfilter->SetColormap( RGBFilterType::OverUnder );
+    rgbfilter->SetColormap( RGBFilterType::ColormapEnumType::OverUnder );
     }
   else if( colormapString == "custom"  )
     {
@@ -326,7 +326,7 @@ int ConvertScalarImageToRGB( int argc, char *argv[] )
 
 // entry point for the library; parameter 'args' is equivalent to 'argv' in (argc,argv) of commandline parameters to
 // 'main()'
-int ConvertScalarImageToRGB( std::vector<std::string> args, std::ostream* /*out_stream = ITK_NULLPTR */ )
+int ConvertScalarImageToRGB( std::vector<std::string> args, std::ostream* /*out_stream = nullptr */ )
 {
   // put the arguments coming in as 'args' into standard (argc,argv) format;
   // 'args' doesn't have the command name as first, argument, so add it manually;
@@ -343,7 +343,7 @@ int ConvertScalarImageToRGB( std::vector<std::string> args, std::ostream* /*out_
     // place the null character in the end
     argv[i][args[i].length()] = '\0';
     }
-  argv[argc] = ITK_NULLPTR;
+  argv[argc] = nullptr;
   // class to automatically cleanup argv upon destruction
   class Cleanup_argv
   {
@@ -384,7 +384,7 @@ private:
     return EXIT_FAILURE;
     }
 
-  switch( atoi( argv[1] ) )
+  switch( std::stoi( argv[1] ) )
     {
     case 2:
       {

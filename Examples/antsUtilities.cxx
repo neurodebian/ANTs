@@ -4,8 +4,8 @@
 #include <deque>
 #include <string>
 #include <vector>
-#include <stdio.h>
-#include <math.h>
+#include <cstdio>
+#include <cmath>
 #include <iostream>
 #include <fstream>
 
@@ -118,7 +118,7 @@ bool get_a_double_number(const char * const str, double & v)
     {
     return false;     // OVERFLOW
     }
-  if( (errno == ERANGE && v == 0.0) )
+  if( ( errno == ERANGE && itk::Math::FloatAlmostEqual(v, 0.0) ) )
     {
     return false;     // UNDERFLOW
     }

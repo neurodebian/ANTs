@@ -33,28 +33,27 @@ namespace itk
 /**
  * N3BiasFieldScaleCostFunction class definitions
  */
-template <class TInputImage, class TBiasFieldImage, class TMaskImage,
-          class TConfidenceImage>
+template <typename TInputImage, typename TBiasFieldImage, typename TMaskImage,
+          typename TConfidenceImage>
 N3BiasFieldScaleCostFunction<TInputImage, TBiasFieldImage, TMaskImage,
                              TConfidenceImage>
 ::N3BiasFieldScaleCostFunction()
 {
-  this->m_InputImage = ITK_NULLPTR;
-  this->m_BiasFieldImage = ITK_NULLPTR;
-  this->m_MaskImage = ITK_NULLPTR;
-  this->m_ConfidenceImage = ITK_NULLPTR;
+  this->m_InputImage = nullptr;
+  this->m_BiasFieldImage = nullptr;
+  this->m_MaskImage = nullptr;
+  this->m_ConfidenceImage = nullptr;
 }
 
-template <class TInputImage, class TBiasFieldImage, class TMaskImage,
-          class TConfidenceImage>
+template <typename TInputImage, typename TBiasFieldImage, typename TMaskImage,
+          typename TConfidenceImage>
 N3BiasFieldScaleCostFunction<TInputImage, TBiasFieldImage, TMaskImage,
                              TConfidenceImage>
 ::~N3BiasFieldScaleCostFunction()
-{
-}
+= default;
 
-template <class TInputImage, class TBiasFieldImage, class TMaskImage,
-          class TConfidenceImage>
+template <typename TInputImage, typename TBiasFieldImage, typename TMaskImage,
+          typename TConfidenceImage>
 typename N3BiasFieldScaleCostFunction<TInputImage, TBiasFieldImage, TMaskImage,
                                       TConfidenceImage>::MeasureType
 N3BiasFieldScaleCostFunction<TInputImage, TBiasFieldImage, TMaskImage,
@@ -90,7 +89,7 @@ N3BiasFieldScaleCostFunction<TInputImage, TBiasFieldImage, TMaskImage,
         && ( !this->m_ConfidenceImage ||
              this->m_ConfidenceImage->GetPixel( ItI.GetIndex() ) > 0.0 ) )
       {
-      value += vnl_math_sqr( ( ItI.Get() / ( parameters[0]
+      value += itk::Math::sqr ( ( ItI.Get() / ( parameters[0]
                                              * ( static_cast<MeasureType>( ItB.Get() ) - 1.0 ) + 1.0 ) ) / mu - 1.0 );
       }
     }
@@ -99,8 +98,8 @@ N3BiasFieldScaleCostFunction<TInputImage, TBiasFieldImage, TMaskImage,
   return value;
 }
 
-template <class TInputImage, class TBiasFieldImage, class TMaskImage,
-          class TConfidenceImage>
+template <typename TInputImage, typename TBiasFieldImage, typename TMaskImage,
+          typename TConfidenceImage>
 void
 N3BiasFieldScaleCostFunction<TInputImage, TBiasFieldImage, TMaskImage,
                              TConfidenceImage>
@@ -146,15 +145,15 @@ N3BiasFieldScaleCostFunction<TInputImage, TBiasFieldImage, TMaskImage,
       MeasureType t = static_cast<MeasureType>( ItI.Get() ) / d;
       MeasureType dt = -t * ( static_cast<MeasureType>( ItB.Get() ) - 1.0 );
       value += ( ( t / mu - 1.0 )
-                 * ( dt / mu - dmu * t / ( vnl_math_sqr( mu ) ) ) );
+                 * ( dt / mu - dmu * t / ( itk::Math::sqr ( mu ) ) ) );
       }
     }
   derivative.SetSize( 1 );
   derivative( 0 ) = 2.0 * value / ( N - 1 );
 }
 
-template <class TInputImage, class TBiasFieldImage, class TMaskImage,
-          class TConfidenceImage>
+template <typename TInputImage, typename TBiasFieldImage, typename TMaskImage,
+          typename TConfidenceImage>
 unsigned int
 N3BiasFieldScaleCostFunction<TInputImage, TBiasFieldImage, TMaskImage,
                              TConfidenceImage>
@@ -167,14 +166,14 @@ N3BiasFieldScaleCostFunction<TInputImage, TBiasFieldImage, TMaskImage,
  * N3MRIBiasFieldCorrectionImageFilter class definitions
  */
 
-template <class TInputImage, class TMaskImage, class TOutputImage>
+template <typename TInputImage, typename TMaskImage, typename TOutputImage>
 N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
 ::N3MRIBiasFieldCorrectionImageFilter()
 {
   this->SetNumberOfRequiredInputs( 1 );
 
   this->m_NumberOfHistogramBins = 200;
-  this->m_WeinerFilterNoise = 0.01;
+  this->m_WienerFilterNoise = 0.01;
   this->m_BiasFieldFullWidthAtHalfMaximum = 0.15;
 
   this->m_MaximumNumberOfIterations = 50;
@@ -188,7 +187,7 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
   this->m_BiasFieldScaling = 1.0;
 }
 
-template <class TInputImage, class TMaskImage, class TOutputImage>
+template <typename TInputImage, typename TMaskImage, typename TOutputImage>
 void
 N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
 ::GenerateData()
@@ -218,7 +217,7 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
         && ( !this->GetConfidenceImage() ||
              this->GetConfidenceImage()->GetPixel( It.GetIndex() ) > 0.0 ) )
       {
-      if( vnl_math_isnan( It.Get() ) || vnl_math_isinf( It.Get() )
+      if( std::isnan( It.Get() ) || std::isinf( It.Get() )
           || It.Get() < 0.0 )
         {
         It.Set( 0.0 );
@@ -308,7 +307,7 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
   this->SetNthOutput( 0, divider->GetOutput() );
 }
 
-template <class TInputImage, class TMaskImage, class TOutputImage>
+template <typename TInputImage, typename TMaskImage, typename TOutputImage>
 typename N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>::RealImageType::Pointer
 N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
 ::SharpenImage( typename N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage,
@@ -363,7 +362,7 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
 
       float cidx = ( static_cast<RealType>( pixel ) - binMinimum )
         / histogramSlope;
-      unsigned int idx = vnl_math_floor( cidx );
+      unsigned int idx = itk::Math::floor ( cidx );
       RealType     offset = cidx - static_cast<RealType>( idx );
 
       if( offset == 0.0 )
@@ -390,8 +389,11 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
   unsigned int histogramOffset = static_cast<unsigned int>( 0.5
                                                             * ( paddedHistogramSize - this->m_NumberOfHistogramBins ) );
 
-  vnl_vector<std::complex<RealType> > V( paddedHistogramSize,
-                                        std::complex<RealType>( 0.0, 0.0 ) );
+  using FFTComputationType = double;
+  using FFTComplexType = std::complex<FFTComputationType>;
+
+  vnl_vector<FFTComplexType> V( paddedHistogramSize,
+                                        FFTComplexType( 0.0, 0.0 ) );
   for( unsigned int n = 0; n < this->m_NumberOfHistogramBins; n++ )
     {
     V[n + histogramOffset] = H[n];
@@ -400,73 +402,76 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
   /**
    * Instantiate the 1-d vnl fft routine
    */
-  vnl_fft_1d<RealType> fft( paddedHistogramSize );
+  vnl_fft_1d<FFTComputationType> fft( paddedHistogramSize );
 
-  vnl_vector<std::complex<RealType> > Vf( V );
+  vnl_vector<FFTComplexType> Vf( V );
   fft.fwd_transform( Vf );
 
   /**
    * Create the Gaussian filter.
    */
   RealType scaledFWHM = this->m_BiasFieldFullWidthAtHalfMaximum / histogramSlope;
-  RealType expFactor = 4.0 * std::log( 2.0 ) / vnl_math_sqr( scaledFWHM );
+  RealType expFactor = 4.0 * std::log( 2.0 ) / itk::Math::sqr ( scaledFWHM );
   RealType scaleFactor = 2.0 * std::sqrt( std::log( 2.0 )
-                                         / vnl_math::pi ) / scaledFWHM;
+                                         / itk::Math::pi ) / scaledFWHM;
 
-  vnl_vector<std::complex<RealType> > F( paddedHistogramSize,
-                                        std::complex<RealType>( 0.0, 0.0 ) );
-  F[0] = std::complex<RealType>( scaleFactor, 0.0 );
+  vnl_vector<FFTComplexType> F( paddedHistogramSize,
+                                        FFTComplexType( 0.0, 0.0 ) );
+  F[0] = FFTComplexType( scaleFactor, 0.0 );
   unsigned int halfSize = static_cast<unsigned int>(
       0.5 * paddedHistogramSize );
   for( unsigned int n = 1; n <= halfSize; n++ )
     {
-    F[n] = F[paddedHistogramSize - n] = std::complex<RealType>(
-          scaleFactor * std::exp( -vnl_math_sqr( static_cast<RealType>( n ) )
+    F[n] = F[paddedHistogramSize - n] = FFTComplexType(
+          scaleFactor * std::exp( -itk::Math::sqr ( static_cast<RealType>( n ) )
                                  * expFactor ), 0.0 );
     }
   if( paddedHistogramSize % 2 == 0 )
     {
-    F[halfSize] = std::complex<RealType>( scaleFactor * std::exp( 0.25
-                                                                * -vnl_math_sqr( static_cast<RealType>(
+    F[halfSize] = FFTComplexType( scaleFactor * std::exp( 0.25
+                                                                * -itk::Math::sqr ( static_cast<RealType>(
                                                                                    paddedHistogramSize ) )
                                                                 * expFactor ), 0.0 );
     }
 
-  vnl_vector<std::complex<RealType> > Ff( F );
+  vnl_vector<FFTComplexType> Ff( F );
   fft.fwd_transform( Ff );
 
   /**
-   * Create the Weiner deconvolution filter.
+   * Create the Wiener deconvolution filter.
    */
-  vnl_vector<std::complex<RealType> > Gf( paddedHistogramSize );
+  vnl_vector<FFTComplexType> Gf( paddedHistogramSize );
+
+  const auto wienerNoiseValue = static_cast<FFTComputationType>(this->m_WienerFilterNoise);
+
   for( unsigned int n = 0; n < paddedHistogramSize; n++ )
     {
-    std::complex<RealType> c =
-      vnl_complex_traits<std::complex<RealType> >::conjugate( Ff[n] );
-    Gf[n] = c / ( c * Ff[n] + this->m_WeinerFilterNoise );
+    FFTComplexType c =
+      vnl_complex_traits<FFTComplexType>::conjugate( Ff[n] );
+    Gf[n] = c / ( c * Ff[n] + wienerNoiseValue );
     }
 
-  vnl_vector<std::complex<RealType> > Uf( paddedHistogramSize );
+  vnl_vector<FFTComplexType> Uf( paddedHistogramSize );
   for( unsigned int n = 0; n < paddedHistogramSize; n++ )
     {
     Uf[n] = Vf[n] * Gf[n].real();
     }
 
-  vnl_vector<std::complex<RealType> > U( Uf );
+  vnl_vector<FFTComplexType> U( Uf );
   fft.bwd_transform( U );
   for( unsigned int n = 0; n < paddedHistogramSize; n++ )
     {
-    U[n] = std::complex<RealType>( vnl_math_max(
-                                    U[n].real(), static_cast<RealType>( 0.0 ) ), 0.0 );
+    U[n] = FFTComplexType( std::max(
+                                    U[n].real(), static_cast<FFTComputationType>( 0.0 ) ), 0.0 );
     }
 
   /**
    * Compute mapping E(u|v)
    */
-  vnl_vector<std::complex<RealType> > numerator( paddedHistogramSize );
+  vnl_vector<FFTComplexType> numerator( paddedHistogramSize );
   for( unsigned int n = 0; n < paddedHistogramSize; n++ )
     {
-    numerator[n] = std::complex<RealType>(
+    numerator[n] = FFTComplexType(
         ( binMinimum + ( static_cast<RealType>( n ) - histogramOffset )
           * histogramSlope ) * U[n].real(), 0.0 );
     }
@@ -477,7 +482,7 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
     }
   fft.bwd_transform( numerator );
 
-  vnl_vector<std::complex<RealType> > denominator( U );
+  vnl_vector<FFTComplexType> denominator( U );
   fft.fwd_transform( denominator );
   for( unsigned int n = 0; n < paddedHistogramSize; n++ )
     {
@@ -489,7 +494,7 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
   for( unsigned int n = 0; n < paddedHistogramSize; n++ )
     {
     E[n] = numerator[n].real() / denominator[n].real();
-    if( vnl_math_isinf( E[n] ) || vnl_math_isnan( E[n] ) )
+    if( std::isinf( E[n] ) || std::isnan( E[n] ) )
       {
       E[n] = 0.0;
       }
@@ -516,7 +521,7 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
              this->GetConfidenceImage()->GetPixel( ItU.GetIndex() ) > 0.0 ) )
       {
       float        cidx = ( ItU.Get() - binMinimum ) / histogramSlope;
-      unsigned int idx = vnl_math_floor( cidx );
+      unsigned int idx = itk::Math::floor ( cidx );
 
       RealType correctedPixel = 0;
       if( idx < E.size() - 1 )
@@ -536,7 +541,7 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
   return sharpenedImage;
 }
 
-template <class TInputImage, class TMaskImage, class TOutputImage>
+template <typename TInputImage, typename TMaskImage, typename TOutputImage>
 typename N3MRIBiasFieldCorrectionImageFilter
 <TInputImage, TMaskImage, TOutputImage>::RealImageType::Pointer
 N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
@@ -630,7 +635,7 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
   return smoothField;
 }
 
-template <class TInputImage, class TMaskImage, class TOutputImage>
+template <typename TInputImage, typename TMaskImage, typename TOutputImage>
 typename N3MRIBiasFieldCorrectionImageFilter
 <TInputImage, TMaskImage, TOutputImage>::RealType
 N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
@@ -663,7 +668,7 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
 
       if( N > 1.0 )
         {
-        sigma = sigma + vnl_math_sqr( pixel - mu ) * ( N - 1.0 ) / N;
+        sigma = sigma + itk::Math::sqr ( pixel - mu ) * ( N - 1.0 ) / N;
         }
       mu = mu * ( 1.0 - 1.0 / N ) + pixel / N;
       }
@@ -678,7 +683,7 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
   return sigma;
 }
 
-template <class TInputImage, class TMaskImage, class TOutputImage>
+template <typename TInputImage, typename TMaskImage, typename TOutputImage>
 typename N3MRIBiasFieldCorrectionImageFilter
 <TInputImage, TMaskImage, TOutputImage>::RealType
 N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
@@ -738,7 +743,7 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
   return finalParameters[0];
 }
 
-template <class TInputImage, class TMaskImage, class TOutputImage>
+template <typename TInputImage, typename TMaskImage, typename TOutputImage>
 void
 N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
 ::PrintSelf(std::ostream & os, Indent indent) const
@@ -747,8 +752,8 @@ N3MRIBiasFieldCorrectionImageFilter<TInputImage, TMaskImage, TOutputImage>
 
   os << indent << "Number of histogram bins: "
      << this->m_NumberOfHistogramBins << std::endl;
-  os << indent << "Weiner filter noise: "
-     << this->m_WeinerFilterNoise << std::endl;
+  os << indent << "Wiener filter noise: "
+     << this->m_WienerFilterNoise << std::endl;
   os << indent << "Bias field FWHM: "
      << this->m_BiasFieldFullWidthAtHalfMaximum << std::endl;
   os << indent << "Maximum number of iterations: "

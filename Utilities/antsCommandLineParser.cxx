@@ -14,6 +14,8 @@
 
 #include <algorithm>
 
+#include "itkMath.h"
+
 namespace itk
 {
 namespace ants
@@ -36,7 +38,7 @@ namespace ants
     cnvtMap[typeid(std::string).name()] = "std::string";
     cnvtMap[typeid(char *).name()] = "char *";
 
-    TypeMapType::iterator mi=cnvtMap.find(input);
+    auto mi=cnvtMap.find(input);
     if ( mi == cnvtMap.end() )
       {
       return std::string("Unmapped Type");
@@ -119,7 +121,7 @@ CommandLineParser
       {
       name = argument.substr( 1, 2 );
       }
-    if( atof( name.c_str() ) )
+    if( ! itk::Math::FloatAlmostEqual( atof( name.c_str() ), 0.0 ) )
       {
       continue;
       }
@@ -184,7 +186,7 @@ CommandLineParser
           for( unsigned int m = n; m < arguments.size(); m++ )
             {
             std::string function = arguments[m];
-            if( !starts_with( function, "-" ) || atof( function.c_str() ) )
+            if( !starts_with( function, "-" ) || ! itk::Math::FloatAlmostEqual( atof( function.c_str() ), 0.0 ) )
               {
               option->AddFunction( function,
                                    this->m_LeftDelimiter, this->m_RightDelimiter, order++ );
@@ -336,7 +338,7 @@ CommandLineParser
       return *it;
       }
     }
-  return ITK_NULLPTR;
+  return nullptr;
 }
 
 CommandLineParser::OptionType::Pointer
@@ -352,7 +354,7 @@ CommandLineParser
       return *it;
       }
     }
-  return ITK_NULLPTR;
+  return nullptr;
 }
 
 bool
@@ -372,7 +374,7 @@ ValidateFlag(const std::string & currentFlag)
       }
     }
 
-  if ( ( ! validFlagFound ) && ( currentFlag.size() > 0 ) && ( !atof( currentFlag.c_str() ) ) )
+  if ( ( ! validFlagFound ) && ( currentFlag.size() > 0 ) && ( itk::Math::FloatAlmostEqual( atof( currentFlag.c_str() ), 0.0 ) ) )
     {
     std::cout << "ERROR:  Invalid flag provided " << currentFlag << std::endl;
     }
