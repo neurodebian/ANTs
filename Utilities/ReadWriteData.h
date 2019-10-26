@@ -3,7 +3,7 @@
 #include "antsAllocImage.h"
 #include <iostream>
 #include <fstream>
-#include <stdio.h>
+#include <cstdio>
 #include "itkVector.h"
 #include "itkImage.h"
 #include "itkImageFileWriter.h"
@@ -17,6 +17,7 @@
 #include "itkAffineTransform.h"
 #include "itkImageRegionIterator.h"
 #include "itkResampleImageFilter.h"
+#include "itkVariableLengthVector.h"
 #include "itkVectorIndexSelectionCastImageFilter.h"
 #include "itkImageRegionIteratorWithIndex.h"
 #include "itkNearestNeighborInterpolateImageFunction.h"
@@ -33,13 +34,13 @@ extern bool ANTSFileExists(const std::string & strFilename);
 // the function below should be modified/eliminated.
 
 #if 1                           // currrently unimplemented
-template <class TImageType>
+template <typename TImageType>
 void NiftiDTICheck(itk::SmartPointer<TImageType> &, const char *, bool )
 {
 }
 
 #else
-template <class TImageType>
+template <typename TImageType>
 void NiftiDTICheck(itk::SmartPointer<TImageType> & target, const char *file, bool makeLower)
 {
   typedef typename TImageType::PixelType PixType;
@@ -143,7 +144,7 @@ void NiftiDTICheck(itk::SmartPointer<TImageType> & target, const char *file, boo
 
 #endif
 
-template <class TImageType>
+template <typename TImageType>
 void ReadTensorImage(itk::SmartPointer<TImageType> & target, const char *file, bool takelog = true)
 {
   if( !ANTSFileExists(std::string(file) ) )
@@ -207,7 +208,7 @@ void ReadTensorImage(itk::SmartPointer<TImageType> & target, const char *file, b
 
 }
 
-template <class TImageType>
+template <typename TImageType>
 // void ReadImage(typename TImageType::Pointer target, const char *file)
 bool ReadImage(itk::SmartPointer<TImageType> & target, const char *file)
 {
@@ -270,7 +271,7 @@ bool ReadImage(itk::SmartPointer<TImageType> & target, const char *file)
   return true;
 }
 
-template <class ImageType>
+template <typename ImageType>
 typename ImageType::Pointer ReadImage(char* fn )
 {
   // Read the image files begin
@@ -300,7 +301,7 @@ typename ImageType::Pointer ReadImage(char* fn )
   return target;
 }
 
-template <class ImageType>
+template <typename ImageType>
 typename ImageType::Pointer ReadTensorImage(char* fn, bool takelog = true )
 {
   // Read the image files begin
@@ -335,7 +336,7 @@ typename ImageType::Pointer ReadTensorImage(char* fn, bool takelog = true )
   return target;
 }
 
-template <class TPointSet>
+template <typename TPointSet>
 // void ReadImage(typename TPointSet::Pointer target, const char *file)
 bool ReadLabeledPointSet( itk::SmartPointer<TPointSet> & target, const char *file,
   bool boundaryPointsOnly = false, float samplingPercentage = 1.0 )
@@ -374,7 +375,7 @@ bool ReadLabeledPointSet( itk::SmartPointer<TPointSet> & target, const char *fil
   return true;
 }
 
-template <class TImage, class TMask, class TPointSet>
+template <typename TImage, typename TMask, typename TPointSet>
 bool ReadImageIntensityPointSet( itk::SmartPointer<TPointSet> & target, const char *imageFile,
   const char *maskFile, std::vector<unsigned int> neighborhoodRadius, double sigma )
 {
@@ -413,8 +414,8 @@ bool ReadImageIntensityPointSet( itk::SmartPointer<TPointSet> & target, const ch
     return false;
     }
 
-  typename TImage::Pointer intensityImage = ReadImage<TImage>( (char *)imageFile );
-  typename TMask::Pointer maskImage = ReadImage<TMask>( (char *)maskFile );
+  typename TImage::Pointer intensityImage = ReadImage<TImage>( const_cast<char *>( imageFile ) );
+  typename TMask::Pointer maskImage = ReadImage<TMask>( const_cast<char *>( maskFile ) );
 
   typedef itk::ImageIntensityAndGradientToPointSetFilter<TImage, TMask, TPointSet> FilterType;
 
@@ -436,7 +437,7 @@ bool ReadImageIntensityPointSet( itk::SmartPointer<TPointSet> & target, const ch
   return true;
 }
 
-template <class TPointSet>
+template <typename TPointSet>
 typename TPointSet::Pointer ReadLabeledPointSet( char* fn )
 {
   if( !ANTSFileExists( std::string( fn ) ) )
@@ -465,7 +466,7 @@ typename TPointSet::Pointer ReadLabeledPointSet( char* fn )
   return target;
 }
 
-template <class TPointSet>
+template <typename TPointSet>
 bool WritePointSet( itk::SmartPointer<TPointSet> pointSet, const char *file )
 {
   if( std::string(file).length() < 3 )
@@ -487,7 +488,7 @@ bool WritePointSet( itk::SmartPointer<TPointSet> pointSet, const char *file )
   return true;
 }
 
-template <class TImageType>
+template <typename TImageType>
 bool WriteImage(const itk::SmartPointer<TImageType> image, const char *file)
 {
   if( std::string(file).length() < 3 )
@@ -526,7 +527,7 @@ bool WriteImage(const itk::SmartPointer<TImageType> image, const char *file)
   return true;
 }
 
-template <class TImageType>
+template <typename TImageType>
 void WriteTensorImage(itk::SmartPointer<TImageType> image, const char *file, bool takeexp = true)
 {
   typedef itk::ExpTensorImageFilter<TImageType, TImageType> ExpFilterType;
@@ -562,7 +563,7 @@ void WriteTensorImage(itk::SmartPointer<TImageType> image, const char *file, boo
     }
 }
 
-template <class TImage, class TField>
+template <typename TImage, typename TField>
 typename TField::Pointer
 ReadWarpFromFile( std::string warpfn, std::string ext)
 {
@@ -626,7 +627,7 @@ ReadWarpFromFile( std::string warpfn, std::string ext)
 
 
 
-template <class TImage>
+template <typename TImage>
 typename TImage::Pointer
 MakeNewImage(typename TImage::Pointer image1, typename TImage::PixelType initval )
 {
@@ -648,7 +649,7 @@ MakeNewImage(typename TImage::Pointer image1, typename TImage::PixelType initval
   return varimage;
 }
 
-template <class TField>
+template <typename TField>
 void
 WriteDisplacementField(TField* field, std::string filename)
 {
@@ -682,7 +683,7 @@ WriteDisplacementField(TField* field, std::string filename)
   return;
 }
 
-template <class TField>
+template <typename TField>
 void
 WriteDisplacementField2(TField* field, std::string filename, std::string app)
 {
@@ -715,16 +716,146 @@ WriteDisplacementField2(TField* field, std::string filename, std::string app)
   return;
 }
 
+template<typename TTimeSeriesImageType, typename MultiChannelImageType>
+typename MultiChannelImageType::Pointer
+ConvertTimeSeriesImageToMultiChannelImage( TTimeSeriesImageType *timeSeriesImage ) 
+{
+  enum { ImageDimension = MultiChannelImageType::ImageDimension };
+
+  typename MultiChannelImageType::SpacingType spacing;
+  typename MultiChannelImageType::PointType origin;
+  typename MultiChannelImageType::RegionType::SizeType size;
+  typename MultiChannelImageType::DirectionType direction;
+
+  typename TTimeSeriesImageType::SpacingType timeSeriesSpacing = 
+    timeSeriesImage->GetSpacing();
+  typename TTimeSeriesImageType::PointType timeSeriesOrigin = 
+    timeSeriesImage->GetOrigin();
+  typename TTimeSeriesImageType::RegionType::SizeType timeSeriesSize = 
+    timeSeriesImage->GetRequestedRegion().GetSize();
+  typename TTimeSeriesImageType::DirectionType timeSeriesDirection = 
+    timeSeriesImage->GetDirection();
+
+  for( itk::SizeValueType d = 0; d < ImageDimension; d++ )
+    {
+    spacing[d] = timeSeriesSpacing[d];
+    origin[d] = timeSeriesOrigin[d];
+    size[d] = timeSeriesSize[d];
+    for( itk::SizeValueType e = 0; e < ImageDimension; e++ )
+      {
+      direction( d, e ) = timeSeriesDirection( d, e );
+      }
+    }
+
+  typename MultiChannelImageType::Pointer multiChannelImage = 
+    MultiChannelImageType::New();
+  multiChannelImage->SetRegions( size );
+  multiChannelImage->SetSpacing( spacing );
+  multiChannelImage->SetOrigin( origin );
+  multiChannelImage->SetDirection( direction );
+  multiChannelImage->SetVectorLength( timeSeriesSize[ImageDimension] );
+  multiChannelImage->Allocate();
+
+  itk::ImageRegionIteratorWithIndex<MultiChannelImageType> It( 
+    multiChannelImage, multiChannelImage->GetRequestedRegion() );
+  for( It.GoToBegin(); !It.IsAtEnd(); ++It )  
+    {
+    typename MultiChannelImageType::IndexType index = It.GetIndex();
+
+    typename MultiChannelImageType::PixelType multiChannelVoxel;
+    multiChannelVoxel.SetSize( timeSeriesSize[ImageDimension] );
+
+    for( itk::SizeValueType n = 0; n < timeSeriesSize[ImageDimension]; n++ )
+      {
+      typename TTimeSeriesImageType::IndexType timeSeriesIndex;
+      for( itk::SizeValueType d = 0; d < ImageDimension; d++ )
+        {
+        timeSeriesIndex[d] = index[d];  
+        }
+      timeSeriesIndex[ImageDimension] = n;
+      multiChannelVoxel[n] = timeSeriesImage->GetPixel( timeSeriesIndex );
+      }
+    It.Set( multiChannelVoxel );
+    }
+
+  return multiChannelImage;
+}
+
+template<typename MultiChannelImageType, typename TimeSeriesImageType>
+typename TimeSeriesImageType::Pointer
+ConvertMultiChannelImageToTimeSeriesImage( MultiChannelImageType *multiChannelImage ) 
+{
+  enum { ImageDimension = MultiChannelImageType::ImageDimension };
+
+  typename MultiChannelImageType::SpacingType spacing = multiChannelImage->GetSpacing();
+  typename MultiChannelImageType::PointType origin = multiChannelImage->GetOrigin();
+  typename MultiChannelImageType::RegionType::SizeType size = 
+    multiChannelImage->GetRequestedRegion().GetSize();
+  typename MultiChannelImageType::DirectionType direction = 
+    multiChannelImage->GetDirection();
+
+  typename TimeSeriesImageType::SpacingType timeSeriesSpacing;
+  typename TimeSeriesImageType::PointType timeSeriesOrigin;
+  typename TimeSeriesImageType::RegionType::SizeType timeSeriesSize;
+  typename TimeSeriesImageType::DirectionType timeSeriesDirection;
+  timeSeriesDirection.SetIdentity();
+
+  typename MultiChannelImageType::IndexType index;
+  index.Fill( 0 );
+  typename MultiChannelImageType::PixelType multiChannelVoxel =   
+    multiChannelImage->GetPixel( index );
+
+  for( itk::SizeValueType d = 0; d < ImageDimension; d++ )
+    {
+    timeSeriesSpacing[d] = spacing[d];
+    timeSeriesOrigin[d] = origin[d];
+    timeSeriesSize[d] = size[d];
+    for( itk::SizeValueType e = 0; e < ImageDimension; e++ )
+      {
+      timeSeriesDirection( d, e ) = direction( d, e );
+      }
+    }
+  timeSeriesSpacing[ImageDimension] = 1;
+  timeSeriesOrigin[ImageDimension] = 0;
+  timeSeriesSize[ImageDimension] = multiChannelVoxel.GetSize();  
+
+  typename TimeSeriesImageType::Pointer timeSeriesImage = 
+    AllocImage<TimeSeriesImageType>( 
+      timeSeriesSize, timeSeriesSpacing, timeSeriesOrigin, timeSeriesDirection );
+
+  itk::ImageRegionIteratorWithIndex<MultiChannelImageType> It( 
+    multiChannelImage, multiChannelImage->GetRequestedRegion() );
+  for( It.GoToBegin(); !It.IsAtEnd(); ++It )  
+    {
+    index = It.GetIndex();
+    multiChannelVoxel = It.Get();
+
+    for( itk::SizeValueType n = 0; n < timeSeriesSize[ImageDimension]; n++ )
+      {
+      typename TimeSeriesImageType::IndexType timeSeriesIndex;
+      for( itk::SizeValueType d = 0; d < ImageDimension; d++ )
+        {
+        timeSeriesIndex[d] = index[d];  
+        }
+      timeSeriesIndex[ImageDimension] = n;
+      timeSeriesImage->SetPixel( timeSeriesIndex, multiChannelVoxel[n] );
+      }
+    }
+
+  return timeSeriesImage;
+}
+
+
 class nullBuf
 : public std::streambuf
 {
 public:
-  virtual std::streamsize xsputn( const char * itkNotUsed( s ), std::streamsize n )
+  std::streamsize xsputn( const char * itkNotUsed( s ), std::streamsize n ) override
     {
     return n;
     }
 
-  virtual int overflow( int itkNotUsed( c ) )
+  int overflow( int itkNotUsed( c ) ) override
     {
     return 1;
     }
