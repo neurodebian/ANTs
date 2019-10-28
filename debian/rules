@@ -92,7 +92,7 @@ override_dh_auto_install:
 
 override_dh_auto_clean:
 	dh_auto_clean
-	rm -rf $(BUILDDIR) debian/ants.environment-modules
+	rm -rf debian/ants.environment-modules
 
 # upstream tests use some tiny dataset for tests, which
 # they deposited online instead of keeping under the GIT

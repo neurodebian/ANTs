@@ -8,8 +8,12 @@ ants (2.3.2-1) unstable; urgency=medium
       commented out that test for now
   * debian/control
     - updated upstream and VCS fields to point to uptodate upstream and salsa
+  * debian/rules
+    - do not rm $(BUILDDIR) in cleanup - we no longer define it, and it
+      could point to the top directory /build/, thus clean would remove the
+      sources as well
 
- -- Yaroslav Halchenko <debian@onerussian.com>  Sat, 26 Oct 2019 12:08:25 -0400
+ -- Yaroslav Halchenko <debian@onerussian.com>  Mon, 28 Oct 2019 08:54:39 -0400
 
 ants (2.2.0-1) experimental; urgency=medium
 
