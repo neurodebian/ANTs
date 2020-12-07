@@ -1,4 +1,4 @@
-ants (2.3.2-1) unstable; urgency=medium
+ants (2.3.2-1) UNRELEASED; urgency=medium
 
   * New upstream release
     - if builds - then closes FTBFS (Closes: #872741, #909833)
